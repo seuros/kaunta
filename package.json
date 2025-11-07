@@ -5,7 +5,11 @@
   "scripts": {
     "build": "bun run build:tracker && bun run build:vendor",
     "build:tracker": "bun build tracker/kaunta.js --outfile cmd/kaunta/assets/kaunta.min.js --target=browser --minify --sourcemap=none",
-    "build:vendor": "bun build frontend/vendor.ts --outdir cmd/kaunta/assets/dist --target=browser --minify --sourcemap=none"
+    "build:vendor": "bun build frontend/vendor.ts --outdir cmd/kaunta/assets/dist --target=browser --minify --sourcemap=none",
+    "test": "bunx playwright test",
+    "test:ui": "bunx playwright test --ui",
+    "test:tracker": "bunx playwright test tracker/test --verbose",
+    "dev:test": "bun run --cwd tracker/test-server"
   },
   "dependencies": {
     "alpinejs": "^3.15.1",
@@ -14,6 +18,7 @@
     "topojson-client": "3.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "latest",
     "@types/bun": "latest"
   }
 }

@@ -31,6 +31,25 @@
   } = window;
 
   var { currentScript, referrer } = document;
+
+  // Fallback: if currentScript is null (defer/async loading), find the script tag
+  if (!currentScript) {
+    var scripts = document.querySelectorAll('script[data-website-id]');
+    if (scripts.length > 0) {
+      currentScript = scripts[scripts.length - 1]; // Use the last one
+    } else {
+      // Try to find script with k.js, kaunta.js, or script.js
+      var allScripts = document.querySelectorAll('script[src]');
+      for (var i = 0; i < allScripts.length; i++) {
+        var src = allScripts[i].src || '';
+        if (src.indexOf('k.js') > -1 || src.indexOf('kaunta.js') > -1 || src.indexOf('script.js') > -1) {
+          currentScript = allScripts[i];
+          break;
+        }
+      }
+    }
+  }
+
   if (!currentScript) return;
 
   // ============================================================================
