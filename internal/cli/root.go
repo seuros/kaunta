@@ -9,7 +9,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/gofiber/template/html/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/seuros/kaunta/internal/database"
@@ -34,11 +33,8 @@ It provides real-time analytics and a clean dashboard interface.`,
 		if len(args) == 0 {
 			return serveAnalytics(
 				TrackerScript,
-				AlpineJS,
-				ChartJS,
-				LeafletJS,
-				LeafletCSS,
-				TopojsonJS,
+				VendorJS,
+				VendorCSS,
 				CountriesGeoJSON,
 				DashboardTemplate,
 			)
@@ -48,14 +44,11 @@ It provides real-time analytics and a clean dashboard interface.`,
 }
 
 // Execute is called by main
-func Execute(version string, trackerScript, alpineJS, chartJS, leafletJS, leafletCSS, topojsonJS, countriesGeoJSON, dashboardTemplate []byte) error {
+func Execute(version string, trackerScript, vendorJS, vendorCSS, countriesGeoJSON, dashboardTemplate []byte) error {
 	Version = version
 	TrackerScript = trackerScript
-	AlpineJS = alpineJS
-	ChartJS = chartJS
-	LeafletJS = leafletJS
-	LeafletCSS = leafletCSS
-	TopojsonJS = topojsonJS
+	VendorJS = vendorJS
+	VendorCSS = vendorCSS
 	CountriesGeoJSON = countriesGeoJSON
 	DashboardTemplate = dashboardTemplate
 
@@ -67,18 +60,15 @@ func Execute(version string, trackerScript, alpineJS, chartJS, leafletJS, leafle
 // Embedded assets passed from main
 var (
 	TrackerScript     []byte
-	AlpineJS          []byte
-	ChartJS           []byte
-	LeafletJS         []byte
-	LeafletCSS        []byte
-	TopojsonJS        []byte
+	VendorJS          []byte
+	VendorCSS         []byte
 	CountriesGeoJSON  []byte
 	DashboardTemplate []byte
 )
 
 // serveAnalytics runs the Kaunta server
 func serveAnalytics(
-	trackerScript, alpineJS, chartJS, leafletJS, leafletCSS, topojsonJS, countriesGeoJSON, dashboardTemplate []byte,
+	trackerScript, vendorJS, vendorCSS, countriesGeoJSON, dashboardTemplate []byte,
 ) error {
 	// Get database URL
 	databaseURL := os.Getenv("DATABASE_URL")
@@ -118,13 +108,9 @@ func serveAnalytics(
 		}
 	}()
 
-	// Initialize template engine (using embedded template)
-	engine := html.New(".", ".html")
-
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
 		AppName: "Kaunta - Analytics without bloat",
-		Views:   engine,
 	})
 
 	// Middleware
@@ -154,21 +140,12 @@ func serveAnalytics(
 		c.Set("CF-Cache-Tag", "kaunta-assets")
 
 		switch filename {
-		case "alpine.min.js":
+		case "vendor.js":
 			c.Set("Content-Type", "application/javascript; charset=utf-8")
-			return c.Send(alpineJS)
-		case "chart.min.js":
-			c.Set("Content-Type", "application/javascript; charset=utf-8")
-			return c.Send(chartJS)
-		case "leaflet-1.9.4.min.js":
-			c.Set("Content-Type", "application/javascript; charset=utf-8")
-			return c.Send(leafletJS)
-		case "leaflet-1.9.4.min.css":
+			return c.Send(vendorJS)
+		case "vendor.css":
 			c.Set("Content-Type", "text/css; charset=utf-8")
-			return c.Send(leafletCSS)
-		case "topojson-client-3.1.0.min.js":
-			c.Set("Content-Type", "application/javascript; charset=utf-8")
-			return c.Send(topojsonJS)
+			return c.Send(vendorCSS)
 		default:
 			return c.Status(404).SendString("Not found")
 		}

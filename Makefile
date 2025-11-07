@@ -40,6 +40,8 @@ coverage: ## Generate test coverage report
 
 build: ## Build the kaunta binary
 	@echo "$(BLUE)Building Kaunta...$(NC)"
+	@bun install --frozen-lockfile
+	@bun run build:vendor
 	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags="-w -s" -o kaunta ./cmd/kaunta
 	@echo "$(GREEN)Build complete: ./kaunta$(NC)"
 

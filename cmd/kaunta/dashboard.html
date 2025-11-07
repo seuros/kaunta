@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}} - Kaunta</title>
-    <script defer src="/assets/vendor/alpine.min.js?v=3.14.1"></script>
-    <script src="/assets/vendor/chart.min.js?v=4.5.1"></script>
-    <link rel="stylesheet" href="/assets/vendor/leaflet-1.9.4.min.css?v=1.9.4.1">
-    <script defer src="/assets/vendor/leaflet-1.9.4.min.js?v=1.9.4.1"></script>
-    <script defer src="/assets/vendor/topojson-client-3.1.0.min.js?v=3.1.0.1"></script>
+    <link rel="stylesheet" href="/assets/vendor/vendor.css?v={{.Version}}">
+    <script defer src="/assets/vendor/vendor.js?v={{.Version}}"></script>
     <style>
         [x-cloak] {
             display: none !important;
@@ -554,17 +551,17 @@
                     <button class="tab" :class="{ 'active': activeTab === 'countries' }" @click="activeTab = 'countries'; loadBreakdown()">🌍 Countries</button>
                     <button class="tab" :class="{ 'active': activeTab === 'cities' }" @click="activeTab = 'cities'; loadBreakdown()">🏙️ Cities</button>
                     <button class="tab" :class="{ 'active': activeTab === 'regions' }" @click="activeTab = 'regions'; loadBreakdown()">🗺️ Regions</button>
-                    <button class="tab" :class="{ 'active': activeTab === 'map' }" @click="activeTab = 'map'; loadMapData()">🗺️ Map</button>
+                    <button class="tab" :class="{ 'active': activeTab === 'map' }" @click="activeTab = 'map'; $nextTick(() => loadMapData())">🗺️ Map</button>
                 </div>
 
-                <template x-if="breakdownLoading">
+                <template x-if="activeTab !== 'map' && breakdownLoading">
                     <div class="loading">
                         <div class="spinner"></div>
                         <div>Loading data...</div>
                     </div>
                 </template>
 
-                <template x-if="!breakdownLoading && breakdownData && breakdownData.length > 0">
+                <template x-if="activeTab !== 'map' && !breakdownLoading && breakdownData && breakdownData.length > 0">
                     <table>
                         <thead>
                             <tr>
@@ -583,7 +580,7 @@
                     </table>
                 </template>
 
-                <template x-if="!breakdownLoading && (!breakdownData || breakdownData.length === 0)">
+                <template x-if="activeTab !== 'map' && !breakdownLoading && (!breakdownData || breakdownData.length === 0)">
                     <div class="empty-state">
                         <div class="empty-state-icon">📊</div>
                         <div class="empty-state-title">No data yet</div>
@@ -902,7 +899,9 @@
                 },
 
                 async loadBreakdown() {
-                    if (!this.selectedWebsite) return;
+                    if (!this.selectedWebsite || this.activeTab === 'map') {
+                        return;
+                    }
 
                     this.breakdownLoading = true;
                     try {
@@ -910,10 +909,14 @@
                         const endpoint = this.activeTab;
                         const response = await fetch(`/api/dashboard/${endpoint}/${this.selectedWebsite}`);
                         if (response.ok) {
-                            this.breakdownData = await response.json();
+                            const data = await response.json();
+                            this.breakdownData = Array.isArray(data) ? data : [];
+                        } else {
+                            this.breakdownData = [];
                         }
                     } catch (error) {
                         console.error('Failed to load breakdown:', error);
+                        this.breakdownData = [];
                     } finally {
                         this.breakdownLoading = false;
                     }
@@ -1015,6 +1018,8 @@
                 },
 
                 async loadMapData() {
+                    if (!this.selectedWebsite || this.activeTab !== 'map') return;
+
                     this.mapLoading = true;
                     try {
                         const days = this.dateRange === '1' ? 1 :
@@ -1022,18 +1027,10 @@
                         const params = new URLSearchParams({ days });
 
                         // Add active filters
-                        if (this.filters.country) {
-                            params.append('country', this.filters.country);
-                        }
-                        if (this.filters.browser) {
-                            params.append('browser', this.filters.browser);
-                        }
-                        if (this.filters.device) {
-                            params.append('device', this.filters.device);
-                        }
-                        if (this.filters.page) {
-                            params.append('page', this.filters.page);
-                        }
+                        if (this.filters.country) params.append('country', this.filters.country);
+                        if (this.filters.browser) params.append('browser', this.filters.browser);
+                        if (this.filters.device) params.append('device', this.filters.device);
+                        if (this.filters.page) params.append('page', this.filters.page);
 
                         const response = await fetch(
                             `/api/dashboard/map/${this.selectedWebsite}?${params}`
@@ -1042,10 +1039,14 @@
                         if (response.ok) {
                             this.mapData = await response.json();
 
-                            // Initialize map if not already done
+                            const containerExists = document.getElementById('choropleth-map');
+                            if (!containerExists) {
+                                console.warn('Choropleth map container not found yet; will retry once rendered.');
+                                return;
+                            }
+
                             if (!this.mapInitialized) {
-                                this.initializeChoropleth();
-                                this.mapInitialized = true;
+                                await this.initializeChoropleth();
                             } else {
                                 this.updateChoropleth();
                             }

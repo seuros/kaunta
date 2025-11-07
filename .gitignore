@@ -39,3 +39,9 @@ kaunta-linux-amd64*
 tmp/
 docs/
 kaunta-linux
+
+# Frontend tooling
+node_modules/
+bun.lockb
+cmd/kaunta/assets/dist/
+!cmd/kaunta/assets/dist/.gitkeep

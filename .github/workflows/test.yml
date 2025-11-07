@@ -87,6 +87,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install frontend deps
+        run: bun install --frozen-lockfile
+
+      - name: Build vendor bundle
+        run: bun run build:vendor
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:

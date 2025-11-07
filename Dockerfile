@@ -1,12 +1,19 @@
 FROM golang:1.25-alpine AS builder
 
-RUN apk add --no-cache git ca-certificates tzdata
+RUN apk add --no-cache git ca-certificates tzdata bash curl libstdc++ libgcc
 WORKDIR /app
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+
+ENV BUN_INSTALL=/root/.bun
+ENV PATH="/root/.bun/bin:$PATH"
+
+RUN curl -fsSL https://bun.sh/install | bash
+RUN bun install --frozen-lockfile
+RUN bun run build:vendor
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build \

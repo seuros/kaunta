@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:17-alpine
@@ -8,8 +6,6 @@ services:
       POSTGRES_DB: kaunta
       POSTGRES_USER: kaunta
       POSTGRES_PASSWORD: kaunta
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,9 +21,9 @@ services:
     container_name: kaunta-app
     environment:
       DATABASE_URL: postgresql://kaunta:kaunta@postgres:5432/kaunta?sslmode=disable
-      PORT: 3000
+      PORT: 3100
     ports:
-      - "3000:3000"
+      - "3010:3100"
     depends_on:
       postgres:
         condition: service_healthy

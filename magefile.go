@@ -11,9 +11,21 @@ import (
 	"github.com/magefile/mage/sh"
 )
 
+func buildAssets() error {
+	fmt.Println("Installing frontend dependencies with Bun...")
+	if err := sh.Run("bun", "install", "--frozen-lockfile"); err != nil {
+		return err
+	}
+	fmt.Println("Building frontend assets with Bun...")
+	return sh.Run("bun", "run", "build:vendor")
+}
+
 // Build builds Kaunta for Linux with Green Tea GC
 func Build() error {
 	fmt.Println("Building Kaunta for Linux with Go 1.25 + Green Tea GC...")
+	if err := buildAssets(); err != nil {
+		return err
+	}
 	env := map[string]string{
 		"GOOS":         "linux",
 		"GOARCH":       "amd64",
@@ -25,6 +37,9 @@ func Build() error {
 // BuildLocal builds Kaunta for current platform
 func BuildLocal() error {
 	fmt.Printf("Building Kaunta for %s/%s...\n", runtime.GOOS, runtime.GOARCH)
+	if err := buildAssets(); err != nil {
+		return err
+	}
 	return sh.Run("go", "build", "-o", "kaunta", "./cmd/kaunta")
 }
 

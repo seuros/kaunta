@@ -14,20 +14,11 @@ var versionFile string
 //go:embed assets/kaunta.min.js
 var trackerScript []byte
 
-//go:embed assets/vendor/alpine.min.js
-var alpineJS []byte
+//go:embed assets/dist/vendor.js
+var vendorJS []byte
 
-//go:embed assets/vendor/chart.min.js
-var chartJS []byte
-
-//go:embed assets/vendor/leaflet-1.9.4.min.js
-var leafletJS []byte
-
-//go:embed assets/vendor/leaflet-1.9.4.min.css
-var leafletCSS []byte
-
-//go:embed assets/vendor/topojson-client-3.1.0.min.js
-var topojsonJS []byte
+//go:embed assets/dist/vendor.css
+var vendorCSS []byte
 
 //go:embed assets/data/countries-110m.json
 var countriesGeoJSON []byte
@@ -43,11 +34,8 @@ func main() {
 	if err := cli.Execute(
 		version,
 		trackerScript,
-		alpineJS,
-		chartJS,
-		leafletJS,
-		leafletCSS,
-		topojsonJS,
+		vendorJS,
+		vendorCSS,
 		countriesGeoJSON,
 		dashboardTemplate,
 	); err != nil {
