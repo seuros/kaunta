@@ -29,6 +29,12 @@ jobs:
         with:
           go-version-file: "go.mod"
 
+      - name: Set up Bun
+        if: ${{ steps.release.outputs.release_created }}
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Install Mage
         if: ${{ steps.release.outputs.release_created }}
         run: go install github.com/magefile/mage@latest

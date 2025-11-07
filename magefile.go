@@ -122,6 +122,9 @@ func Tidy() error {
 
 // CI runs all checks for continuous integration
 func CI() error {
+	if err := buildAssets(); err != nil {
+		return err
+	}
 	mg.SerialDeps(Deps, Fmt, Vet, Test)
 	fmt.Println("All CI checks passed!")
 	return nil
