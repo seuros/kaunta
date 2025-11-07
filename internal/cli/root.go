@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -109,8 +110,12 @@ func serveAnalytics(
 	}()
 
 	// Create Fiber app
+	appName := "Kaunta - Analytics without bloat"
+	if Version != "" {
+		appName = fmt.Sprintf("Kaunta v%s - Analytics without bloat", Version)
+	}
 	app := fiber.New(fiber.Config{
-		AppName: "Kaunta - Analytics without bloat",
+		AppName: appName,
 	})
 
 	// Middleware

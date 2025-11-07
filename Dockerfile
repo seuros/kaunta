@@ -23,7 +23,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 
 FROM gcr.io/distroless/base-debian12
 
-ARG VERSION=0.6.0
+ARG VERSION=0.6.1
 LABEL org.opencontainers.image.title="Kaunta" \
       org.opencontainers.image.description="Privacy-focused analytics engine. Analytics without bloat." \
       org.opencontainers.image.version="${VERSION}" \
