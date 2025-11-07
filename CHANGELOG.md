@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/seuros/kaunta/compare/v0.6.2...v0.7.0) (2025-11-07)
+
+
+### Features
+
+* fix defer/async script loading and add Playwright tests ([58a7a4f](https://github.com/seuros/kaunta/commit/58a7a4ff0604555f268b2b94f6291b41d0736b69))
+
 ## [0.6.2](https://github.com/seuros/kaunta/compare/v0.6.1...v0.6.2) (2025-11-07)
 
 
