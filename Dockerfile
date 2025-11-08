@@ -17,6 +17,7 @@ RUN bun run build
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build \
+    -tags=docker \
     -ldflags="-w -s" \
     -o kaunta \
     ./cmd/kaunta

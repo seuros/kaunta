@@ -55,6 +55,18 @@ Set `data-debug="true"` to log tracker activity to the browser console while tes
 
 That's it! Analytics start collecting.
 
+## Upgrading Kaunta
+
+When running Kaunta as a standalone binary, you can update it in place without re-downloading releases manually:
+
+```bash
+kaunta --self-upgrade           # download and install the latest release
+kaunta --self-upgrade-yes       # skip the confirmation prompt
+kaunta --self-upgrade-check     # only check if a newer version exists
+```
+
+The `--self-upgrade` flag is omitted from Docker builds, since containers should be upgraded by replacing the image (`docker pull`).
+
 ## Dashboard
 
 Visit `http://your-server:3000/dashboard` to see:
