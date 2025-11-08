@@ -56,27 +56,36 @@
   // CONFIGURATION (from data attributes)
   // ============================================================================
 
-  var _data = 'data-';
-  var attr = currentScript.getAttribute.bind(currentScript);
+  var dataset = currentScript.dataset;
 
-  var websiteId = attr(_data + 'website-id');
-  var apiUrl = attr(_data + 'api-url') || currentScript.src.split('/').slice(0, -1).join('/');
-  var autoTrack = attr(_data + 'auto-track') !== 'false';
-  var trackOutbound = attr(_data + 'track-outbound') !== 'false';
-  var respectDnt = attr(_data + 'respect-dnt') !== 'false';
-  var excludeHash = attr(_data + 'exclude-hash') === 'true';
-  var domain = attr(_data + 'domains') || '';
-  var domains = domain.split(',').map(function(n) { return n.trim(); });
+  var websiteId = dataset.websiteId;
+  var apiUrl = dataset.apiUrl || currentScript.src.split('/').slice(0, -1).join('/');
+  var autoTrack = dataset.autoTrack !== 'false';
+  var trackOutbound = dataset.trackOutbound !== 'false';
+  var respectDnt = dataset.respectDnt !== 'false';
+  var excludeHash = dataset.excludeHash === 'true';
+  var domain = dataset.domains || '';
+  var domains = domain.split(',').map(function(n) {
+    return n.trim().toLowerCase().replace(/:\d+$/, '');
+  });
 
   var endpoint = apiUrl.replace(/\/$/, '') + '/api/send';
   var screen = width + 'x' + height;
   var { hostname, origin } = location;
 
+  // Static payload fields that don't change per event
+  var staticPayload = Object.freeze({
+    website: websiteId,
+    hostname: hostname,
+    screen: screen,
+    language: language
+  });
+
   // ============================================================================
   // ENGAGEMENT & SCROLL TRACKING (from Plausible)
   // ============================================================================
 
-  var debug = attr(_data + 'debug') === 'true';
+  var debug = dataset.debug === 'true';
 
   function logDebug() {
     if (!debug || !window.console) return;
@@ -96,8 +105,10 @@
   logDebug('Tracker initialized', { apiUrl: apiUrl, websiteId: websiteId });
 
   var engagementListening = false;
+  var scrollScheduled = false;
+  var heightObserver = null;
+  var engagementAbort = null;
   var currentPageUrl = location.href;
-  var currentPageProps = {};
   var maxScrollDepthPx = 0;
   var currentDocHeight = 0;
   var engagementStartTime = 0;
@@ -159,20 +170,44 @@
       currentDocHeight = getDocHeight();
       maxScrollDepthPx = getCurrentScrollDepthPx();
 
-      document.addEventListener('scroll', updateScrollDepth);
-      document.addEventListener('visibilitychange', onVisibilityChange);
-      window.addEventListener('blur', onVisibilityChange);
-      window.addEventListener('focus', onVisibilityChange);
+      // Create AbortController for cleanup
+      engagementAbort = window.AbortController ? new AbortController() : null;
+      var signal = engagementAbort ? { signal: engagementAbort.signal } : {};
 
-      // Update doc height after load and periodically
-      window.addEventListener('load', function() {
-        currentDocHeight = getDocHeight();
-        var count = 0;
-        var interval = setInterval(function() {
+      // rAF-batched scroll tracking to prevent layout thrashing
+      document.addEventListener('scroll', function() {
+        if (scrollScheduled) return;
+        scrollScheduled = true;
+        requestAnimationFrame(function() {
+          scrollScheduled = false;
+          updateScrollDepth();
+        });
+      }, Object.assign({ passive: true }, signal));
+
+      document.addEventListener('visibilitychange', onVisibilityChange, Object.assign({ passive: true }, signal));
+      window.addEventListener('blur', onVisibilityChange, Object.assign({ passive: true }, signal));
+      window.addEventListener('focus', onVisibilityChange, Object.assign({ passive: true }, signal));
+
+      // Use ResizeObserver to track document height changes efficiently
+      if (window.ResizeObserver) {
+        heightObserver = new ResizeObserver(function() {
           currentDocHeight = getDocHeight();
-          if (++count === 15) clearInterval(interval);
-        }, 200);
-      });
+        });
+        heightObserver.observe(document.documentElement);
+        if (document.body) {
+          heightObserver.observe(document.body);
+        }
+      } else {
+        // Fallback for older browsers
+        window.addEventListener('load', function() {
+          currentDocHeight = getDocHeight();
+          var count = 0;
+          var interval = setInterval(function() {
+            currentDocHeight = getDocHeight();
+            if (++count === 15) clearInterval(interval);
+          }, 200);
+        });
+      }
 
       engagementListening = true;
     }
@@ -204,23 +239,25 @@
     }
   }
 
-  function getBasePayload() {
-    var scrollDepthPercent = currentDocHeight > 0
-      ? Math.round((maxScrollDepthPx / currentDocHeight) * 100)
-      : 0;
-    var engagementTimeMs = Math.round(getEngagementTime());
-
-    return {
-      website: websiteId,
-      hostname: hostname,
+  function getBasePayload(includeEngagement) {
+    var payload = Object.assign({}, staticPayload, {
       url: currentPageUrl,
       title: document.title,
-      referrer: currentRef,
-      screen: screen,
-      language: language,
-      scroll_depth: scrollDepthPercent,
-      engagement_time: engagementTimeMs
-    };
+      referrer: currentRef
+    });
+
+    // Only include engagement metrics for pageviews to reduce payload size
+    if (includeEngagement) {
+      var scrollDepthPercent = currentDocHeight > 0
+        ? Math.round((maxScrollDepthPx / currentDocHeight) * 100)
+        : 0;
+      var engagementTimeMs = Math.round(getEngagementTime());
+
+      payload.scroll_depth = scrollDepthPercent;
+      payload.engagement_time = engagementTimeMs;
+    }
+
+    return payload;
   }
 
   // ============================================================================
@@ -237,13 +274,18 @@
 
     logDebug('Sending', type, payload);
 
+    var body = JSON.stringify({ type: type, payload: payload });
+
     // Silent fail - no console spam unless debug
     try {
-      if (window.fetch) {
+      // Use sendBeacon for better reliability when page is hidden/unloading
+      if (navigator.sendBeacon && document.visibilityState === 'hidden') {
+        navigator.sendBeacon(endpoint, body);
+      } else if (window.fetch) {
         fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: type, payload: payload }),
+          body: body,
           keepalive: true,
           credentials: 'omit'
         }).catch(function(err) {
@@ -260,10 +302,10 @@
   // ============================================================================
 
   function trackPageview() {
-    var payload = getBasePayload();
+    // Include engagement metrics for pageviews
+    var payload = getBasePayload(true);
 
     // Reset engagement tracking for new page
-    currentPageProps = {};
     maxScrollDepthPx = getCurrentScrollDepthPx();
     totalEngagementTime = 0;
     engagementStartTime = Date.now();
@@ -275,7 +317,8 @@
   function track(eventName, properties) {
     if (typeof eventName !== 'string') return;
 
-    var payload = getBasePayload();
+    // Don't include engagement metrics for custom events
+    var payload = getBasePayload(false);
     payload.name = eventName;
 
     if (properties && typeof properties === 'object') {
@@ -290,6 +333,7 @@
   // ============================================================================
 
   var lastPath = location.pathname;
+  var pendingPageview = null;
 
   function onNavigation() {
     var newPath = location.pathname;
@@ -302,8 +346,9 @@
     currentPageUrl = newUrl;
 
     if (currentPageUrl !== currentRef) {
-      // Small delay for SPA transitions
-      setTimeout(trackPageview, 300);
+      // Debounce to prevent duplicate pageviews on rapid navigation
+      clearTimeout(pendingPageview);
+      pendingPageview = setTimeout(trackPageview, 150);
     }
   }
 
@@ -370,7 +415,7 @@
       };
 
       // Track the outbound click
-      track('Outbound Link: Click', { url: link.href });
+      track('Outbound Link: Click', { url: normalize(link.href) });
 
       if (shouldInterceptNav(event, link)) {
         event.preventDefault();
@@ -384,7 +429,7 @@
   // ============================================================================
 
   currentPageUrl = normalize(location.href);
-  var currentRef = normalize(referrer.startsWith(origin) ? '' : referrer);
+  var currentRef = normalize((referrer || '').startsWith(origin) ? '' : referrer);
   var initialized = false;
 
   function init() {
@@ -409,10 +454,32 @@
   // PUBLIC API
   // ============================================================================
 
+  function destroy() {
+    // Abort all event listeners
+    if (engagementAbort) {
+      engagementAbort.abort();
+    }
+
+    // Disconnect ResizeObserver
+    if (heightObserver) {
+      heightObserver.disconnect();
+    }
+
+    // Clear pending pageview
+    clearTimeout(pendingPageview);
+
+    // Reset state
+    initialized = false;
+    engagementListening = false;
+
+    logDebug('Tracker destroyed');
+  }
+
   if (!window.kaunta) {
     window.kaunta = {
       track: track,
-      trackPageview: trackPageview
+      trackPageview: trackPageview,
+      destroy: destroy
     };
   }
 

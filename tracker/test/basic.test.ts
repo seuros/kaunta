@@ -110,9 +110,9 @@ test('tracker respects data-respect-dnt attribute', async ({ page }) => {
 
   await page.waitForTimeout(500);
 
-  // With respect-dnt enabled and DNT set, no tracking request should be sent
-  // This is a soft check - the important thing is the script handles it
-  expect(typeof window).toBe('object');
+  // With respect-dnt enabled and DNT set, tracker should still load but not send
+  const kauntaExists = await page.evaluate(() => typeof window.kaunta !== 'undefined');
+  expect(kauntaExists).toBe(true);
 });
 
 /**

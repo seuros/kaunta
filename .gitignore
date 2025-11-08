@@ -46,3 +46,8 @@ bun.lockb
 cmd/kaunta/assets/dist/
 !cmd/kaunta/assets/dist/.gitkeep
 cmd/kaunta/assets/kaunta.min.js
+
+# Test artifacts
+test-results/
+playwright-report/
+playwright/.cache/

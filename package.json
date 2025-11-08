@@ -8,8 +8,8 @@
     "build:vendor": "bun build frontend/vendor.ts --outdir cmd/kaunta/assets/dist --target=browser --minify --sourcemap=none",
     "test": "bunx playwright test",
     "test:ui": "bunx playwright test --ui",
-    "test:tracker": "bunx playwright test tracker/test --verbose",
-    "dev:test": "bun run --cwd tracker/test-server"
+    "test:tracker": "bunx playwright test tracker/test",
+    "dev:test": "bun run --cwd tracker/test-server start"
   },
   "dependencies": {
     "alpinejs": "^3.15.1",

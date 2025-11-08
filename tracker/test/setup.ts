@@ -30,7 +30,9 @@ export function createTestHtmlPage(
 
   const scriptTag = (() => {
     const src = 'http://localhost:5173/k.js';
-    const baseAttrs = `src="${src}" data-website-id="test-website-123" ${attrs}`;
+    // Only add default website-id if not provided in attrs
+    const defaultWebsiteId = attrs.includes('data-website-id') ? '' : 'data-website-id="test-website-123"';
+    const baseAttrs = `src="${src}" ${defaultWebsiteId} ${attrs}`.replace(/\s+/g, ' ').trim();
 
     switch (loadingMode) {
       case 'defer':
