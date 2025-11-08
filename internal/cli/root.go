@@ -17,6 +17,7 @@ import (
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/geoip"
 	"github.com/seuros/kaunta/internal/handlers"
+	"github.com/seuros/kaunta/internal/middleware"
 )
 
 var Version string
@@ -209,8 +210,17 @@ func serveAnalytics(
 	// Stats API (Plausible-inspired)
 	app.Get("/api/stats/realtime/:website_id", handlers.HandleCurrentVisitors)
 
-	// Dashboard UI (Alpine.js)
-	app.Get("/dashboard", func(c *fiber.Ctx) error {
+	// Auth API endpoints (public)
+	app.Post("/api/auth/login", handlers.HandleLogin)
+
+	// Login page (public)
+	app.Get("/login", func(c *fiber.Ctx) error {
+		c.Set("Content-Type", "text/html; charset=utf-8")
+		return c.SendString(loginPageHTML())
+	})
+
+	// Dashboard UI (protected)
+	app.Get("/dashboard", middleware.Auth, func(c *fiber.Ctx) error {
 		c.Set("Content-Type", "text/html; charset=utf-8")
 		// Replace Go template variables in embedded HTML
 		html := strings.ReplaceAll(string(dashboardTemplate), "{{.Title}}", "Kaunta Dashboard")
@@ -218,18 +228,22 @@ func serveAnalytics(
 		return c.SendString(html)
 	})
 
-	// Dashboard API endpoints
-	app.Get("/api/websites", handlers.HandleWebsites)
-	app.Get("/api/dashboard/stats/:website_id", handlers.HandleDashboardStats)
-	app.Get("/api/dashboard/pages/:website_id", handlers.HandleTopPages)
-	app.Get("/api/dashboard/timeseries/:website_id", handlers.HandleTimeSeries)
-	app.Get("/api/dashboard/referrers/:website_id", handlers.HandleTopReferrers)
-	app.Get("/api/dashboard/browsers/:website_id", handlers.HandleTopBrowsers)
-	app.Get("/api/dashboard/devices/:website_id", handlers.HandleTopDevices)
-	app.Get("/api/dashboard/countries/:website_id", handlers.HandleTopCountries)
-	app.Get("/api/dashboard/cities/:website_id", handlers.HandleTopCities)
-	app.Get("/api/dashboard/regions/:website_id", handlers.HandleTopRegions)
-	app.Get("/api/dashboard/map/:website_id", handlers.HandleMapData)
+	// Protected API endpoints
+	app.Post("/api/auth/logout", middleware.Auth, handlers.HandleLogout)
+	app.Get("/api/auth/me", middleware.Auth, handlers.HandleMe)
+
+	// Dashboard API endpoints (protected)
+	app.Get("/api/websites", middleware.Auth, handlers.HandleWebsites)
+	app.Get("/api/dashboard/stats/:website_id", middleware.Auth, handlers.HandleDashboardStats)
+	app.Get("/api/dashboard/pages/:website_id", middleware.Auth, handlers.HandleTopPages)
+	app.Get("/api/dashboard/timeseries/:website_id", middleware.Auth, handlers.HandleTimeSeries)
+	app.Get("/api/dashboard/referrers/:website_id", middleware.Auth, handlers.HandleTopReferrers)
+	app.Get("/api/dashboard/browsers/:website_id", middleware.Auth, handlers.HandleTopBrowsers)
+	app.Get("/api/dashboard/devices/:website_id", middleware.Auth, handlers.HandleTopDevices)
+	app.Get("/api/dashboard/countries/:website_id", middleware.Auth, handlers.HandleTopCountries)
+	app.Get("/api/dashboard/cities/:website_id", middleware.Auth, handlers.HandleTopCities)
+	app.Get("/api/dashboard/regions/:website_id", middleware.Auth, handlers.HandleTopRegions)
+	app.Get("/api/dashboard/map/:website_id", middleware.Auth, handlers.HandleMapData)
 
 	// Start server
 	port := getEnv("PORT", "3000")
@@ -305,6 +319,151 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// loginPageHTML returns a simple login page
+func loginPageHTML() string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Kaunta</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            margin-bottom: 1.5rem;
+            color: #333;
+            font-size: 1.8rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Login to Kaunta</h1>
+        <div id="error" class="error"></div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+            <button type="submit" id="submitBtn">Login</button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const errorDiv = document.getElementById('error');
+        const submitBtn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            errorDiv.classList.remove('show');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Logging in...';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    window.location.href = '/dashboard';
+                } else {
+                    errorDiv.textContent = data.error || 'Login failed';
+                    errorDiv.classList.add('show');
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.classList.add('show');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Login';
+            }
+        });
+    </script>
+</body>
+</html>`
 }
 
 func init() {

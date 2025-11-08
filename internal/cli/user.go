@@ -1,0 +1,329 @@
+package cli
+
+import (
+	"bufio"
+	"fmt"
+	"log"
+	"os"
+	"strings"
+	"syscall"
+
+	"github.com/google/uuid"
+	"github.com/spf13/cobra"
+	"golang.org/x/term"
+
+	"github.com/seuros/kaunta/internal/database"
+)
+
+var userCmd = &cobra.Command{
+	Use:   "user",
+	Short: "Manage users",
+	Long:  `Manage Kaunta users via CLI. Create, list, and delete users.`,
+}
+
+var userCreateCmd = &cobra.Command{
+	Use:   "create <username>",
+	Short: "Create a new user",
+	Long: `Create a new user with username and password.
+
+The password will be securely hashed using PostgreSQL's pgcrypto extension.
+
+Example:
+  kaunta user create admin`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		username := args[0]
+
+		// Validate username
+		if len(username) < 3 {
+			return fmt.Errorf("username must be at least 3 characters long")
+		}
+
+		// Connect to database
+		if err := database.Connect(); err != nil {
+			return fmt.Errorf("database connection failed: %w", err)
+		}
+		defer func() { _ = database.Close() }()
+
+		// Check if user already exists
+		var exists bool
+		err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)", username).Scan(&exists)
+		if err != nil {
+			return fmt.Errorf("failed to check existing user: %w", err)
+		}
+		if exists {
+			return fmt.Errorf("user '%s' already exists", username)
+		}
+
+		// Get name (optional)
+		name, _ := cmd.Flags().GetString("name")
+		if name == "" {
+			fmt.Print("Full name (optional): ")
+			reader := bufio.NewReader(os.Stdin)
+			name, _ = reader.ReadString('\n')
+			name = strings.TrimSpace(name)
+		}
+
+		// Get password
+		password, err := readPassword("Password: ")
+		if err != nil {
+			return err
+		}
+
+		confirmPassword, err := readPassword("Confirm password: ")
+		if err != nil {
+			return err
+		}
+
+		if password != confirmPassword {
+			return fmt.Errorf("passwords do not match")
+		}
+
+		if len(password) < 8 {
+			return fmt.Errorf("password must be at least 8 characters long")
+		}
+
+		// Create user (password hashed by PostgreSQL)
+		userID := uuid.New()
+		query := `
+			INSERT INTO users (user_id, username, password_hash, name)
+			VALUES ($1, $2, hash_password($3), NULLIF($4, ''))
+			RETURNING user_id, username, name, created_at
+		`
+
+		var user struct {
+			UserID    uuid.UUID
+			Username  string
+			Name      *string
+			CreatedAt string
+		}
+
+		err = database.DB.QueryRow(query, userID, username, password, name).Scan(
+			&user.UserID,
+			&user.Username,
+			&user.Name,
+			&user.CreatedAt,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create user: %w", err)
+		}
+
+		fmt.Printf("\n✓ User created successfully\n")
+		fmt.Printf("  ID:       %s\n", user.UserID)
+		fmt.Printf("  Username: %s\n", user.Username)
+		if user.Name != nil && *user.Name != "" {
+			fmt.Printf("  Name:     %s\n", *user.Name)
+		}
+		fmt.Printf("  Created:  %s\n", user.CreatedAt)
+
+		return nil
+	},
+}
+
+var userListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all users",
+	Long:  `List all users in the system.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Connect to database
+		if err := database.Connect(); err != nil {
+			return fmt.Errorf("database connection failed: %w", err)
+		}
+		defer func() { _ = database.Close() }()
+
+		var users []struct {
+			UserID    uuid.UUID
+			Username  string
+			Name      *string
+			CreatedAt string
+		}
+
+		query := `SELECT user_id, username, name, created_at FROM users ORDER BY created_at DESC`
+		rows, err := database.DB.Query(query)
+		if err != nil {
+			return fmt.Errorf("failed to list users: %w", err)
+		}
+		defer func() { _ = rows.Close() }()
+
+		for rows.Next() {
+			var user struct {
+				UserID    uuid.UUID
+				Username  string
+				Name      *string
+				CreatedAt string
+			}
+			if err := rows.Scan(&user.UserID, &user.Username, &user.Name, &user.CreatedAt); err != nil {
+				return fmt.Errorf("failed to scan user: %w", err)
+			}
+			users = append(users, user)
+		}
+
+		if err = rows.Err(); err != nil {
+			return fmt.Errorf("error iterating users: %w", err)
+		}
+
+		if len(users) == 0 {
+			fmt.Println("No users found")
+			return nil
+		}
+
+		fmt.Printf("\nTotal users: %d\n\n", len(users))
+		fmt.Printf("%-36s  %-20s  %-20s  %s\n", "ID", "Username", "Name", "Created")
+		fmt.Println(strings.Repeat("-", 110))
+
+		for _, user := range users {
+			name := "-"
+			if user.Name != nil && *user.Name != "" {
+				name = *user.Name
+			}
+			fmt.Printf("%-36s  %-20s  %-20s  %s\n", user.UserID, user.Username, name, user.CreatedAt)
+		}
+
+		return nil
+	},
+}
+
+var userDeleteCmd = &cobra.Command{
+	Use:   "delete <username>",
+	Short: "Delete a user",
+	Long: `Delete a user by username.
+
+This will also delete all sessions for the user.
+Websites owned by the user will be unassigned (user_id set to NULL).
+
+Example:
+  kaunta user delete admin`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		username := args[0]
+
+		// Connect to database
+		if err := database.Connect(); err != nil {
+			return fmt.Errorf("database connection failed: %w", err)
+		}
+		defer func() { _ = database.Close() }()
+
+		// Confirm deletion
+		force, _ := cmd.Flags().GetBool("force")
+		if !force {
+			fmt.Printf("Are you sure you want to delete user '%s'? (yes/no): ", username)
+			reader := bufio.NewReader(os.Stdin)
+			response, _ := reader.ReadString('\n')
+			response = strings.ToLower(strings.TrimSpace(response))
+
+			if response != "yes" && response != "y" {
+				fmt.Println("Deletion cancelled")
+				return nil
+			}
+		}
+
+		// Delete user
+		result, err := database.DB.Exec("DELETE FROM users WHERE username = $1", username)
+		if err != nil {
+			return fmt.Errorf("failed to delete user: %w", err)
+		}
+
+		rows, _ := result.RowsAffected()
+		if rows == 0 {
+			return fmt.Errorf("user '%s' not found", username)
+		}
+
+		fmt.Printf("✓ User '%s' deleted successfully\n", username)
+		return nil
+	},
+}
+
+var userResetPasswordCmd = &cobra.Command{
+	Use:   "reset-password <username>",
+	Short: "Reset user password",
+	Long: `Reset password for a user.
+
+Example:
+  kaunta user reset-password admin`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		username := args[0]
+
+		// Connect to database
+		if err := database.Connect(); err != nil {
+			return fmt.Errorf("database connection failed: %w", err)
+		}
+		defer func() { _ = database.Close() }()
+
+		// Check if user exists
+		var exists bool
+		err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)", username).Scan(&exists)
+		if err != nil {
+			return fmt.Errorf("failed to check user: %w", err)
+		}
+		if !exists {
+			return fmt.Errorf("user '%s' not found", username)
+		}
+
+		// Get new password
+		password, err := readPassword("New password: ")
+		if err != nil {
+			return err
+		}
+
+		confirmPassword, err := readPassword("Confirm password: ")
+		if err != nil {
+			return err
+		}
+
+		if password != confirmPassword {
+			return fmt.Errorf("passwords do not match")
+		}
+
+		if len(password) < 8 {
+			return fmt.Errorf("password must be at least 8 characters long")
+		}
+
+		// Update password (hashed by PostgreSQL)
+		_, err = database.DB.Exec(
+			"UPDATE users SET password_hash = hash_password($1), updated_at = NOW() WHERE username = $2",
+			password,
+			username,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to update password: %w", err)
+		}
+
+		// Invalidate all sessions
+		_, err = database.DB.Exec("DELETE FROM user_sessions WHERE user_id = (SELECT user_id FROM users WHERE username = $1)", username)
+		if err != nil {
+			log.Printf("Warning: failed to invalidate sessions: %v", err)
+		}
+
+		fmt.Printf("✓ Password reset successfully for '%s'\n", username)
+		fmt.Println("  All existing sessions have been invalidated")
+
+		return nil
+	},
+}
+
+// readPassword reads a password from stdin without echoing
+func readPassword(prompt string) (string, error) {
+	fmt.Print(prompt)
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+	fmt.Println()
+	if err != nil {
+		return "", fmt.Errorf("failed to read password: %w", err)
+	}
+	return strings.TrimSpace(string(bytePassword)), nil
+}
+
+func init() {
+	// Add flags
+	userCreateCmd.Flags().StringP("name", "n", "", "User's full name")
+	userDeleteCmd.Flags().BoolP("force", "f", false, "Skip confirmation prompt")
+
+	// Add subcommands
+	userCmd.AddCommand(userCreateCmd)
+	userCmd.AddCommand(userListCmd)
+	userCmd.AddCommand(userDeleteCmd)
+	userCmd.AddCommand(userResetPasswordCmd)
+
+	// Register with root command
+	RootCmd.AddCommand(userCmd)
+}
