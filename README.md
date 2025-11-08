@@ -46,8 +46,12 @@ Add this to your website (works like Google Analytics):
 
 ```html
 <script src="https://your-kaunta-server.com/k.js"
-        data-website-id="your-website-uuid" async defer></script>
+        data-website-id="your-website-uuid"
+        data-debug="true"
+        async defer></script>
 ```
+
+Set `data-debug="true"` to log tracker activity to the browser console while testing. Remove it in production to keep the script silent.
 
 That's it! Analytics start collecting.
 

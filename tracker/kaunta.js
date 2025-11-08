@@ -76,6 +76,25 @@
   // ENGAGEMENT & SCROLL TRACKING (from Plausible)
   // ============================================================================
 
+  var debug = attr(_data + 'debug') === 'true';
+
+  function logDebug() {
+    if (!debug || !window.console) return;
+    var args = Array.prototype.slice.call(arguments);
+    args.unshift('[Kaunta]');
+    try {
+      console.debug.apply(console, args);
+    } catch (err) {
+      try {
+        console.log.apply(console, args);
+      } catch (_) {
+        // ignore
+      }
+    }
+  }
+
+  logDebug('Tracker initialized', { apiUrl: apiUrl, websiteId: websiteId });
+
   var engagementListening = false;
   var currentPageUrl = location.href;
   var currentPageProps = {};
@@ -209,11 +228,16 @@
   // ============================================================================
 
   function send(payload, type) {
-    if (isTrackingDisabled()) return;
+    if (isTrackingDisabled()) {
+      logDebug('Tracking disabled: SKIP', type, payload);
+      return;
+    }
 
     type = type || 'event';
 
-    // Silent fail - no console spam
+    logDebug('Sending', type, payload);
+
+    // Silent fail - no console spam unless debug
     try {
       if (window.fetch) {
         fetch(endpoint, {
@@ -222,10 +246,12 @@
           body: JSON.stringify({ type: type, payload: payload }),
           keepalive: true,
           credentials: 'omit'
-        }).catch(function() { /* silent fail */ });
+        }).catch(function(err) {
+          if (debug) logDebug('Fetch error', err);
+        });
       }
     } catch (e) {
-      /* silent fail */
+      if (debug) logDebug('Send exception', e);
     }
   }
 
