@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/seuros/kaunta/compare/v0.7.1...v0.8.0) (2025-11-08)
+
+
+### Features
+
+* fix tracker initialization and dynamic ETag generation ([b5a9558](https://github.com/seuros/kaunta/commit/b5a95588599b8e8dd4727ccaa7e23cd0e9d98023))
+
 ## [0.7.1](https://github.com/seuros/kaunta/compare/v0.7.0...v0.7.1) (2025-11-08)
 
 
