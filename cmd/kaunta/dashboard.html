@@ -1,1359 +1,1776 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{.Title}} - Kaunta</title>
-    <link rel="stylesheet" href="/assets/vendor/vendor.css?v={{.Version}}">
+    <link rel="stylesheet" href="/assets/vendor/vendor.css?v={{.Version}}" />
     <script defer src="/assets/vendor/vendor.js?v={{.Version}}"></script>
     <style>
-        [x-cloak] {
-            display: none !important;
-        }
+      [x-cloak] {
+        display: none !important;
+      }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f8f9fa;
+        --bg-accent: #e6f0ff;
+        --bg-glass: rgba(230, 240, 255, 0.7);
+        --text-primary: #1a1a1a;
+        --text-secondary: #4b5e7a;
+        --text-tertiary: #7b8aa6;
+        --border-color: #d6e2ff;
+        --accent-color: #3b82f6;
+        --accent-dark: #1e3a8a;
+        --gradient-glass: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.9),
+          rgba(200, 220, 255, 0.4)
+        );
+      }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #fafafa;
-            color: #1f2937;
-            line-height: 1.5;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+          sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        line-height: 1.6;
+      }
+
+      /* ===== UTILITY CLASSES ===== */
+
+      /* Glassmorphism effect */
+      .glass {
+        background: var(--bg-glass);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+      }
+
+      /* Standard transitions */
+      .transition-standard {
+        transition: border-color 0.2s ease, box-shadow 0.2s ease,
+          background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+      }
+
+      /* Card styling */
+      .card {
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.08);
+      }
+
+      .card-sm {
+        padding: 20px;
+        border-radius: 12px;
+      }
+
+      /* Interactive element hover effects */
+      .hover-lift {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .hover-lift:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(59, 130, 246, 0.15);
+      }
+
+      /* Focus states */
+      .focus-accent:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+        z-index: 10;
+      }
+
+      /* Icon sizes */
+      .icon-sm {
+        width: 16px;
+        height: 16px;
+      }
+      .icon-md {
+        width: 20px;
+        height: 20px;
+      }
+      .icon-lg {
+        width: 24px;
+        height: 24px;
+      }
+      .icon-xl {
+        width: 48px;
+        height: 48px;
+      }
+
+      .container {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 32px;
+      }
+
+      /* Header */
+      header {
+        margin-bottom: 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      .header-left h1 {
+        font-size: 24px;
+        font-weight: 500;
+        color: var(--accent-dark);
+        margin-bottom: 4px;
+      }
+
+      .subtitle {
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 400;
+      }
+
+      .header-controls {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      /* Select and form controls */
+      select,
+      .date-picker {
+        padding: 10px 16px;
+        border-radius: 12px;
+        font-size: 14px;
+        color: var(--text-primary);
+        cursor: pointer;
+        font-weight: 400;
+        position: relative;
+        z-index: 1;
+      }
+
+      select:hover,
+      .date-picker:hover {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+        background: rgba(230, 240, 255, 0.85);
+      }
+
+      select:focus {
+        background-color: rgba(230, 240, 255, 0.95);
+      }
+
+      select option {
+        background: white;
+        color: var(--text-primary);
+        padding: 8px 16px;
+      }
+
+      /* Filters with glassmorphism styling */
+      .filters {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding-left: 16px;
+        border-left: 1px solid var(--border-color);
+      }
+
+      .filter-select {
+        padding: 8px 36px 8px 12px;
+        font-size: 13px;
+        min-width: 160px;
+        font-weight: 400;
+      }
+
+      .clear-filters-btn {
+        padding: 8px 16px;
+        border-radius: 12px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 500;
+      }
+
+      .clear-filters-btn:hover {
+        background: rgba(230, 240, 255, 0.85);
+        color: var(--accent-color);
+        transform: translateY(-1px);
+        border-color: var(--accent-color);
+      }
+
+      .clear-filters-btn:active {
+        transform: scale(0.98);
+      }
+
+      /* Stats grid with glassmorphism cards and enhanced progress bars */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+      }
+
+      .stat-card {
+        transition: all 0.3s ease;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(59, 130, 246, 0.15);
+        border-color: var(--accent-color);
+        background: rgba(230, 240, 255, 0.85);
+      }
+
+      .stat-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      /* Stat icons */
+      .stat-icon {
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+      }
+
+      .stat-icon svg {
+        width: 24px;
+        height: 24px;
+      }
+
+      .stat-icon.green svg {
+        color: #10b981;
+      }
+
+      .stat-icon.blue svg {
+        color: var(--accent-color);
+      }
+
+      .stat-icon.purple svg {
+        color: #8b5cf6;
+      }
+
+      .stat-icon.orange svg {
+        color: #f97316;
+      }
+
+      .stat-card:hover .stat-icon {
+        transform: scale(1.08);
+        border-color: var(--accent-color);
+        background: rgba(59, 130, 246, 0.1);
+      }
+
+      .stat-label {
+        font-size: 14px;
+        color: var(--text-secondary);
+        font-weight: 500;
+      }
+
+      .stat-value {
+        font-size: 32px;
+        font-weight: 500;
+        color: var(--accent-dark);
+        line-height: 1.1;
+        margin-bottom: 12px;
+      }
+
+      .stat-value.live {
+        color: #10b981;
+      }
+
+      /* Enhanced progress bar with gradient and smooth animation */
+      .progress-container {
+        width: 100%;
+        height: 4px;
+        background: var(--bg-glass);
+        border-radius: 2px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+      }
+
+      .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-color), #60a5fa);
+        border-radius: 2px;
+        animation: slideIn 0.5s ease-out;
+        transition: width 0.3s ease;
+      }
+
+      @keyframes slideIn {
+        from {
+          width: 0;
+          opacity: 0;
+        }
+        to {
+          width: 100%;
+          opacity: 1;
+        }
+      }
+
+      .pulse {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        margin-right: 8px;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.5;
+          transform: scale(0.8);
+        }
+      }
+
+      /* Section */
+      .section {
+        margin-bottom: 32px;
+      }
+
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .section h2 {
+        font-size: 18px;
+        font-weight: 500;
+        color: var(--accent-dark);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      /* Modern table styling with glassmorphism effects */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      thead {
+        background: var(--bg-glass);
+        border-bottom: 2px solid var(--border-color);
+      }
+
+      th {
+        text-align: left;
+        padding: 14px 20px;
+        font-weight: 500;
+        color: var(--accent-dark);
+        font-size: 13px;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.3s ease;
+      }
+
+      th:hover {
+        background: rgba(59, 130, 246, 0.05);
+        color: var(--accent-color);
+      }
+
+      td {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 400;
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      tbody tr {
+        transition: all 0.2s ease;
+      }
+
+      tbody tr:hover {
+        background: var(--bg-glass);
+      }
+
+      .sort-arrow {
+        display: inline-block;
+        margin-left: 6px;
+        opacity: 0.4;
+        font-size: 12px;
+        transition: all 0.3s ease;
+      }
+
+      .sort-arrow.active {
+        opacity: 1;
+        color: var(--accent-color);
+      }
+
+      /* Loading states with updated spinner styling */
+      .loading {
+        text-align: center;
+        padding: 80px 20px;
+        color: var(--text-secondary);
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 32px;
+        height: 32px;
+        border: 3px solid var(--bg-glass);
+        border-top: 3px solid var(--accent-color);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 16px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Empty state with refined styling */
+      .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+      }
+
+      .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.2;
+      }
+
+      .empty-state-title {
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--accent-dark);
+        margin-bottom: 8px;
+      }
+
+      .empty-state-text {
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+
+      /* Tabs with glassmorphism and smooth transitions */
+      .tabs {
+        display: flex;
+        gap: 8px;
+        border-bottom: 2px solid var(--border-color);
+        margin-bottom: 24px;
+        overflow-x: auto;
+        padding-bottom: 0;
+      }
+
+      .tab {
+        padding: 12px 24px;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        margin-bottom: -2px;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 8px 8px 0 0;
+      }
+
+      .tab:hover {
+        color: var(--accent-color);
+        background: transparent;
+      }
+
+      .tab.active {
+        color: var(--accent-color);
+        border-bottom-color: var(--accent-color);
+        background: transparent;
+      }
+
+      .tab svg {
+        width: 16px;
+        height: 16px;
+        transition: all 0.3s ease;
+      }
+
+      /* Footer */
+      footer {
+        margin-top: 48px;
+      }
+
+      footer p {
+        color: var(--text-tertiary);
+        font-size: 14px;
+        margin: 0 0 8px 0;
+      }
+
+      footer p:last-child {
+        margin-bottom: 0;
+      }
+
+      /* Date range buttons */
+      .date-range-buttons {
+        display: flex;
+        gap: 6px;
+        padding: 6px;
+        border-radius: 12px;
+      }
+
+      .date-btn {
+        padding: 8px 14px;
+        border: 1px solid transparent;
+        background: transparent;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        cursor: pointer;
+      }
+
+      .date-btn:hover {
+        color: var(--accent-color);
+        background: rgba(59, 130, 246, 0.1);
+        border-color: var(--border-color);
+      }
+
+      .date-btn.active {
+        background: var(--bg-primary);
+        color: var(--accent-color);
+        border-color: var(--accent-color);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 24px;
+          padding: 16px;
         }
 
-        /* Header */
         header {
-            background: white;
-            padding: 20px 24px;
-            margin-bottom: 24px;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            border: 1px solid #e5e7eb;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-
-        .header-left h1 {
-            font-size: 20px;
-            font-weight: 600;
-            color: #111827;
-            margin-bottom: 4px;
-        }
-
-        .subtitle {
-            color: #6b7280;
-            font-size: 13px;
+          flex-direction: column;
+          align-items: flex-start;
         }
 
         .header-controls {
-            display: flex;
-            gap: 12px;
-            align-items: center;
+          width: 100%;
+          flex-direction: column;
+          gap: 12px;
         }
 
-        /* Select Inputs */
-        select, .date-picker {
-            padding: 8px 32px 8px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            background: white;
-            font-size: 14px;
-            color: #374151;
-            cursor: pointer;
-            transition: all 0.2s;
+        .header-controls select {
+          width: 100%;
         }
 
-        select:hover, .date-picker:hover {
-            border-color: #9ca3af;
-        }
-
-        select:focus, .date-picker:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        /* Filters */
         .filters {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            padding-left: 12px;
-            border-left: 1px solid #e5e7eb;
+          width: 100%;
+          flex-direction: column;
+          border-left: none;
+          border-top: 1px solid var(--border-color);
+          padding-left: 0;
+          padding-top: 12px;
+          margin-top: 12px;
         }
 
-        .filter-select {
-            padding: 6px 28px 6px 10px;
-            font-size: 13px;
-            min-width: 140px;
-        }
-
+        .filter-select,
         .clear-filters-btn {
-            padding: 6px 12px;
-            background: #f3f4f6;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 13px;
-            color: #6b7280;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
+          width: 100%;
         }
 
-        .clear-filters-btn:hover {
-            background: #e5e7eb;
-            color: #374151;
-        }
-
-        .clear-filters-btn:active {
-            transform: scale(0.98);
-        }
-
-        /* Stats Grid */
         .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
+          grid-template-columns: 1fr;
         }
 
-        .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            border: 1px solid #e5e7eb;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-        }
-
-        .stat-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .stat-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-        }
-
-        .stat-icon.green { background: #d1fae5; }
-        .stat-icon.blue { background: #dbeafe; }
-        .stat-icon.purple { background: #e9d5ff; }
-        .stat-icon.orange { background: #fed7aa; }
-
-        .stat-label {
-            font-size: 13px;
-            color: #6b7280;
-            font-weight: 500;
-        }
-
-        .stat-value {
-            font-size: 32px;
-            font-weight: 700;
-            color: #111827;
-            line-height: 1;
-        }
-
-        .stat-value.live {
-            color: #10b981;
-        }
-
-        .pulse {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            background: #10b981;
-            border-radius: 50%;
-            margin-right: 6px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(0.9); }
-        }
-
-        /* Section */
         .section {
-            background: white;
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            border: 1px solid #e5e7eb;
-            margin-bottom: 24px;
+          padding: 20px;
         }
 
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .section h2 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #111827;
-        }
-
-        /* Table */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead {
-            background: #f9fafb;
-        }
-
-        th {
-            text-align: left;
-            padding: 12px 16px;
-            font-weight: 600;
-            color: #374151;
-            font-size: 13px;
-            cursor: pointer;
-            user-select: none;
-            transition: background 0.2s;
-        }
-
-        th:hover {
-            background: #f3f4f6;
-        }
-
-        td {
-            padding: 14px 16px;
-            border-bottom: 1px solid #f3f4f6;
-            color: #1f2937;
-            font-size: 14px;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        tbody tr:hover {
-            background: #f9fafb;
-        }
-
-        .sort-arrow {
-            display: inline-block;
-            margin-left: 6px;
-            opacity: 0.3;
-            font-size: 11px;
-        }
-
-        .sort-arrow.active {
-            opacity: 1;
-            color: #3b82f6;
-        }
-
-        /* Loading States */
-        .loading {
-            text-align: center;
-            padding: 60px 20px;
-            color: #9ca3af;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-            border: 3px solid #e5e7eb;
-            border-top: 3px solid #3b82f6;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-bottom: 12px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-        }
-
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-            opacity: 0.3;
-        }
-
-        .empty-state-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 8px;
-        }
-
-        .empty-state-text {
-            font-size: 14px;
-            color: #9ca3af;
-        }
-
-        /* Tabs */
         .tabs {
-            display: flex;
-            gap: 4px;
-            border-bottom: 2px solid #e5e7eb;
-            margin-bottom: 24px;
+          gap: 4px;
         }
 
         .tab {
-            padding: 12px 20px;
-            background: none;
-            border: none;
-            border-bottom: 2px solid transparent;
-            color: #6b7280;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-bottom: -2px;
+          padding: 8px 12px;
+          font-size: 12px;
         }
 
-        .tab:hover {
-            color: #374151;
-            background: #f9fafb;
-        }
-
-        .tab.active {
-            color: #3b82f6;
-            border-bottom-color: #3b82f6;
-        }
-
-        /* Philosophy Footer */
-        .philosophy {
-            text-align: center;
-            padding: 24px 20px;
-            color: #9ca3af;
-            font-style: italic;
-            font-size: 13px;
-            line-height: 1.6;
-        }
-
-        .philosophy strong {
-            color: #6b7280;
-            font-weight: 600;
-        }
-
-        /* Date Range Buttons */
         .date-range-buttons {
-            display: flex;
-            gap: 8px;
-            background: #f9fafb;
-            padding: 4px;
-            border-radius: 8px;
+          width: 100%;
         }
 
         .date-btn {
-            padding: 6px 12px;
-            border: none;
-            background: transparent;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 500;
-            color: #6b7280;
-            cursor: pointer;
-            transition: all 0.2s;
+          flex: 1;
         }
-
-        .date-btn:hover {
-            color: #374151;
-        }
-
-        .date-btn.active {
-            background: white;
-            color: #3b82f6;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .header-controls {
-                width: 100%;
-                flex-direction: column;
-            }
-
-            .header-controls select {
-                width: 100%;
-            }
-
-            .filters {
-                width: 100%;
-                flex-direction: column;
-                border-left: none;
-                border-top: 1px solid #e5e7eb;
-                padding-left: 0;
-                padding-top: 12px;
-            }
-
-            .filter-select, .clear-filters-btn {
-                width: 100%;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container" x-data="dashboard()" x-init="init()" x-cloak>
-        <header>
-            <div class="header-left">
-                <h1>Kaunta (カウンタ)</h1>
-                <div class="subtitle">Analytics Dashboard</div>
+      <header class="glass card">
+        <div class="header-left">
+          <h1>Kaunta (カウンタ)</h1>
+          <div class="subtitle">Analytics Dashboard</div>
+        </div>
+        <div class="header-controls">
+          <select
+            x-model="selectedWebsite"
+            @change="switchWebsite()"
+            x-show="websites.length > 0"
+            class="glass transition-standard focus-accent"
+          >
+            <option value="">Select Website...</option>
+            <template x-for="site in websites" :key="site.id">
+              <option
+                :value="site.id"
+                x-text="site.name || site.domain"
+              ></option>
+            </template>
+          </select>
+          <div class="date-range-buttons glass">
+            <button
+              class="date-btn transition-standard"
+              :class="{ 'active': dateRange === '1' }"
+              @click="setDateRange('1')"
+            >
+              Today
+            </button>
+            <button
+              class="date-btn transition-standard"
+              :class="{ 'active': dateRange === '7' }"
+              @click="setDateRange('7')"
+            >
+              7 days
+            </button>
+            <button
+              class="date-btn transition-standard"
+              :class="{ 'active': dateRange === '30' }"
+              @click="setDateRange('30')"
+            >
+              30 days
+            </button>
+          </div>
+          <!-- Filters -->
+          <div class="filters" x-show="selectedWebsite">
+            <select
+              x-model="filters.country"
+              @change="applyFilter()"
+              class="filter-select glass transition-standard focus-accent"
+            >
+              <option value="">All Countries</option>
+              <template
+                x-for="country in availableFilters.countries"
+                :key="country.name"
+              >
+                <option
+                  :value="country.name"
+                  x-text="`${country.name} (${country.count})`"
+                ></option>
+              </template>
+            </select>
+            <select
+              x-model="filters.browser"
+              @change="applyFilter()"
+              class="filter-select glass transition-standard focus-accent"
+            >
+              <option value="">All Browsers</option>
+              <template
+                x-for="browser in availableFilters.browsers"
+                :key="browser.name"
+              >
+                <option
+                  :value="browser.name"
+                  x-text="`${browser.name} (${browser.count})`"
+                ></option>
+              </template>
+            </select>
+            <select
+              x-model="filters.device"
+              @change="applyFilter()"
+              class="filter-select glass transition-standard focus-accent"
+            >
+              <option value="">All Devices</option>
+              <template
+                x-for="device in availableFilters.devices"
+                :key="device.name"
+              >
+                <option
+                  :value="device.name"
+                  x-text="`${device.name} (${device.count})`"
+                ></option>
+              </template>
+            </select>
+            <select
+              x-model="filters.page"
+              @change="applyFilter()"
+              class="filter-select glass transition-standard focus-accent"
+            >
+              <option value="">All Pages</option>
+              <template x-for="page in availableFilters.pages" :key="page.path">
+                <option
+                  :value="page.path"
+                  x-text="`${page.path} (${page.views})`"
+                ></option>
+              </template>
+            </select>
+            <button
+              class="clear-filters-btn glass transition-standard"
+              x-show="hasActiveFilters"
+              @click="clearFilters()"
+            >
+              <svg
+                class="icon-sm"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
+              </svg>
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      </header>
+      <!-- Dashboard App -->
+      <div
+        x-show="!websitesLoading && !websitesError && selectedWebsite && websites.length > 0"
+      >
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card glass card">
+            <div class="stat-header">
+              <div class="stat-icon green glass icon-xl">
+                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  <path
+                    fill-rule="evenodd"
+                    d="M8.338 5.59a1 1 0 01.946.62l1.285 3.855h4.062l1.285-3.855a1 1 0 01.946-.62c2.167.642 3.75 2.864 3.75 5.41 0 2.546-1.583 4.768-3.75 5.41a1 1 0 01-.946-.62l-1.285-3.855h-4.062l-1.285 3.855a1 1 0 01-.946.62c-2.167-.642-3.75-2.864-3.75-5.41 0-2.546 1.583-4.768 3.75-5.41zM12 8a4 4 0 100 8 4 4 0 000-8z"
+                    clip-rule="evenodd"
+                  ></path>
+                </svg>
+              </div>
+              <div class="stat-label">Current Visitors</div>
             </div>
-            <div class="header-controls">
-                <select x-model="selectedWebsite" @change="switchWebsite()" x-show="websites.length > 0">
-                    <option value="">Select Website...</option>
-                    <template x-for="site in websites" :key="site.id">
-                        <option :value="site.id" x-text="site.name || site.domain"></option>
-                    </template>
-                </select>
-
-                <div class="date-range-buttons">
-                    <button class="date-btn" :class="{ 'active': dateRange === '1' }" @click="setDateRange('1')">Today</button>
-                    <button class="date-btn" :class="{ 'active': dateRange === '7' }" @click="setDateRange('7')">7d</button>
-                    <button class="date-btn" :class="{ 'active': dateRange === '30' }" @click="setDateRange('30')">30d</button>
-                </div>
-
-                <!-- Filters -->
-                <div class="filters" x-show="selectedWebsite">
-                    <select x-model="filters.country" @change="applyFilter()" class="filter-select">
-                        <option value="">All Countries</option>
-                        <template x-for="country in availableFilters.countries" :key="country.name">
-                            <option :value="country.name" x-text="`${country.name} (${country.count})`"></option>
-                        </template>
-                    </select>
-
-                    <select x-model="filters.browser" @change="applyFilter()" class="filter-select">
-                        <option value="">All Browsers</option>
-                        <template x-for="browser in availableFilters.browsers" :key="browser.name">
-                            <option :value="browser.name" x-text="`${browser.name} (${browser.count})`"></option>
-                        </template>
-                    </select>
-
-                    <select x-model="filters.device" @change="applyFilter()" class="filter-select">
-                        <option value="">All Devices</option>
-                        <template x-for="device in availableFilters.devices" :key="device.name">
-                            <option :value="device.name" x-text="`${device.name} (${device.count})`"></option>
-                        </template>
-                    </select>
-
-                    <select x-model="filters.page" @change="applyFilter()" class="filter-select">
-                        <option value="">All Pages</option>
-                        <template x-for="page in availableFilters.pages" :key="page.path">
-                            <option :value="page.path" x-text="`${page.path} (${page.views})`"></option>
-                        </template>
-                    </select>
-
-                    <button class="clear-filters-btn" x-show="hasActiveFilters" @click="clearFilters()">
-                        ✕ Clear Filters
-                    </button>
-                </div>
+            <div class="stat-value live">
+              <span class="pulse"></span
+              ><span x-text="stats.current_visitors"></span>
             </div>
-        </header>
-
-        <!-- Dashboard App -->
-        <div x-show="!websitesLoading && !websitesError && selectedWebsite && websites.length > 0">
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div class="stat-icon green">
-                            <span class="pulse"></span>
-                            👁️
-                        </div>
-                        <div class="stat-label">Current Visitors</div>
-                    </div>
-                    <div class="stat-value live" x-text="stats.current_visitors"></div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div class="stat-icon blue">📄</div>
-                        <div class="stat-label">Pageviews</div>
-                    </div>
-                    <div class="stat-value" x-text="stats.today_pageviews"></div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div class="stat-icon purple">👤</div>
-                        <div class="stat-label">Visitors</div>
-                    </div>
-                    <div class="stat-value" x-text="stats.today_visitors"></div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div class="stat-icon orange">📊</div>
-                        <div class="stat-label">Bounce Rate</div>
-                    </div>
-                    <div class="stat-value" x-text="stats.today_bounce_rate"></div>
-                </div>
+            <div class="progress-container">
+              <div
+                class="progress-bar"
+                :style="{ width: Math.min(stats.current_visitors * 5, 100) + '%' }"
+              ></div>
             </div>
-
-            <!-- Pageviews Chart -->
-            <div class="section">
-                <div class="section-header">
-                    <h2>📈 Pageviews Over Time</h2>
-                </div>
-                <div style="position: relative; height: 300px;">
-                    <canvas id="pageviewsChart"></canvas>
-                </div>
+          </div>
+          <div class="stat-card glass card">
+            <div class="stat-header">
+              <div class="stat-icon blue glass icon-xl">
+                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  ></path>
+                </svg>
+              </div>
+              <div class="stat-label">Pageviews</div>
             </div>
-
-            <!-- Breakdowns with Tabs -->
-            <div class="section">
-                <div class="tabs">
-                    <button class="tab" :class="{ 'active': activeTab === 'pages' }" @click="activeTab = 'pages'; loadBreakdown()">📄 Pages</button>
-                    <button class="tab" :class="{ 'active': activeTab === 'referrers' }" @click="activeTab = 'referrers'; loadBreakdown()">🔗 Referrers</button>
-                    <button class="tab" :class="{ 'active': activeTab === 'browsers' }" @click="activeTab = 'browsers'; loadBreakdown()">🌐 Browsers</button>
-                    <button class="tab" :class="{ 'active': activeTab === 'devices' }" @click="activeTab = 'devices'; loadBreakdown()">📱 Devices</button>
-                    <button class="tab" :class="{ 'active': activeTab === 'countries' }" @click="activeTab = 'countries'; loadBreakdown()">🌍 Countries</button>
-                    <button class="tab" :class="{ 'active': activeTab === 'cities' }" @click="activeTab = 'cities'; loadBreakdown()">🏙️ Cities</button>
-                    <button class="tab" :class="{ 'active': activeTab === 'regions' }" @click="activeTab = 'regions'; loadBreakdown()">🗺️ Regions</button>
-                    <button class="tab" :class="{ 'active': activeTab === 'map' }" @click="activeTab = 'map'; $nextTick(() => loadMapData())">🗺️ Map</button>
-                </div>
-
-                <template x-if="activeTab !== 'map' && breakdownLoading">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        <div>Loading data...</div>
-                    </div>
+            <div class="stat-value" x-text="stats.today_pageviews"></div>
+            <div class="progress-container">
+              <div
+                class="progress-bar"
+                :style="{ width: Math.min(stats.today_pageviews / 100, 100) + '%' }"
+              ></div>
+            </div>
+          </div>
+          <div class="stat-card glass card">
+            <div class="stat-header">
+              <div class="stat-icon purple glass icon-xl">
+                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                  <path
+                    fill-rule="evenodd"
+                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                    clip-rule="evenodd"
+                  ></path>
+                </svg>
+              </div>
+              <div class="stat-label">Visitors</div>
+            </div>
+            <div class="stat-value" x-text="stats.today_visitors"></div>
+            <div class="progress-container">
+              <div
+                class="progress-bar"
+                :style="{ width: Math.min(stats.today_visitors / 100, 100) + '%' }"
+              ></div>
+            </div>
+          </div>
+          <div class="stat-card glass card">
+            <div class="stat-header">
+              <div class="stat-icon orange glass icon-xl">
+                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  ></path>
+                </svg>
+              </div>
+              <div class="stat-label">Bounce Rate</div>
+            </div>
+            <div class="stat-value" x-text="stats.today_bounce_rate"></div>
+            <div class="progress-container">
+              <div
+                class="progress-bar"
+                :style="{ width: stats.today_bounce_rate.replace('%', '') }"
+              ></div>
+            </div>
+          </div>
+        </div>
+        <!-- Pageviews Chart -->
+        <div class="section glass card">
+          <div class="section-header">
+            <h2>
+              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              Pageviews Over Time
+            </h2>
+          </div>
+          <div style="position: relative; height: 300px">
+            <canvas id="pageviewsChart"></canvas>
+          </div>
+        </div>
+        <!-- Breakdowns with Tabs -->
+        <div class="section glass card">
+          <div class="tabs">
+            <button
+              class="tab transition-standard"
+              :class="{ 'active': activeTab === 'pages' }"
+              @click="activeTab = 'pages'; loadBreakdown()"
+            >
+              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                ></path>
+              </svg>
+              Pages
+            </button>
+            <button
+              class="tab transition-standard"
+              :class="{ 'active': activeTab === 'referrers' }"
+              @click="activeTab = 'referrers'; loadBreakdown()"
+            >
+              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.658 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                ></path>
+              </svg>
+              Referrers
+            </button>
+            <button
+              class="tab transition-standard"
+              :class="{ 'active': activeTab === 'browsers' }"
+              @click="activeTab = 'browsers'; loadBreakdown()"
+            >
+              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M4 5a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V5z"
+                ></path>
+              </svg>
+              Browsers
+            </button>
+            <button
+              class="tab transition-standard"
+              :class="{ 'active': activeTab === 'devices' }"
+              @click="activeTab = 'devices'; loadBreakdown()"
+            >
+              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                ></path>
+              </svg>
+              Devices
+            </button>
+            <button
+              class="tab transition-standard"
+              :class="{ 'active': activeTab === 'countries' }"
+              @click="activeTab = 'countries'; loadBreakdown()"
+            >
+              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  fill-rule="evenodd"
+                  d="M5.05 4.05a7 7 0 119.9 9.9L12 18.9l-7.95-7.95zm1.414 1.415a5 5 0 117.07 7.07L12 16.57l-5.536-5.536z"
+                  clip-rule="evenodd"
+                ></path>
+              </svg>
+              Countries
+            </button>
+            <button
+              class="tab transition-standard"
+              :class="{ 'active': activeTab === 'cities' }"
+              @click="activeTab = 'cities'; loadBreakdown()"
+            >
+              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"
+                ></path>
+              </svg>
+              Cities
+            </button>
+            <button
+              class="tab transition-standard"
+              :class="{ 'active': activeTab === 'regions' }"
+              @click="activeTab = 'regions'; loadBreakdown()"
+            >
+              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM9 12a3 3 0 11-6 0 3 3 0 016 0zM9 18a3 3 0 11-6 0 3 3 0 016 0zM15 6a3 3 0 11-6 0 3 3 0 016 0zM15 12a3 3 0 11-6 0 3 3 0 016 0zM15 18a3 3 0 11-6 0 3 3 0 016 0z"
+                ></path>
+              </svg>
+              Regions
+            </button>
+            <button
+              class="tab transition-standard"
+              :class="{ 'active': activeTab === 'map' }"
+              @click="activeTab = 'map'; $nextTick(() => loadMapData())"
+            >
+              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7.5l6.553-3.776A1 1 0 0117 5.618v10.764a1 1 0 01-1.447.894L9 16.5l-6.553 3.776z"
+                ></path>
+              </svg>
+              Map
+            </button>
+          </div>
+          <template x-if="activeTab !== 'map' && breakdownLoading">
+            <div class="loading">
+              <div class="spinner"></div>
+              <div>Loading data...</div>
+            </div>
+          </template>
+          <template
+            x-if="activeTab !== 'map' && !breakdownLoading && breakdownData && breakdownData.length > 0"
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th
+                    x-text="activeTab === 'pages' ? 'Page Path' : activeTab === 'referrers' ? 'Referrer' : activeTab === 'browsers' ? 'Browser' : activeTab === 'devices' ? 'Device' : activeTab === 'countries' ? 'Country' : activeTab === 'cities' ? 'City' : 'Region'"
+                  ></th>
+                  <th style="text-align: right">Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="item in breakdownData" :key="item.name">
+                  <tr>
+                    <td x-text="item.name"></td>
+                    <td
+                      style="
+                        text-align: right;
+                        font-weight: 500;
+                        color: var(--accent-color);
+                      "
+                      x-text="item.count.toLocaleString()"
+                    ></td>
+                  </tr>
                 </template>
-
-                <template x-if="activeTab !== 'map' && !breakdownLoading && breakdownData && breakdownData.length > 0">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th x-text="activeTab === 'pages' ? 'Page Path' : activeTab === 'referrers' ? 'Referrer' : activeTab === 'browsers' ? 'Browser' : activeTab === 'devices' ? 'Device' : activeTab === 'countries' ? 'Country' : activeTab === 'cities' ? 'City' : 'Region'"></th>
-                                <th style="text-align: right;">Count</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template x-for="item in breakdownData" :key="item.name">
-                                <tr>
-                                    <td x-text="item.name"></td>
-                                    <td style="text-align: right; font-weight: 600; color: #3b82f6;" x-text="item.count.toLocaleString()"></td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </template>
-
-                <template x-if="activeTab !== 'map' && !breakdownLoading && (!breakdownData || breakdownData.length === 0)">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📊</div>
-                        <div class="empty-state-title">No data yet</div>
-                        <div class="empty-state-text">Start tracking to see breakdown data</div>
-                    </div>
-                </template>
-
-                <template x-if="activeTab === 'map'">
-                    <div>
-                        <!-- Loading indicator for map -->
-                        <template x-if="mapLoading && !mapInitialized">
-                            <div class="loading">
-                                <div class="spinner"></div>
-                                <div>Loading map data...</div>
-                            </div>
-                        </template>
-
-                        <!-- Map container -->
-                        <div style="height: 600px; border-radius: 8px; overflow: hidden; background: #f9fafb; margin-top: 24px; position: relative;">
-                            <div id="choropleth-map" style="width: 100%; height: 100%;"></div>
-                        </div>
-                    </div>
-                </template>
+              </tbody>
+            </table>
+          </template>
+          <template
+            x-if="activeTab !== 'map' && !breakdownLoading && (!breakdownData || breakdownData.length === 0)"
+          >
+            <div class="empty-state">
+              <div class="empty-state-icon">📊</div>
+              <div class="empty-state-title">No data yet</div>
+              <div class="empty-state-text">
+                Start tracking to see breakdown data
+              </div>
             </div>
+          </template>
+          <template x-if="activeTab === 'map'">
+            <div>
+              <!-- Loading indicator for map -->
+              <template x-if="mapLoading && !mapInitialized">
+                <div class="loading">
+                  <div class="spinner"></div>
+                  <div>Loading map data...</div>
+                </div>
+              </template>
+              <!-- Map container -->
+              <div
+                style="
+                  height: 600px;
+                  border-radius: 8px;
+                  overflow: hidden;
+                  background: var(--bg-secondary);
+                  margin-top: 24px;
+                  position: relative;
+                "
+              >
+                <div
+                  id="choropleth-map"
+                  style="width: 100%; height: 100%"
+                ></div>
+              </div>
+            </div>
+          </template>
         </div>
-
-        <!-- No Website Selected -->
-        <div x-show="!websitesLoading && !websitesError && !selectedWebsite && websites.length > 0" class="empty-state" style="margin-top: 100px;">
-            <div class="empty-state-icon">🌐</div>
-            <div class="empty-state-title">Select a Website</div>
-            <div class="empty-state-text">Choose a website from the dropdown above to view analytics</div>
+      </div>
+      <!-- No Website Selected -->
+      <div
+        x-show="!websitesLoading && !websitesError && !selectedWebsite && websites.length > 0"
+        class="empty-state"
+        style="margin-top: 100px"
+      >
+        <div class="empty-state-icon">🌐</div>
+        <div class="empty-state-title">Select a Website</div>
+        <div class="empty-state-text">
+          Choose a website from the dropdown above to view analytics
         </div>
-
-        <!-- No Websites at All -->
-        <div x-show="!websitesLoading && !websitesError && websites.length === 0" class="empty-state" style="margin-top: 100px;">
-            <div class="empty-state-icon">🛰️</div>
-            <div class="empty-state-title">No websites found</div>
-            <div class="empty-state-text">Add a website in Kaunta to get started.</div>
+      </div>
+      <!-- No Websites at All -->
+      <div
+        x-show="!websitesLoading && !websitesError && websites.length === 0"
+        class="empty-state"
+        style="margin-top: 100px"
+      >
+        <div class="empty-state-icon">🛰️</div>
+        <div class="empty-state-title">No websites found</div>
+        <div class="empty-state-text">
+          Add a website in Kaunta to get started.
         </div>
-
-        <!-- Websites Load Error -->
-        <div x-show="!websitesLoading && websitesError" class="empty-state" style="margin-top: 100px;">
-            <div class="empty-state-icon">⚠️</div>
-            <div class="empty-state-title">Unable to load websites</div>
-            <div class="empty-state-text">Check the server logs for /api/websites errors and try again.</div>
+      </div>
+      <!-- Websites Load Error -->
+      <div
+        x-show="!websitesLoading && websitesError"
+        class="empty-state"
+        style="margin-top: 100px"
+      >
+        <div class="empty-state-icon">⚠️</div>
+        <div class="empty-state-title">Unable to load websites</div>
+        <div class="empty-state-text">
+          Check the server logs for /api/websites errors and try again.
         </div>
-
-        <div class="philosophy">
-            <strong>Built with:</strong> Go · Fiber · Leaflet · Alpine.js<br>
-            <strong>Kaunta v{{.Version}}</strong>
+      </div>
+      <footer class="glass card">
+        <div style="text-align: center">
+          <p>
+            <strong>Kaunta Analytics</strong> - Built with Go, Fiber, Alpine.js,
+            PostgreSQL, and Leaflet
+          </p>
+          <p>
+            <a
+              href="https://github.com/seuros/kaunta"
+              style="color: var(--accent-color); text-decoration: none"
+              >View on GitHub</a
+            >
+            · <strong>v{{.Version}}</strong>
+          </p>
         </div>
+      </footer>
     </div>
-
     <script>
-        function dashboard() {
-            return {
-                websites: [],
-                websitesLoading: true,
-                websitesError: false,
-                selectedWebsite: localStorage.getItem('kaunta_website') || '',
-                dateRange: localStorage.getItem('kaunta_dateRange') || '1',
-                stats: {
-                    current_visitors: 0,
-                    today_pageviews: 0,
-                    today_visitors: 0,
-                    today_bounce_rate: '0%'
-                },
-                pages: [],
-                loading: true,
-                sortColumn: 'views',
-                sortDirection: 'desc',
-                refreshInterval: null,
-                chart: null,
-                activeTab: 'pages',
-                breakdownData: [],
-                breakdownLoading: false,
-                filters: {
-                    country: '',
-                    browser: '',
-                    device: '',
-                    page: ''
-                },
-                availableFilters: {
-                    countries: [],
-                    browsers: [],
-                    devices: [],
-                    pages: []
-                },
-                mapLoading: false,
-                mapData: null,
-                mapInitialized: false,
-
-                async init() {
-                    // Load filters from URL parameters
-                    const urlParams = new URLSearchParams(window.location.search);
-                    if (urlParams.get('country')) this.filters.country = urlParams.get('country');
-                    if (urlParams.get('browser')) this.filters.browser = urlParams.get('browser');
-                    if (urlParams.get('device')) this.filters.device = urlParams.get('device');
-                    if (urlParams.get('page')) this.filters.page = urlParams.get('page');
-
-                    await this.loadWebsites();
-
-                    if (this.websitesError) {
-                        this.loading = false;
-                        return;
-                    }
-
-                    // If we have a selected website, load its data
-                    if (this.selectedWebsite) {
-                        await this.loadAvailableFilters();
-                        this.loadStats();
-                        this.loadTopPages();
-                        this.loadChart();
-                        this.loadBreakdown();
-
-                        // Auto-refresh stats every 5 seconds
-                        this.refreshInterval = setInterval(() => this.loadStats(), 5000);
-
-                        // Refresh top pages every 30 seconds
-                        setInterval(() => this.loadTopPages(), 30000);
-
-                        // Refresh chart every 60 seconds
-                        setInterval(() => this.loadChart(), 60000);
-
-                        // Refresh breakdown every 30 seconds
-                        setInterval(() => this.loadBreakdown(), 30000);
-                    }
-                },
-
-                async loadWebsites() {
-                    this.websitesLoading = true;
-                    this.websitesError = false;
-                    try {
-                        const response = await fetch('/api/websites');
-                        if (!response.ok) {
-                            this.websitesError = true;
-                            return;
-                        }
-
-                        const sites = await response.json();
-                        this.websites = Array.isArray(sites) ? sites : [];
-
-                        const hasStoredSelection = this.selectedWebsite &&
-                            this.websites.some(site => site.id === this.selectedWebsite);
-
-                        if (!hasStoredSelection && this.selectedWebsite) {
-                            this.selectedWebsite = '';
-                            localStorage.removeItem('kaunta_website');
-                        }
-
-                        if (!this.selectedWebsite && this.websites.length > 0) {
-                            this.selectedWebsite = this.websites[0].id;
-                            localStorage.setItem('kaunta_website', this.selectedWebsite);
-                        }
-                    } catch (error) {
-                        console.error('Failed to load websites:', error);
-                        this.websitesError = true;
-                    } finally {
-                        this.websitesLoading = false;
-                    }
-                },
-
-                switchWebsite() {
-                    if (this.selectedWebsite) {
-                        localStorage.setItem('kaunta_website', this.selectedWebsite);
-                        this.loading = true;
-                        this.loadStats();
-                        this.loadTopPages();
-                        this.loadChart();
-                        this.loadBreakdown();
-                        this.loadMapData();
-
-                        // Restart refresh interval
-                        if (this.refreshInterval) {
-                            clearInterval(this.refreshInterval);
-                        }
-                        this.refreshInterval = setInterval(() => this.loadStats(), 5000);
-                    }
-                },
-
-                setDateRange(range) {
-                    this.dateRange = range;
-                    localStorage.setItem('kaunta_dateRange', range);
-                    // TODO: Backend needs to support date range filtering for stats
-                    this.loadStats();
-                    this.loadTopPages();
-                    this.loadChart();  // Chart already supports date range
-                    this.loadBreakdown();
-                    this.loadMapData();
-                },
-
-                async loadStats() {
-                    if (!this.selectedWebsite) return;
-
-                    try {
-                        const response = await fetch(`/api/dashboard/stats/${this.selectedWebsite}`);
-                        if (response.ok) {
-                            this.stats = await response.json();
-                        }
-                    } catch (error) {
-                        console.error('Failed to load stats:', error);
-                    }
-                },
-
-                async loadTopPages() {
-                    if (!this.selectedWebsite) return;
-
-                    try {
-                        const response = await fetch(`/api/dashboard/pages/${this.selectedWebsite}?limit=10`);
-                        if (response.ok) {
-                            this.pages = await response.json();
-                            this.loading = false;
-                        }
-                    } catch (error) {
-                        console.error('Failed to load top pages:', error);
-                        this.loading = false;
-                    }
-                },
-
-                async loadChart() {
-                    if (!this.selectedWebsite) return;
-
-                    try {
-                        const days = this.dateRange === '1' ? 1 : this.dateRange === '7' ? 7 : 30;
-                        const response = await fetch(`/api/dashboard/timeseries/${this.selectedWebsite}?days=${days}`);
-                        if (response.ok) {
-                            const data = await response.json();
-
-                            // Handle null or empty data
-                            if (!data || !Array.isArray(data) || data.length === 0) {
-                                return;
-                            }
-
-                            // Transform data for Chart.js
-                            const labels = data.map(point => {
-                                const date = new Date(point.timestamp);
-                                return days === 1
-                                    ? date.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
-                                    : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                            });
-                            const values = data.map(point => point.value);
-
-                            // Destroy existing chart if exists
-                            if (this.chart) {
-                                this.chart.destroy();
-                            }
-
-                            // Create new chart
-                            const ctx = document.getElementById('pageviewsChart');
-                            if (ctx) {
-                                this.chart = new Chart(ctx, {
-                                    type: 'line',
-                                    data: {
-                                        labels: labels,
-                                        datasets: [{
-                                            label: 'Pageviews',
-                                            data: values,
-                                            borderColor: '#3b82f6',
-                                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                                            fill: true,
-                                            tension: 0.4,
-                                            borderWidth: 2,
-                                            pointRadius: 3,
-                                            pointHoverRadius: 5
-                                        }]
-                                    },
-                                    options: {
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        plugins: {
-                                            legend: {
-                                                display: false
-                                            },
-                                            tooltip: {
-                                                mode: 'index',
-                                                intersect: false,
-                                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                                                padding: 12,
-                                                titleFont: { size: 13 },
-                                                bodyFont: { size: 14, weight: 'bold' }
-                                            }
-                                        },
-                                        scales: {
-                                            y: {
-                                                beginAtZero: true,
-                                                ticks: {
-                                                    precision: 0,
-                                                    color: '#6b7280'
-                                                },
-                                                grid: {
-                                                    color: '#e5e7eb'
-                                                }
-                                            },
-                                            x: {
-                                                ticks: {
-                                                    color: '#6b7280',
-                                                    maxRotation: 0
-                                                },
-                                                grid: {
-                                                    display: false
-                                                }
-                                            }
-                                        },
-                                        interaction: {
-                                            mode: 'nearest',
-                                            axis: 'x',
-                                            intersect: false
-                                        }
-                                    }
-                                });
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Failed to load chart:', error);
-                    }
-                },
-
-                async loadBreakdown() {
-                    if (!this.selectedWebsite || this.activeTab === 'map') {
-                        return;
-                    }
-
-                    this.breakdownLoading = true;
-                    try {
-                        // Map active tab to endpoint
-                        const endpoint = this.activeTab;
-                        const response = await fetch(`/api/dashboard/${endpoint}/${this.selectedWebsite}`);
-                        if (response.ok) {
-                            const data = await response.json();
-                            this.breakdownData = Array.isArray(data) ? data : [];
-                        } else {
-                            this.breakdownData = [];
-                        }
-                    } catch (error) {
-                        console.error('Failed to load breakdown:', error);
-                        this.breakdownData = [];
-                    } finally {
-                        this.breakdownLoading = false;
-                    }
-                },
-
-                async loadAvailableFilters() {
-                    if (!this.selectedWebsite) return;
-
-                    try {
-                        // Load countries
-                        const countriesRes = await fetch(`/api/dashboard/countries/${this.selectedWebsite}?limit=100`);
-                        if (countriesRes.ok) {
-                            this.availableFilters.countries = await countriesRes.json();
-                        }
-
-                        // Load browsers
-                        const browsersRes = await fetch(`/api/dashboard/browsers/${this.selectedWebsite}?limit=100`);
-                        if (browsersRes.ok) {
-                            this.availableFilters.browsers = await browsersRes.json();
-                        }
-
-                        // Load devices
-                        const devicesRes = await fetch(`/api/dashboard/devices/${this.selectedWebsite}?limit=100`);
-                        if (devicesRes.ok) {
-                            this.availableFilters.devices = await devicesRes.json();
-                        }
-
-                        // Load pages
-                        const pagesRes = await fetch(`/api/dashboard/pages/${this.selectedWebsite}?limit=100`);
-                        if (pagesRes.ok) {
-                            this.availableFilters.pages = await pagesRes.json();
-                        }
-                    } catch (error) {
-                        console.error('Failed to load filter options:', error);
-                    }
-                },
-
-                applyFilter() {
-                    this.updateURL();
-                    this.loadStats();
-                    this.loadTopPages();
-                    this.loadChart();
-                    this.loadBreakdown();
-                    this.loadMapData();
-                },
-
-                clearFilters() {
-                    this.filters = {
-                        country: '',
-                        browser: '',
-                        device: '',
-                        page: ''
-                    };
-                    this.applyFilter();
-                },
-
-                updateURL() {
-                    const params = new URLSearchParams();
-                    if (this.filters.country) params.set('country', this.filters.country);
-                    if (this.filters.browser) params.set('browser', this.filters.browser);
-                    if (this.filters.device) params.set('device', this.filters.device);
-                    if (this.filters.page) params.set('page', this.filters.page);
-
-                    const newURL = params.toString()
-                        ? `${window.location.pathname}?${params.toString()}`
-                        : window.location.pathname;
-                    window.history.pushState({}, '', newURL);
-                },
-
-                get hasActiveFilters() {
-                    return this.filters.country || this.filters.browser || this.filters.device || this.filters.page;
-                },
-
-                sortBy(column) {
-                    if (this.sortColumn === column) {
-                        this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
-                    } else {
-                        this.sortColumn = column;
-                        this.sortDirection = 'desc';
-                    }
-                },
-
-                get sortedPages() {
-                    const sorted = [...this.pages].sort((a, b) => {
-                        const aVal = a[this.sortColumn];
-                        const bVal = b[this.sortColumn];
-
-                        if (typeof aVal === 'string') {
-                            return this.sortDirection === 'asc'
-                                ? aVal.localeCompare(bVal)
-                                : bVal.localeCompare(aVal);
-                        } else {
-                            return this.sortDirection === 'asc'
-                                ? aVal - bVal
-                                : bVal - aVal;
-                        }
-                    });
-                    return sorted;
-                },
-
-                async loadMapData() {
-                    if (!this.selectedWebsite || this.activeTab !== 'map') return;
-
-                    this.mapLoading = true;
-                    try {
-                        const days = this.dateRange === '1' ? 1 :
-                                     this.dateRange === '7' ? 7 : 30;
-                        const params = new URLSearchParams({ days });
-
-                        // Add active filters
-                        if (this.filters.country) params.append('country', this.filters.country);
-                        if (this.filters.browser) params.append('browser', this.filters.browser);
-                        if (this.filters.device) params.append('device', this.filters.device);
-                        if (this.filters.page) params.append('page', this.filters.page);
-
-                        const response = await fetch(
-                            `/api/dashboard/map/${this.selectedWebsite}?${params}`
-                        );
-
-                        if (response.ok) {
-                            this.mapData = await response.json();
-
-                            const containerExists = document.getElementById('choropleth-map');
-                            if (!containerExists) {
-                                console.warn('Choropleth map container not found yet; will retry once rendered.');
-                                return;
-                            }
-
-                            if (!this.mapInitialized) {
-                                await this.initializeChoropleth();
-                            } else {
-                                this.updateChoropleth();
-                            }
-                        } else {
-                            console.error('Failed to load map data');
-                        }
-                    } catch (error) {
-                        console.error('Map data error:', error);
-                    } finally {
-                        this.mapLoading = false;
-                    }
-                },
-
-                getColorForValue(value, maxValue) {
-                    if (!value || value === 0) return '#e5e5e5'; // Light gray for no data
-
-                    // Blue gradient scale (D3-style blues)
-                    const intensity = value / maxValue;
-
-                    if (intensity < 0.20) return '#deebf7';
-                    if (intensity < 0.40) return '#9ecae1';
-                    if (intensity < 0.60) return '#6baed6';
-                    if (intensity < 0.80) return '#3182bd';
-                    return '#08519c';
-                },
-
-                formatTooltipText(countryName, visitors, percentage) {
-                    return `
+      function dashboard() {
+        return {
+          websites: [],
+          websitesLoading: true,
+          websitesError: false,
+          selectedWebsite: localStorage.getItem("kaunta_website") || "",
+          dateRange: localStorage.getItem("kaunta_dateRange") || "1",
+          stats: {
+            current_visitors: 0,
+            today_pageviews: 0,
+            today_visitors: 0,
+            today_bounce_rate: "0%",
+          },
+          pages: [],
+          loading: true,
+          sortColumn: "views",
+          sortDirection: "desc",
+          refreshInterval: null,
+          chart: null,
+          activeTab: "pages",
+          breakdownData: [],
+          breakdownLoading: false,
+          filters: {
+            country: "",
+            browser: "",
+            device: "",
+            page: "",
+          },
+          availableFilters: {
+            countries: [],
+            browsers: [],
+            devices: [],
+            pages: [],
+          },
+          mapLoading: false,
+          mapData: null,
+          mapInitialized: false,
+          async init() {
+            // Load filters from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get("country"))
+              this.filters.country = urlParams.get("country");
+            if (urlParams.get("browser"))
+              this.filters.browser = urlParams.get("browser");
+            if (urlParams.get("device"))
+              this.filters.device = urlParams.get("device");
+            if (urlParams.get("page"))
+              this.filters.page = urlParams.get("page");
+            await this.loadWebsites();
+            if (this.websitesError) {
+              this.loading = false;
+              return;
+            }
+            if (this.selectedWebsite) {
+              await this.loadAvailableFilters();
+              this.loadStats();
+              this.loadTopPages();
+              this.loadChart();
+              this.loadBreakdown();
+              this.refreshInterval = setInterval(() => this.loadStats(), 5000);
+              setInterval(() => this.loadTopPages(), 30000);
+              setInterval(() => this.loadChart(), 60000);
+              setInterval(() => this.loadBreakdown(), 30000);
+            }
+          },
+          async loadWebsites() {
+            this.websitesLoading = true;
+            this.websitesError = false;
+            try {
+              const response = await fetch("/api/websites");
+              if (!response.ok) {
+                this.websitesError = true;
+                return;
+              }
+              const sites = await response.json();
+              this.websites = Array.isArray(sites) ? sites : [];
+              const hasStoredSelection =
+                this.selectedWebsite &&
+                this.websites.some((site) => site.id === this.selectedWebsite);
+              if (!hasStoredSelection && this.selectedWebsite) {
+                this.selectedWebsite = "";
+                localStorage.removeItem("kaunta_website");
+              }
+              if (!this.selectedWebsite && this.websites.length > 0) {
+                this.selectedWebsite = this.websites[0].id;
+                localStorage.setItem("kaunta_website", this.selectedWebsite);
+              }
+            } catch (error) {
+              console.error("Failed to load websites:", error);
+              this.websitesError = true;
+            } finally {
+              this.websitesLoading = false;
+            }
+          },
+          switchWebsite() {
+            if (this.selectedWebsite) {
+              localStorage.setItem("kaunta_website", this.selectedWebsite);
+              this.loading = true;
+              this.loadStats();
+              this.loadTopPages();
+              this.loadChart();
+              this.loadBreakdown();
+              this.loadMapData();
+              if (this.refreshInterval) {
+                clearInterval(this.refreshInterval);
+              }
+              this.refreshInterval = setInterval(() => this.loadStats(), 5000);
+            }
+          },
+          setDateRange(range) {
+            this.dateRange = range;
+            localStorage.setItem("kaunta_dateRange", range);
+            this.loadStats();
+            this.loadTopPages();
+            this.loadChart();
+            this.loadBreakdown();
+            this.loadMapData();
+          },
+          async loadStats() {
+            if (!this.selectedWebsite) return;
+            try {
+              const response = await fetch(
+                `/api/dashboard/stats/${this.selectedWebsite}`
+              );
+              if (response.ok) {
+                this.stats = await response.json();
+              }
+            } catch (error) {
+              console.error("Failed to load stats:", error);
+            }
+          },
+          async loadTopPages() {
+            if (!this.selectedWebsite) return;
+            try {
+              const response = await fetch(
+                `/api/dashboard/pages/${this.selectedWebsite}?limit=10`
+              );
+              if (response.ok) {
+                this.pages = await response.json();
+                this.loading = false;
+              }
+            } catch (error) {
+              console.error("Failed to load top pages:", error);
+              this.loading = false;
+            }
+          },
+          async loadChart() {
+            if (!this.selectedWebsite) return;
+            try {
+              const days =
+                this.dateRange === "1" ? 1 : this.dateRange === "7" ? 7 : 30;
+              const response = await fetch(
+                `/api/dashboard/timeseries/${this.selectedWebsite}?days=${days}`
+              );
+              if (response.ok) {
+                const data = await response.json();
+                if (!data || !Array.isArray(data) || data.length === 0) {
+                  return;
+                }
+                const labels = data.map((point) => {
+                  const date = new Date(point.timestamp);
+                  return days === 1
+                    ? date.toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        hour12: true,
+                      })
+                    : date.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      });
+                });
+                const values = data.map((point) => point.value);
+                if (this.chart) {
+                  this.chart.destroy();
+                }
+                const ctx = document.getElementById("pageviewsChart");
+                if (ctx) {
+                  this.chart = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                      labels: labels,
+                      datasets: [
+                        {
+                          label: "Pageviews",
+                          data: values,
+                          borderColor: "#3b82f6",
+                          backgroundColor: "rgba(59, 130, 246, 0.1)",
+                          fill: true,
+                          tension: 0.4,
+                          borderWidth: 2,
+                          pointRadius: 3,
+                          pointHoverRadius: 5,
+                        },
+                      ],
+                    },
+                    options: {
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: {
+                          display: false,
+                        },
+                        tooltip: {
+                          mode: "index",
+                          intersect: false,
+                          backgroundColor: "rgba(0, 0, 0, 0.8)",
+                          padding: 12,
+                          titleFont: { size: 13 },
+                          bodyFont: { size: 14, weight: "bold" },
+                        },
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          ticks: {
+                            precision: 0,
+                            color: "#6b7280",
+                          },
+                          grid: {
+                            color: "#e5e7eb",
+                          },
+                        },
+                        x: {
+                          ticks: {
+                            color: "#6b7280",
+                            maxRotation: 0,
+                          },
+                          grid: {
+                            display: false,
+                          },
+                        },
+                      },
+                      interaction: {
+                        mode: "nearest",
+                        axis: "x",
+                        intersect: false,
+                      },
+                    },
+                  });
+                }
+              }
+            } catch (error) {
+              console.error("Failed to load chart:", error);
+            }
+          },
+          async loadBreakdown() {
+            if (!this.selectedWebsite || this.activeTab === "map") {
+              return;
+            }
+            this.breakdownLoading = true;
+            try {
+              const endpoint = this.activeTab;
+              const response = await fetch(
+                `/api/dashboard/${endpoint}/${this.selectedWebsite}`
+              );
+              if (response.ok) {
+                const data = await response.json();
+                this.breakdownData = Array.isArray(data) ? data : [];
+              } else {
+                this.breakdownData = [];
+              }
+            } catch (error) {
+              console.error("Failed to load breakdown:", error);
+              this.breakdownData = [];
+            } finally {
+              this.breakdownLoading = false;
+            }
+          },
+          async loadAvailableFilters() {
+            if (!this.selectedWebsite) return;
+            try {
+              const countriesRes = await fetch(
+                `/api/dashboard/countries/${this.selectedWebsite}?limit=100`
+              );
+              if (countriesRes.ok) {
+                this.availableFilters.countries = await countriesRes.json();
+              }
+              const browsersRes = await fetch(
+                `/api/dashboard/browsers/${this.selectedWebsite}?limit=100`
+              );
+              if (browsersRes.ok) {
+                this.availableFilters.browsers = await browsersRes.json();
+              }
+              const devicesRes = await fetch(
+                `/api/dashboard/devices/${this.selectedWebsite}?limit=100`
+              );
+              if (devicesRes.ok) {
+                this.availableFilters.devices = await devicesRes.json();
+              }
+              const pagesRes = await fetch(
+                `/api/dashboard/pages/${this.selectedWebsite}?limit=100`
+              );
+              if (pagesRes.ok) {
+                this.availableFilters.pages = await pagesRes.json();
+              }
+            } catch (error) {
+              console.error("Failed to load filter options:", error);
+            }
+          },
+          applyFilter() {
+            this.updateURL();
+            this.loadStats();
+            this.loadTopPages();
+            this.loadChart();
+            this.loadBreakdown();
+            this.loadMapData();
+          },
+          clearFilters() {
+            this.filters = {
+              country: "",
+              browser: "",
+              device: "",
+              page: "",
+            };
+            this.applyFilter();
+          },
+          updateURL() {
+            const params = new URLSearchParams();
+            if (this.filters.country)
+              params.set("country", this.filters.country);
+            if (this.filters.browser)
+              params.set("browser", this.filters.browser);
+            if (this.filters.device) params.set("device", this.filters.device);
+            if (this.filters.page) params.set("page", this.filters.page);
+            const newURL = params.toString()
+              ? `${window.location.pathname}?${params.toString()}`
+              : window.location.pathname;
+            window.history.pushState({}, "", newURL);
+          },
+          get hasActiveFilters() {
+            return (
+              this.filters.country ||
+              this.filters.browser ||
+              this.filters.device ||
+              this.filters.page
+            );
+          },
+          sortBy(column) {
+            if (this.sortColumn === column) {
+              this.sortDirection =
+                this.sortDirection === "asc" ? "desc" : "asc";
+            } else {
+              this.sortColumn = column;
+              this.sortDirection = "desc";
+            }
+          },
+          get sortedPages() {
+            const sorted = [...this.pages].sort((a, b) => {
+              const aVal = a[this.sortColumn];
+              const bVal = b[this.sortColumn];
+              if (typeof aVal === "string") {
+                return this.sortDirection === "asc"
+                  ? aVal.localeCompare(bVal)
+                  : bVal.localeCompare(aVal);
+              } else {
+                return this.sortDirection === "asc" ? aVal - bVal : bVal - aVal;
+              }
+            });
+            return sorted;
+          },
+          async loadMapData() {
+            if (!this.selectedWebsite || this.activeTab !== "map") return;
+            this.mapLoading = true;
+            try {
+              const days =
+                this.dateRange === "1" ? 1 : this.dateRange === "7" ? 7 : 30;
+              const params = new URLSearchParams({ days });
+              if (this.filters.country)
+                params.append("country", this.filters.country);
+              if (this.filters.browser)
+                params.append("browser", this.filters.browser);
+              if (this.filters.device)
+                params.append("device", this.filters.device);
+              if (this.filters.page) params.append("page", this.filters.page);
+              const response = await fetch(
+                `/api/dashboard/map/${this.selectedWebsite}?${params}`
+              );
+              if (response.ok) {
+                this.mapData = await response.json();
+                const containerExists =
+                  document.getElementById("choropleth-map");
+                if (!containerExists) {
+                  console.warn(
+                    "Choropleth map container not found yet; will retry once rendered."
+                  );
+                  return;
+                }
+                if (!this.mapInitialized) {
+                  await this.initializeChoropleth();
+                } else {
+                  this.updateChoropleth();
+                }
+              } else {
+                console.error("Failed to load map data");
+              }
+            } catch (error) {
+              console.error("Map data error:", error);
+            } finally {
+              this.mapLoading = false;
+            }
+          },
+          getColorForValue(value, maxValue) {
+            if (!value || value === 0) return "#e5e5e5";
+            const intensity = value / maxValue;
+            if (intensity < 0.2) return "#deebf7";
+            if (intensity < 0.4) return "#9ecae1";
+            if (intensity < 0.6) return "#6baed6";
+            if (intensity < 0.8) return "#3182bd";
+            return "#08519c";
+          },
+          formatTooltipText(countryName, visitors, percentage) {
+            return `
                         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${countryName}</div>
-                            <div style="font-size: 13px; color: #6b7280;">
-                                ${visitors.toLocaleString()} visitors (${percentage.toFixed(1)}%)
+                            <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px; color: #1a1a1a;">${countryName}</div>
+                            <div style="font-size: 13px; color: #666666;">
+                                ${visitors.toLocaleString()} visitors (${percentage.toFixed(
+              1
+            )}%)
                             </div>
                         </div>
                     `;
-                },
-
-                handleCountryClick(countryName) {
-                    // Set the country filter and reload data
-                    this.filters.country = countryName;
-                    this.applyFilter();
-
-                    // Switch to countries tab to show the filter in action
-                    this.activeTab = 'countries';
-                    this.loadBreakdown();
-                },
-
-                async initializeChoropleth() {
-                    try {
-                        // Ensure the container exists
-                        const container = document.getElementById('choropleth-map');
-                        if (!container) {
-                            console.error('Choropleth map container not found');
-                            return;
-                        }
-
-                        // Create Leaflet map
-                        const map = L.map('choropleth-map', {
-                            zoomControl: true,
-                            attributionControl: true,
-                            scrollWheelZoom: true,
-                            doubleClickZoom: true,
-                            touchZoom: true
-                        }).setView([20, 0], 2);
-
-                        // Add OpenStreetMap tiles
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                            maxZoom: 18,
-                            minZoom: 1
-                        }).addTo(map);
-
-                        // Load TopoJSON data
-                        const response = await fetch('/assets/data/countries-110m.json');
-                        if (!response.ok) {
-                            throw new Error(`Failed to load TopoJSON: ${response.statusText}`);
-                        }
-                        const world = await response.json();
-
-                        // Convert TopoJSON to GeoJSON
-                        const features = topojson.feature(world, world.objects.countries).features;
-
-                        // Create a map for quick lookup of visitor data by country code
-                        const dataMap = new Map();
-                        let maxValue = 0;
-
-                        if (this.mapData && this.mapData.data && Array.isArray(this.mapData.data)) {
-                            maxValue = Math.max(...this.mapData.data.map(d => d.visitors || 0));
-
-                            this.mapData.data.forEach(d => {
-                                // Store by both country name and code for flexible matching
-                                dataMap.set(d.country_name, {
-                                    visitors: d.visitors || 0,
-                                    percentage: d.percentage || 0,
-                                    name: d.country_name,
-                                    code: d.code
-                                });
-                                if (d.code) {
-                                    dataMap.set(d.code, {
-                                        visitors: d.visitors || 0,
-                                        percentage: d.percentage || 0,
-                                        name: d.country_name,
-                                        code: d.code
-                                    });
-                                }
-                            });
-                        }
-
-                        // Style function for country polygons
-                        const getStyle = (feature) => {
-                            const countryName = feature.properties.name;
-                            const countryId = feature.id;
-                            const countryData = dataMap.get(countryName) || dataMap.get(countryId);
-
-                            const fillColor = countryData
-                                ? this.getColorForValue(countryData.visitors, maxValue)
-                                : '#e5e5e5';
-
-                            return {
-                                fillColor: fillColor,
-                                weight: 0.5,
-                                opacity: 0.8,
-                                color: '#999',
-                                fillOpacity: 0.7
-                            };
-                        };
-
-                        // Feature interaction handler
-                        const onEachFeature = (feature, layer) => {
-                            const countryName = feature.properties.name;
-                            const countryId = feature.id;
-                            const countryData = dataMap.get(countryName) || dataMap.get(countryId);
-
-                            // Create tooltip
-                            const tooltipContent = countryData
-                                ? this.formatTooltipText(countryData.name, countryData.visitors, countryData.percentage)
-                                : `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                                     <div style="font-weight: 600; font-size: 14px;">${countryName || 'Unknown'}</div>
-                                     <div style="font-size: 13px; color: #6b7280;">No visitors</div>
+          },
+          handleCountryClick(countryName) {
+            this.filters.country = countryName;
+            this.applyFilter();
+            this.activeTab = "countries";
+            this.loadBreakdown();
+          },
+          async initializeChoropleth() {
+            try {
+              const container = document.getElementById("choropleth-map");
+              if (!container) {
+                console.error("Choropleth map container not found");
+                return;
+              }
+              const map = L.map("choropleth-map", {
+                zoomControl: true,
+                attributionControl: true,
+                scrollWheelZoom: true,
+                doubleClickZoom: true,
+                touchZoom: true,
+              }).setView([20, 0], 2);
+              L.tileLayer(
+                "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+                  attribution:
+                    '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                  maxZoom: 18,
+                  minZoom: 1,
+                }
+              ).addTo(map);
+              const response = await fetch("/assets/data/countries-110m.json");
+              if (!response.ok) {
+                throw new Error(
+                  `Failed to load TopoJSON: ${response.statusText}`
+                );
+              }
+              const world = await response.json();
+              const features = topojson.feature(
+                world,
+                world.objects.countries
+              ).features;
+              const dataMap = new Map();
+              let maxValue = 0;
+              if (
+                this.mapData &&
+                this.mapData.data &&
+                Array.isArray(this.mapData.data)
+              ) {
+                maxValue = Math.max(
+                  ...this.mapData.data.map((d) => d.visitors || 0)
+                );
+                this.mapData.data.forEach((d) => {
+                  dataMap.set(d.country_name, {
+                    visitors: d.visitors || 0,
+                    percentage: d.percentage || 0,
+                    name: d.country_name,
+                    code: d.code,
+                  });
+                  if (d.code) {
+                    dataMap.set(d.code, {
+                      visitors: d.visitors || 0,
+                      percentage: d.percentage || 0,
+                      name: d.country_name,
+                      code: d.code,
+                    });
+                  }
+                });
+              }
+              const getStyle = (feature) => {
+                const countryName = feature.properties.name;
+                const countryId = feature.id;
+                const countryData =
+                  dataMap.get(countryName) || dataMap.get(countryId);
+                const fillColor = countryData
+                  ? this.getColorForValue(countryData.visitors, maxValue)
+                  : "#e5e5e5";
+                return {
+                  fillColor: fillColor,
+                  weight: 0.5,
+                  opacity: 0.8,
+                  color: "#999",
+                  fillOpacity: 0.7,
+                };
+              };
+              const onEachFeature = (feature, layer) => {
+                const countryName = feature.properties.name;
+                const countryId = feature.id;
+                const countryData =
+                  dataMap.get(countryName) || dataMap.get(countryId);
+                const tooltipContent = countryData
+                  ? this.formatTooltipText(
+                      countryData.name,
+                      countryData.visitors,
+                      countryData.percentage
+                    )
+                  : `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                                     <div style="font-weight: 500; font-size: 14px; color: #1a1a1a;">${
+                                       countryName || "Unknown"
+                                     }</div>
+                                     <div style="font-size: 13px; color: #666666;">No visitors</div>
                                    </div>`;
-
-                            layer.bindTooltip(tooltipContent, {
-                                sticky: true,
-                                opacity: 0.95,
-                                className: 'leaflet-custom-tooltip'
-                            });
-
-                            // Hover effects
-                            layer.on('mouseover', function(e) {
-                                const layer = e.target;
-                                layer.setStyle({
-                                    weight: 2,
-                                    color: '#333',
-                                    fillOpacity: 0.85
-                                });
-
-                                if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-                                    layer.bringToFront();
-                                }
-                            });
-
-                            layer.on('mouseout', function(e) {
-                                const layer = e.target;
-                                layer.setStyle({
-                                    weight: 0.5,
-                                    color: '#999',
-                                    fillOpacity: 0.7
-                                });
-                            });
-
-                            // Click handler to filter by country
-                            if (countryData) {
-                                layer.on('click', () => {
-                                    this.handleCountryClick(countryData.name);
-                                });
-
-                                // Add pointer cursor for clickable countries
-                                layer.on('mouseover', function() {
-                                    container.style.cursor = 'pointer';
-                                });
-                                layer.on('mouseout', function() {
-                                    container.style.cursor = '';
-                                });
-                            }
-                        };
-
-                        // Add GeoJSON layer to map
-                        const geoJsonLayer = L.geoJSON(features, {
-                            style: getStyle,
-                            onEachFeature: onEachFeature
-                        }).addTo(map);
-
-                        // Store map and layer instances for updates
-                        this.mapInstance = map;
-                        this.geoJsonLayer = geoJsonLayer;
-
-                        // Add custom CSS for tooltips
-                        if (!document.getElementById('leaflet-custom-tooltip-style')) {
-                            const style = document.createElement('style');
-                            style.id = 'leaflet-custom-tooltip-style';
-                            style.textContent = `
+                layer.bindTooltip(tooltipContent, {
+                  sticky: true,
+                  opacity: 0.95,
+                  className: "leaflet-custom-tooltip",
+                });
+                layer.on("mouseover", function (e) {
+                  const layer = e.target;
+                  layer.setStyle({
+                    weight: 2,
+                    color: "#333",
+                    fillOpacity: 0.85,
+                  });
+                  if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                    layer.bringToFront();
+                  }
+                });
+                layer.on("mouseout", function (e) {
+                  const layer = e.target;
+                  layer.setStyle({
+                    weight: 0.5,
+                    color: "#999",
+                    fillOpacity: 0.7,
+                  });
+                });
+                if (countryData) {
+                  layer.on("click", () => {
+                    this.handleCountryClick(countryData.name);
+                  });
+                  layer.on("mouseover", function () {
+                    container.style.cursor = "pointer";
+                  });
+                  layer.on("mouseout", function () {
+                    container.style.cursor = "";
+                  });
+                }
+              };
+              const geoJsonLayer = L.geoJSON(features, {
+                style: getStyle,
+                onEachFeature: onEachFeature,
+              }).addTo(map);
+              this.mapInstance = map;
+              this.geoJsonLayer = geoJsonLayer;
+              if (!document.getElementById("leaflet-custom-tooltip-style")) {
+                const style = document.createElement("style");
+                style.id = "leaflet-custom-tooltip-style";
+                style.textContent = `
                                 .leaflet-custom-tooltip {
                                     background: rgba(255, 255, 255, 0.95);
-                                    border: 1px solid #d1d5db;
+                                    border: 1px solid #e5e7eb;
                                     border-radius: 8px;
-                                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
                                     padding: 12px;
                                 }
                                 .leaflet-custom-tooltip::before {
                                     border-top-color: rgba(255, 255, 255, 0.95);
                                 }
                             `;
-                            document.head.appendChild(style);
-                        }
-
-                    } catch (error) {
-                        console.error('Failed to initialize choropleth map:', error);
-
-                        // Show error message in the map container
-                        const container = document.getElementById('choropleth-map');
-                        if (container) {
-                            container.innerHTML = `
-                                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #9ca3af;">
+                document.head.appendChild(style);
+              }
+              this.mapInitialized = true;
+            } catch (error) {
+              console.error("Failed to initialize choropleth map:", error);
+              const container = document.getElementById("choropleth-map");
+              if (container) {
+                container.innerHTML = `
+                                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999999;">
                                     <div style="text-align: center;">
                                         <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">🗺️</div>
-                                        <div style="font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 8px;">Map Loading Error</div>
+                                        <div style="font-size: 16px; font-weight: 500; color: #1f2937; margin-bottom: 8px;">Map Loading Error</div>
                                         <div style="font-size: 14px;">Failed to load map data. Please try again.</div>
                                     </div>
                                 </div>
                             `;
-                        }
-                    }
-                },
-
-                updateChoropleth() {
-                    try {
-                        // Check if map is initialized
-                        if (!this.mapInstance || !this.geoJsonLayer) {
-                            console.warn('Map not initialized, cannot update');
-                            return;
-                        }
-
-                        // Create a map for quick lookup of visitor data
-                        const dataMap = new Map();
-                        let maxValue = 0;
-
-                        if (this.mapData && this.mapData.data && Array.isArray(this.mapData.data)) {
-                            maxValue = Math.max(...this.mapData.data.map(d => d.visitors || 0));
-
-                            this.mapData.data.forEach(d => {
-                                dataMap.set(d.country_name, {
-                                    visitors: d.visitors || 0,
-                                    percentage: d.percentage || 0,
-                                    name: d.country_name,
-                                    code: d.code
-                                });
-                                if (d.code) {
-                                    dataMap.set(d.code, {
-                                        visitors: d.visitors || 0,
-                                        percentage: d.percentage || 0,
-                                        name: d.country_name,
-                                        code: d.code
-                                    });
-                                }
-                            });
-                        }
-
-                        // Update each layer's style and tooltip
-                        this.geoJsonLayer.eachLayer((layer) => {
-                            const feature = layer.feature;
-                            const countryName = feature.properties.name;
-                            const countryId = feature.id;
-                            const countryData = dataMap.get(countryName) || dataMap.get(countryId);
-
-                            // Update style
-                            const fillColor = countryData
-                                ? this.getColorForValue(countryData.visitors, maxValue)
-                                : '#e5e5e5';
-
-                            layer.setStyle({
-                                fillColor: fillColor,
-                                weight: 0.5,
-                                opacity: 0.8,
-                                color: '#999',
-                                fillOpacity: 0.7
-                            });
-
-                            // Update tooltip
-                            const tooltipContent = countryData
-                                ? this.formatTooltipText(countryData.name, countryData.visitors, countryData.percentage)
-                                : `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                                     <div style="font-weight: 600; font-size: 14px;">${countryName || 'Unknown'}</div>
-                                     <div style="font-size: 13px; color: #6b7280;">No visitors</div>
-                                   </div>`;
-
-                            layer.setTooltipContent(tooltipContent);
-                        });
-
-                        // Maintain current zoom and pan state (no need to change view)
-                        console.log('Choropleth map updated successfully');
-
-                    } catch (error) {
-                        console.error('Failed to update choropleth map:', error);
-                    }
-                }
+              }
             }
-        }
+          },
+          updateChoropleth() {
+            try {
+              if (!this.mapInstance || !this.geoJsonLayer) {
+                console.warn("Map not initialized, cannot update");
+                return;
+              }
+              const dataMap = new Map();
+              let maxValue = 0;
+              if (
+                this.mapData &&
+                this.mapData.data &&
+                Array.isArray(this.mapData.data)
+              ) {
+                maxValue = Math.max(
+                  ...this.mapData.data.map((d) => d.visitors || 0)
+                );
+                this.mapData.data.forEach((d) => {
+                  dataMap.set(d.country_name, {
+                    visitors: d.visitors || 0,
+                    percentage: d.percentage || 0,
+                    name: d.country_name,
+                    code: d.code,
+                  });
+                  if (d.code) {
+                    dataMap.set(d.code, {
+                      visitors: d.visitors || 0,
+                      percentage: d.percentage || 0,
+                      name: d.country_name,
+                      code: d.code,
+                    });
+                  }
+                });
+              }
+              this.geoJsonLayer.eachLayer((layer) => {
+                const feature = layer.feature;
+                const countryName = feature.properties.name;
+                const countryId = feature.id;
+                const countryData =
+                  dataMap.get(countryName) || dataMap.get(countryId);
+                const fillColor = countryData
+                  ? this.getColorForValue(countryData.visitors, maxValue)
+                  : "#e5e5e5";
+                layer.setStyle({
+                  fillColor: fillColor,
+                  weight: 0.5,
+                  opacity: 0.8,
+                  color: "#999",
+                  fillOpacity: 0.7,
+                });
+                const tooltipContent = countryData
+                  ? this.formatTooltipText(
+                      countryData.name,
+                      countryData.visitors,
+                      countryData.percentage
+                    )
+                  : `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                                     <div style="font-weight: 500; font-size: 14px; color: #1a1a1a;">${
+                                       countryName || "Unknown"
+                                     }</div>
+                                     <div style="font-size: 13px; color: #666666;">No visitors</div>
+                                   </div>`;
+                layer.setTooltipContent(tooltipContent);
+              });
+              console.log("Choropleth map updated successfully");
+            } catch (error) {
+              console.error("Failed to update choropleth map:", error);
+            }
+          },
+        };
+      }
     </script>
-</body>
+  </body>
 </html>
