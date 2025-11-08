@@ -348,144 +348,308 @@ func getEnv(key, defaultValue string) string {
 func loginPageHTML() string {
 	return `<!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - Kaunta</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+      :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f8f9fa;
+        --bg-accent: #e6f0ff;
+        --bg-glass: rgba(230, 240, 255, 0.7);
+        --text-primary: #1a1a1a;
+        --text-secondary: #4b5e7a;
+        --text-tertiary: #7b8aa6;
+        --border-color: #d6e2ff;
+        --accent-color: #3b82f6;
+        --accent-dark: #1e3a8a;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+          sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        line-height: 1.6;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .container {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 32px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+
+      .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .glass {
+        background: var(--bg-glass);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+      }
+
+      .card {
+        padding: 32px;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.08);
+      }
+
+      .login-card {
+        max-width: 400px;
+        width: 100%;
+        margin-bottom: 48px;
+      }
+
+      .hero {
+        margin-bottom: 32px;
+      }
+
+      .hero h1 {
+        font-size: 48px;
+        font-weight: 500;
+        color: var(--accent-dark);
+        margin-bottom: 16px;
+      }
+
+      .hero .subtitle {
+        font-size: 20px;
+        color: var(--text-secondary);
+        font-weight: 400;
+      }
+
+      .login-form h2 {
+        font-size: 24px;
+        font-weight: 500;
+        color: var(--accent-dark);
+        margin-bottom: 24px;
+        text-align: center;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+        text-align: left;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        font-size: 14px;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 14px;
+        color: var(--text-primary);
+        background: var(--bg-glass);
+        backdrop-filter: blur(10px);
+        transition: all 0.2s ease;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+        background: rgba(230, 240, 255, 0.95);
+      }
+
+      .btn {
+        width: 100%;
+        padding: 12px 24px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      .btn-primary {
+        background: var(--accent-color);
+        color: white;
+        border: 1px solid var(--accent-color);
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        background: var(--accent-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+      }
+
+      .btn-primary:disabled {
+        background: var(--text-tertiary);
+        border-color: var(--text-tertiary);
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .error {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+        padding: 12px 16px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        display: none;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        font-size: 14px;
+      }
+
+      .error.show {
+        display: block;
+      }
+
+      .footer {
+        margin-top: auto;
+        padding: 24px;
+        background: var(--bg-glass);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        width: 100%;
+        max-width: 800px;
+      }
+
+      .footer p {
+        color: var(--text-tertiary);
+        font-size: 14px;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
         .container {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            width: 100%;
-            max-width: 400px;
+          padding: 20px;
         }
-        h1 {
-            margin-bottom: 1.5rem;
-            color: #333;
-            font-size: 1.8rem;
+
+        .hero h1 {
+          font-size: 36px;
         }
-        .form-group {
-            margin-bottom: 1rem;
+
+        .hero .subtitle {
+          font-size: 18px;
         }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #555;
-            font-weight: 500;
+
+        .login-card {
+          padding: 24px;
         }
-        input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 1rem;
-        }
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        button {
-            width: 100%;
-            padding: 0.75rem;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        button:hover {
-            background: #5568d3;
-        }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .error {
-            background: #fee;
-            color: #c33;
-            padding: 0.75rem;
-            border-radius: 4px;
-            margin-bottom: 1rem;
-            display: none;
-        }
-        .error.show {
-            display: block;
-        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <h1>Login to Kaunta</h1>
-        <div id="error" class="error"></div>
-        <form id="loginForm">
+      <div class="main-content">
+        <div class="hero">
+          <h1>Kaunta</h1>
+          <p class="subtitle">Analytics without bloat</p>
+        </div>
+
+        <div class="login-card glass card">
+          <h2>Login to Dashboard</h2>
+          <div id="error" class="error"></div>
+          <form id="loginForm">
             <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required autocomplete="username">
+              <label for="username">Username</label>
+              <input type="text" id="username" name="username" required autocomplete="username">
             </div>
             <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required autocomplete="current-password">
+              <label for="password">Password</label>
+              <input type="password" id="password" name="password" required autocomplete="current-password">
             </div>
-            <button type="submit" id="submitBtn">Login</button>
-        </form>
+            <button type="submit" id="submitBtn" class="btn btn-primary">
+              <span>🔐</span>
+              Login
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>
+          <strong>Kaunta Analytics</strong> - Built with Go, Fiber, Alpine.js,
+          PostgreSQL, and Leaflet
+        </p>
+        <p>
+          <a
+            href="https://github.com/seuros/kaunta"
+            style="color: var(--accent-color); text-decoration: none"
+            >View on GitHub</a
+          >
+        </p>
+      </div>
     </div>
 
     <script>
-        const form = document.getElementById('loginForm');
-        const errorDiv = document.getElementById('error');
-        const submitBtn = document.getElementById('submitBtn');
+      const form = document.getElementById('loginForm');
+      const errorDiv = document.getElementById('error');
+      const submitBtn = document.getElementById('submitBtn');
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
 
-            errorDiv.classList.remove('show');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Logging in...';
+        errorDiv.classList.remove('show');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>⏳</span> Logging in...';
 
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username, password }),
-                });
+        try {
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+          });
 
-                const data = await response.json();
+          const data = await response.json();
 
-                if (response.ok && data.success) {
-                    window.location.href = '/dashboard';
-                } else {
-                    errorDiv.textContent = data.error || 'Login failed';
-                    errorDiv.classList.add('show');
-                }
-            } catch (error) {
-                errorDiv.textContent = 'Network error. Please try again.';
-                errorDiv.classList.add('show');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Login';
-            }
-        });
+          if (response.ok && data.success) {
+            window.location.href = '/dashboard';
+          } else {
+            errorDiv.textContent = data.error || 'Login failed';
+            errorDiv.classList.add('show');
+          }
+        } catch (error) {
+          errorDiv.textContent = 'Network error. Please try again.';
+          errorDiv.classList.add('show');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>🔐</span> Login';
+        }
+      });
     </script>
-</body>
+  </body>
 </html>`
 }
 
