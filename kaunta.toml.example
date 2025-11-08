@@ -1,0 +1,18 @@
+# Kaunta Configuration File
+# Copy this file to one of these locations:
+#   - ./kaunta.toml (current directory)
+#   - ~/.kaunta/kaunta.toml (user home directory)
+#
+# Priority order (highest to lowest):
+#   1. Command line flags (--database-url, --port, --data-dir)
+#   2. Config file values
+#   3. Environment variables (DATABASE_URL, PORT, DATA_DIR)
+
+# PostgreSQL database connection URL (required)
+database_url = "postgresql://user:password@localhost:5432/kaunta"
+
+# Server port (default: 3000)
+port = "3000"
+
+# Data directory for GeoIP database (default: ./data)
+data_dir = "./data"

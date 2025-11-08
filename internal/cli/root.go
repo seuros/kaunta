@@ -14,6 +14,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/spf13/cobra"
 
+	"github.com/seuros/kaunta/internal/config"
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/geoip"
 	"github.com/seuros/kaunta/internal/handlers"
@@ -21,6 +22,9 @@ import (
 )
 
 var Version string
+var databaseURL string
+var port string
+var dataDir string
 
 // RootCmd represents the root command
 var RootCmd = &cobra.Command{
@@ -31,6 +35,25 @@ var RootCmd = &cobra.Command{
 Kaunta is a privacy-focused visitor tracking solution with minimal resource usage.
 It provides real-time analytics and a clean dashboard interface.`,
 	Version: Version,
+	// Load config from file/env/flags (runs before all commands)
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		cfg, err := config.LoadWithOverrides(databaseURL, port, dataDir)
+		if err != nil {
+			log.Printf("Warning: failed to load config: %v", err)
+			return
+		}
+
+		// Set environment variables from config (for backward compatibility)
+		if cfg.DatabaseURL != "" {
+			_ = os.Setenv("DATABASE_URL", cfg.DatabaseURL)
+		}
+		if cfg.Port != "" {
+			_ = os.Setenv("PORT", cfg.Port)
+		}
+		if cfg.DataDir != "" {
+			_ = os.Setenv("DATA_DIR", cfg.DataDir)
+		}
+	},
 	// Default to serve command if no subcommand provided
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// If no arguments provided, run serve
@@ -467,6 +490,11 @@ func loginPageHTML() string {
 }
 
 func init() {
+	// Global flags available to all commands
+	RootCmd.PersistentFlags().StringVar(&databaseURL, "database-url", "", "PostgreSQL connection URL (overrides config file and env)")
+	RootCmd.PersistentFlags().StringVar(&port, "port", "", "Server port (overrides config file and env)")
+	RootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", "Data directory for GeoIP database (overrides config file and env)")
+
 	// Add subcommands
 	RootCmd.AddCommand(serveCmd)
 	RootCmd.AddCommand(websiteCmd)

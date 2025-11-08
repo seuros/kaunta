@@ -15,13 +15,35 @@ A simple, fast, privacy-focused web analytics engine. Drop-in replacement for Um
 
 ## Installation
 
-### 1. Set Up Database
+### 1. Configuration
 
-Kaunta requires PostgreSQL 17+:
+Kaunta requires PostgreSQL 17+. You can configure it using:
+
+**Option 1: Config file** (recommended)
+
+Create `kaunta.toml` in current directory or `~/.kaunta/kaunta.toml`:
+
+```toml
+database_url = "postgresql://user:password@localhost:5432/kaunta"
+port = "3000"
+data_dir = "./data"
+```
+
+**Option 2: Environment variables**
 
 ```bash
 export DATABASE_URL="postgresql://user:password@localhost:5432/kaunta"
+export PORT="3000"
+export DATA_DIR="./data"
 ```
+
+**Option 3: Command flags**
+
+```bash
+kaunta --database-url="postgresql://..." --port=3000 --data-dir=./data
+```
+
+**Priority order:** Flags > Config file > Environment variables
 
 ### 2. Run the Server
 
@@ -59,12 +81,17 @@ That's it! Analytics start collecting.
 
 Kaunta uses CLI-based user management. There is no web registration - all users must be created via the command line.
 
+If you have a config file (`kaunta.toml`), the CLI commands will automatically use those settings. Otherwise, use the `--database-url` flag or set `DATABASE_URL` environment variable.
+
 ### Create a User
 
 ```bash
 kaunta user create <username>
 # You'll be prompted for name (optional) and password
 # Password must be at least 8 characters
+
+# Or with database URL flag:
+kaunta --database-url="postgresql://..." user create admin
 ```
 
 Example:
