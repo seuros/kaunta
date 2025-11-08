@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0](https://github.com/seuros/kaunta/compare/v0.8.0...v0.9.0) (2025-11-08)
+
+
+### Features
+
+* add self-update functionality ([b54059a](https://github.com/seuros/kaunta/commit/b54059af7b1a7719df7ea724b30972df7d166113))
+* add TOML config file support ([afb2e98](https://github.com/seuros/kaunta/commit/afb2e982838640badb41b7f779b21191fd0362cc))
+* add username-based authentication system ([2a0c7f1](https://github.com/seuros/kaunta/commit/2a0c7f1a5d1821b6e4a3434eab10e84cfa6b1ceb))
+* optimize tracker with rAF scroll batching, ResizeObserver, sendBeacon, AbortController cleanup, and test infrastructure ([d918084](https://github.com/seuros/kaunta/commit/d91808442fe65ee673d17f7bd0bd719136b4c5da))
+* redesign home page and dashboard ([#9](https://github.com/seuros/kaunta/issues/9)) ([4ddc110](https://github.com/seuros/kaunta/commit/4ddc11062bf477e62d1bdb24e05af09934efb6da))
+* redesign the login page ([#10](https://github.com/seuros/kaunta/issues/10)) ([0991de5](https://github.com/seuros/kaunta/commit/0991de552f41f386d313b651bdd212a4ef554891))
+
 ## [0.8.0](https://github.com/seuros/kaunta/compare/v0.7.1...v0.8.0) (2025-11-08)
 
 
