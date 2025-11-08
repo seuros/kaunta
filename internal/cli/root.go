@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
@@ -271,6 +273,10 @@ func handleVersion(c *fiber.Ctx) error {
 }
 
 func handleTrackerScript(trackerScript []byte) fiber.Handler {
+	// Compute ETag once from actual content hash
+	hash := sha256.Sum256(trackerScript)
+	etag := "\"" + hex.EncodeToString(hash[:8]) + "\""
+
 	return func(c *fiber.Ctx) error {
 		// Security headers
 		c.Set("Content-Type", "application/javascript; charset=utf-8")
@@ -280,7 +286,7 @@ func handleTrackerScript(trackerScript []byte) fiber.Handler {
 
 		// Cache headers (1 hour)
 		c.Set("Cache-Control", "public, max-age=3600, immutable")
-		c.Set("ETag", "\"kaunta-v1.0.0\"")
+		c.Set("ETag", etag)
 
 		// CORS headers - allow from anywhere (JS file is public)
 		// Origin validation happens at /api/send endpoint
@@ -307,6 +313,8 @@ func init() {
 	RootCmd.AddCommand(websiteCmd)
 	RootCmd.AddCommand(statsCmd)
 	// DevOps commands added in devops.go init()
+
+	setupSelfUpgrade()
 
 	// Set version output
 	RootCmd.Version = Version

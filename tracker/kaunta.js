@@ -18,8 +18,8 @@
 (function(window) {
   'use strict';
 
-  // Early exit checks
-  if (!window || !document) return;
+  // Early exit checks - use window.document directly to avoid minification issues
+  if (!window || !window.document) return;
 
   var {
     screen: { width, height },
