@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0](https://github.com/seuros/kaunta/compare/v0.9.0...v0.10.0) (2025-11-09)
+
+
+### Features
+
+* add binary build and Docker push to release-please workflow ([20ec3c4](https://github.com/seuros/kaunta/commit/20ec3c4e543c623d949f1259fa6d020bde14e722))
+* add test files and CLI improvements ([b9cc9af](https://github.com/seuros/kaunta/commit/b9cc9af8d05cbc533332c579c35316dfb013e47e))
+
 ## [0.9.0](https://github.com/seuros/kaunta/compare/v0.8.0...v0.9.0) (2025-11-08)
 
 
