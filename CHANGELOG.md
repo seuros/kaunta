@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.2](https://github.com/seuros/kaunta/compare/v0.13.1...v0.13.2) (2025-11-09)
+
+
+### Bug Fixes
+
+* use csrf.TokenFromContext() to properly extract CSRF token ([fcbb643](https://github.com/seuros/kaunta/commit/fcbb643972700718baccb957a07cf602b649a2c0))
+
 ## [0.13.1](https://github.com/seuros/kaunta/compare/v0.13.0...v0.13.1) (2025-11-09)
 
 
