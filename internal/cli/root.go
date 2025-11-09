@@ -257,12 +257,7 @@ func serveAnalytics(
 	// Auth API endpoints (public)
 	// CSRF token endpoint
 	app.Get("/api/auth/csrf", func(c fiber.Ctx) error {
-		token := ""
-		if csrfToken := c.Locals("csrf"); csrfToken != nil {
-			if str, ok := csrfToken.(string); ok {
-				token = str
-			}
-		}
+		token := csrf.TokenFromContext(c)
 		return c.JSON(fiber.Map{
 			"token": token,
 		})
