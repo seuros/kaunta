@@ -175,7 +175,7 @@ func serveAnalytics(
 
 	// CSRF protection middleware
 	app.Use(csrf.New(csrf.Config{
-		KeyLookup:      "header:X-CSRF-Token,form:_csrf",
+		KeyLookup:      "header:X-CSRF-Token",
 		CookieName:     "kaunta_csrf",
 		CookieSameSite: "Lax",
 		CookieHTTPOnly: true,
