@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/seuros/kaunta/compare/v0.11.2...v0.12.0) (2025-11-09)
+
+
+### Features
+
+* enable prefork mode for bare metal, disable for Docker ([92d97e7](https://github.com/seuros/kaunta/commit/92d97e7a9e5568dba9d6e514d7fa57e86e7328d5))
+
 ## [0.11.2](https://github.com/seuros/kaunta/compare/v0.11.1...v0.11.2) (2025-11-09)
 
 
