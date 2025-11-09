@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.2](https://github.com/seuros/kaunta/compare/v0.14.1...v0.14.2) (2025-11-09)
+
+
+### Bug Fixes
+
+* remove redundant CSRF endpoint and consolidate Fiber config ([a0ac37e](https://github.com/seuros/kaunta/commit/a0ac37ef2446cf8ad9556c627a6521e40a1f7b6a))
+
 ## [0.14.1](https://github.com/seuros/kaunta/compare/v0.14.0...v0.14.1) (2025-11-09)
 
 
