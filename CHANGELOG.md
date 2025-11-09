@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/seuros/kaunta/compare/v0.10.3...v0.11.0) (2025-11-09)
+
+
+### Features
+
+* add CSRF protection and rate limiting to login endpoint ([f260dd3](https://github.com/seuros/kaunta/commit/f260dd3d16460ebf7010490627045d5bb6b226cf))
+
 ## [0.10.3](https://github.com/seuros/kaunta/compare/v0.10.2...v0.10.3) (2025-11-09)
 
 
