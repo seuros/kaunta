@@ -155,6 +155,18 @@ var (
 	trackingFormat string
 )
 
+var (
+	fetchWebsiteByDomain  = GetWebsiteByDomain
+	createWebsiteFunc     = CreateWebsite
+	updateWebsiteFunc     = UpdateWebsite
+	deleteWebsiteFunc     = DeleteWebsite
+	addAllowedDomainsFunc = AddAllowedDomains
+	removeAllowedDomainFn = RemoveAllowedDomain
+	getAllowedDomainsFunc = GetAllowedDomains
+	connectDatabase       = database.Connect
+	closeDatabase         = database.Close
+)
+
 var websiteAddDomainCmd = &cobra.Command{
 	Use:   "add-domain <website-domain> <allowed-domain> [--allowed <more-domains-csv>]",
 	Short: "Add allowed CORS domains to a website",
@@ -226,10 +238,10 @@ func runWebsiteList(format string) error {
 
 	// Ensure database is connected
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -258,16 +270,16 @@ func runWebsiteShow(domain, format string) error {
 	}
 
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	website, err := GetWebsiteByDomain(ctx, domain, nil)
+	website, err := fetchWebsiteByDomain(ctx, domain, nil)
 	if err != nil {
 		return err
 	}
@@ -284,10 +296,10 @@ func runWebsiteShow(domain, format string) error {
 
 func runWebsiteCreate(domain, name, allowedCSV string) error {
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -295,7 +307,7 @@ func runWebsiteCreate(domain, name, allowedCSV string) error {
 
 	allowedDomains := ParseAllowedDomains(allowedCSV)
 
-	website, err := CreateWebsite(ctx, domain, name, allowedDomains)
+	website, err := createWebsiteFunc(ctx, domain, name, allowedDomains)
 	if err != nil {
 		return err
 	}
@@ -313,10 +325,10 @@ func runWebsiteCreate(domain, name, allowedCSV string) error {
 
 func runWebsiteUpdate(domain, name, allowedCSV string) error {
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	if name == "" && allowedCSV == "" {
@@ -336,7 +348,7 @@ func runWebsiteUpdate(domain, name, allowedCSV string) error {
 		allowedDomains = ParseAllowedDomains(allowedCSV)
 	}
 
-	website, err := UpdateWebsite(ctx, domain, namePtr, allowedDomains)
+	website, err := updateWebsiteFunc(ctx, domain, namePtr, allowedDomains)
 	if err != nil {
 		return err
 	}
@@ -350,10 +362,10 @@ func runWebsiteUpdate(domain, name, allowedCSV string) error {
 
 func runWebsiteDelete(domain string, force bool) error {
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	// Confirm deletion unless --force is used
@@ -371,7 +383,7 @@ func runWebsiteDelete(domain string, force bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	deletedAt, err := DeleteWebsite(ctx, domain)
+	deletedAt, err := deleteWebsiteFunc(ctx, domain)
 	if err != nil {
 		return err
 	}
@@ -388,16 +400,16 @@ func runWebsiteTrackingCode(domain string, format string) error {
 	}
 
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	website, err := GetWebsiteByDomain(ctx, domain, nil)
+	website, err := fetchWebsiteByDomain(ctx, domain, nil)
 	if err != nil {
 		return err
 	}
@@ -445,10 +457,10 @@ func runWebsiteTrackingCode(domain string, format string) error {
 
 func runAddDomain(websiteDomain, allowedDomain, additionalDomainsCSV string) error {
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	// Validate domains
@@ -470,7 +482,7 @@ func runAddDomain(websiteDomain, allowedDomain, additionalDomainsCSV string) err
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	website, err := AddAllowedDomains(ctx, websiteDomain, domainsToAdd)
+	website, err := addAllowedDomainsFunc(ctx, websiteDomain, domainsToAdd)
 	if err != nil {
 		return err
 	}
@@ -490,16 +502,16 @@ func runAddDomain(websiteDomain, allowedDomain, additionalDomainsCSV string) err
 
 func runRemoveDomain(websiteDomain, allowedDomain string) error {
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	website, err := RemoveAllowedDomain(ctx, websiteDomain, allowedDomain)
+	website, err := removeAllowedDomainFn(ctx, websiteDomain, allowedDomain)
 	if err != nil {
 		return err
 	}
@@ -527,16 +539,16 @@ func runListDomains(websiteDomain, format string) error {
 	}
 
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	domains, website, err := GetAllowedDomains(ctx, websiteDomain)
+	domains, website, err := getAllowedDomainsFunc(ctx, websiteDomain)
 	if err != nil {
 		return err
 	}
