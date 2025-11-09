@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.2](https://github.com/seuros/kaunta/compare/v0.11.1...v0.11.2) (2025-11-09)
+
+
+### Bug Fixes
+
+* CSRF KeyLookup format for Fiber v2.52.9 compatibility ([d7406be](https://github.com/seuros/kaunta/commit/d7406be0792b43a01260519b9d2ea586a2262a3c))
+
 ## [0.11.1](https://github.com/seuros/kaunta/compare/v0.11.0...v0.11.1) (2025-11-09)
 
 
