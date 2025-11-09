@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2](https://github.com/seuros/kaunta/compare/v0.10.1...v0.10.2) (2025-11-09)
+
+
+### Bug Fixes
+
+* tidy go module dependencies ([6bcd8e8](https://github.com/seuros/kaunta/commit/6bcd8e8265ab7d16347cca321ab647784f538000))
+
 ## [0.10.1](https://github.com/seuros/kaunta/compare/v0.10.0...v0.10.1) (2025-11-09)
 
 
