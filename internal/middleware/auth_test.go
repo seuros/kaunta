@@ -31,6 +31,16 @@ func newTestApp(handler fiber.Handler) *fiber.App {
 	return app
 }
 
+func newTestAppWithRedirect(handler fiber.Handler) *fiber.App {
+	app := fiber.New()
+	app.Use(AuthWithRedirect)
+	app.Get("/", handler)
+	app.Get("/login", func(c *fiber.Ctx) error {
+		return c.SendString("login page")
+	})
+	return app
+}
+
 func TestHashTokenDeterministic(t *testing.T) {
 	token := "test-token"
 	expected := hashToken(token)
@@ -151,6 +161,35 @@ func TestAuthUsesAuthorizationHeader(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer bearer-token")
+
+	resp, err := app.Test(req, -1)
+	require.NoError(t, err)
+	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+}
+
+func TestAuthWithRedirectNoToken(t *testing.T) {
+	app := newTestAppWithRedirect(func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	resp, err := app.Test(req, -1)
+	require.NoError(t, err)
+	assert.Equal(t, fiber.StatusFound, resp.StatusCode)
+	assert.Equal(t, "/login", resp.Header.Get("Location"))
+}
+
+func TestAuthWithRedirectValidToken(t *testing.T) {
+	stubSessionValidator(t, func(tokenHash string) (*UserContext, error) {
+		return &UserContext{UserID: uuid.New(), Username: "test"}, nil
+	})
+
+	app := newTestAppWithRedirect(func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: "kaunta_session", Value: "token"})
 
 	resp, err := app.Test(req, -1)
 	require.NoError(t, err)

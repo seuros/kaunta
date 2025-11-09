@@ -181,7 +181,7 @@ func serveAnalytics(
 		Expiration:     7 * 24 * time.Hour,
 		// Skip CSRF protection for tracking endpoint (public API)
 		Next: func(c *fiber.Ctx) bool {
-			return c.Path() == "/api/send"
+			return c.Path() == "/api/send" || c.Path() == "/api/auth/login"
 		},
 	}))
 
@@ -245,14 +245,20 @@ func serveAnalytics(
 	})
 	app.Post("/api/send", handlers.HandleTracking)
 
-	// Stats API (Plausible-inspired)
-	app.Get("/api/stats/realtime/:website_id", handlers.HandleCurrentVisitors)
+	// Stats API (Plausible-inspired) - protected
+	app.Get("/api/stats/realtime/:website_id", middleware.Auth, handlers.HandleCurrentVisitors)
 
 	// Auth API endpoints (public)
 	// CSRF token endpoint
 	app.Get("/api/auth/csrf", func(c *fiber.Ctx) error {
+		token := ""
+		if csrfToken := c.Locals("csrf"); csrfToken != nil {
+			if str, ok := csrfToken.(string); ok {
+				token = str
+			}
+		}
 		return c.JSON(fiber.Map{
-			"token": c.Locals("csrf").(string),
+			"token": token,
 		})
 	})
 
@@ -280,7 +286,7 @@ func serveAnalytics(
 	})
 
 	// Dashboard UI (protected)
-	app.Get("/dashboard", middleware.Auth, func(c *fiber.Ctx) error {
+	app.Get("/dashboard", middleware.AuthWithRedirect, func(c *fiber.Ctx) error {
 		c.Set("Content-Type", "text/html; charset=utf-8")
 		// Replace Go template variables in embedded HTML
 		html := strings.ReplaceAll(string(dashboardTemplate), "{{.Title}}", "Kaunta Dashboard")

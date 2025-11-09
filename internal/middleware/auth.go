@@ -60,6 +60,39 @@ func Auth(c *fiber.Ctx) error {
 	return c.Next()
 }
 
+// AuthWithRedirect middleware validates session tokens and redirects to /login for dashboard routes
+func AuthWithRedirect(c *fiber.Ctx) error {
+	// Extract token from cookie
+	token := c.Cookies("kaunta_session")
+	if token == "" {
+		// Also check Authorization header for API clients
+		authHeader := c.Get("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+	}
+
+	if token == "" {
+		return c.Redirect("/login")
+	}
+
+	// Validate session using PostgreSQL function
+	userCtx, err := sessionValidator(hashToken(token))
+
+	if err == sql.ErrNoRows {
+		return c.Redirect("/login")
+	}
+
+	if err != nil {
+		return c.Redirect("/login")
+	}
+
+	// Store user context in Fiber locals
+	c.Locals("user", userCtx)
+
+	return c.Next()
+}
+
 // GetUser retrieves the authenticated user from context
 func GetUser(c *fiber.Ctx) *UserContext {
 	if user, ok := c.Locals("user").(*UserContext); ok {
