@@ -71,6 +71,14 @@ Stats commands allow you to view analytics data and generate reports from the co
 	},
 }
 
+var (
+	getWebsiteIDByDomainFn = GetWebsiteIDByDomain
+	getOverviewStats       = GetOverviewStats
+	getTopPagesFn          = GetTopPages
+	getBreakdownStatsFn    = GetBreakdownStats
+	getLiveStatsFn         = GetLiveStats
+)
+
 // Overview command flags
 var (
 	overviewDays   int
@@ -201,22 +209,22 @@ func runStatsOverview(domain string, days int, format string) error {
 	}
 
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	// Get website ID
-	websiteID, err := GetWebsiteIDByDomain(ctx, domain)
+	websiteID, err := getWebsiteIDByDomainFn(ctx, domain)
 	if err != nil {
 		return err
 	}
 
-	stats, err := GetOverviewStats(ctx, database.DB, websiteID, days)
+	stats, err := getOverviewStats(ctx, database.DB, websiteID, days)
 	if err != nil {
 		return err
 	}
@@ -247,21 +255,21 @@ func runStatsPages(domain string, days int, top int, format string) error {
 	}
 
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	websiteID, err := GetWebsiteIDByDomain(ctx, domain)
+	websiteID, err := getWebsiteIDByDomainFn(ctx, domain)
 	if err != nil {
 		return err
 	}
 
-	pages, err := GetTopPages(ctx, database.DB, websiteID, days, top)
+	pages, err := getTopPagesFn(ctx, database.DB, websiteID, days, top)
 	if err != nil {
 		return err
 	}
@@ -308,21 +316,21 @@ func runStatsBreakdown(domain string, dimension string, days int, top int, forma
 	}
 
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	websiteID, err := GetWebsiteIDByDomain(ctx, domain)
+	websiteID, err := getWebsiteIDByDomainFn(ctx, domain)
 	if err != nil {
 		return err
 	}
 
-	stats, err := GetBreakdownStats(ctx, database.DB, websiteID, dimension, days, top)
+	stats, err := getBreakdownStatsFn(ctx, database.DB, websiteID, dimension, days, top)
 	if err != nil {
 		return err
 	}
@@ -349,16 +357,16 @@ func runStatsLive(domain string, interval int, format string) error {
 	}
 
 	if database.DB == nil {
-		if err := database.Connect(); err != nil {
+		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
 		}
-		defer func() { _ = database.Close() }()
+		defer func() { _ = closeDatabase() }()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 24*time.Hour)
 	defer cancel()
 
-	websiteID, err := GetWebsiteIDByDomain(ctx, domain)
+	websiteID, err := getWebsiteIDByDomainFn(ctx, domain)
 	if err != nil {
 		return err
 	}
@@ -373,7 +381,7 @@ func runStatsLive(domain string, interval int, format string) error {
 	fmt.Printf("Live stats for %s (updating every %d seconds, press Ctrl+C to exit)\n\n", domain, interval)
 
 	// Display initial stats
-	liveData, _ := GetLiveStats(ctx, database.DB, websiteID)
+	liveData, _ := getLiveStatsFn(ctx, database.DB, websiteID)
 	if format == "json" {
 		_ = outputLiveJSON(liveData)
 	} else {
@@ -386,7 +394,7 @@ func runStatsLive(domain string, interval int, format string) error {
 			fmt.Println("\n\nExiting live stats...")
 			return nil
 		case <-ticker.C:
-			liveData, err := GetLiveStats(ctx, database.DB, websiteID)
+			liveData, err := getLiveStatsFn(ctx, database.DB, websiteID)
 			if err != nil {
 				fmt.Printf("Error fetching live stats: %v\n", err)
 				continue

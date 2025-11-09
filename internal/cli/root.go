@@ -294,10 +294,17 @@ func handleHealth(c *fiber.Ctx) error {
 	})
 }
 
+var pingDatabase = func() error {
+	if database.DB == nil {
+		return fmt.Errorf("database connection not initialized")
+	}
+	return database.DB.Ping()
+}
+
 func handleUp(c *fiber.Ctx) error {
 	// Simple Docker health check endpoint
 	// Returns 200 OK if server is running and can connect to database
-	if err := database.DB.Ping(); err != nil {
+	if err := pingDatabase(); err != nil {
 		return c.Status(503).SendString("database unavailable")
 	}
 	return c.SendStatus(200)

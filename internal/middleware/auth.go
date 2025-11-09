@@ -19,6 +19,8 @@ type UserContext struct {
 	SessionID uuid.UUID
 }
 
+var sessionValidator = validateSessionFromDB
+
 // Auth middleware validates session tokens and loads user context
 func Auth(c *fiber.Ctx) error {
 	// Extract token from cookie
@@ -38,14 +40,7 @@ func Auth(c *fiber.Ctx) error {
 	}
 
 	// Validate session using PostgreSQL function
-	var userCtx UserContext
-	query := `SELECT user_id, username, session_id FROM validate_session($1)`
-
-	err := database.DB.QueryRow(query, hashToken(token)).Scan(
-		&userCtx.UserID,
-		&userCtx.Username,
-		&userCtx.SessionID,
-	)
+	userCtx, err := sessionValidator(hashToken(token))
 
 	if err == sql.ErrNoRows {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -60,7 +55,7 @@ func Auth(c *fiber.Ctx) error {
 	}
 
 	// Store user context in Fiber locals
-	c.Locals("user", &userCtx)
+	c.Locals("user", userCtx)
 
 	return c.Next()
 }
@@ -77,4 +72,19 @@ func GetUser(c *fiber.Ctx) *UserContext {
 func hashToken(token string) string {
 	hash := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(hash[:])
+}
+
+func validateSessionFromDB(tokenHash string) (*UserContext, error) {
+	var userCtx UserContext
+	query := `SELECT user_id, username, session_id FROM validate_session($1)`
+
+	err := database.DB.QueryRow(query, tokenHash).Scan(
+		&userCtx.UserID,
+		&userCtx.Username,
+		&userCtx.SessionID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &userCtx, nil
 }
