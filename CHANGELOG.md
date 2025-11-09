@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/seuros/kaunta/compare/v0.13.0...v0.13.1) (2025-11-09)
+
+
+### Bug Fixes
+
+* safe type assertion for CSRF token extraction ([684b077](https://github.com/seuros/kaunta/commit/684b0770d0e347546feb7483ff3e6c4afdeea145))
+
 ## [0.13.0](https://github.com/seuros/kaunta/compare/v0.12.0...v0.13.0) (2025-11-09)
 
 
