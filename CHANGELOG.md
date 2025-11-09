@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/seuros/kaunta/compare/v0.14.0...v0.14.1) (2025-11-09)
+
+
+### Bug Fixes
+
+* use csrf.TokenFromContext in /api/auth/csrf endpoint ([4179df6](https://github.com/seuros/kaunta/commit/4179df66c0e6fdbbfcdacf7ebcbfe8ee269d55b6))
+
 ## [0.14.0](https://github.com/seuros/kaunta/compare/v0.13.2...v0.14.0) (2025-11-09)
 
 
