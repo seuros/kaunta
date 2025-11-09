@@ -255,14 +255,6 @@ func serveAnalytics(
 	app.Get("/api/stats/realtime/:website_id", middleware.Auth, handlers.HandleCurrentVisitors)
 
 	// Auth API endpoints (public)
-	// CSRF token endpoint
-	app.Get("/api/auth/csrf", func(c fiber.Ctx) error {
-		token := csrf.TokenFromContext(c)
-		return c.JSON(fiber.Map{
-			"token": token,
-		})
-	})
-
 	// Rate limiter for login endpoint (5 requests per minute per IP)
 	loginLimiter := limiter.New(limiter.Config{
 		Max:        5,
