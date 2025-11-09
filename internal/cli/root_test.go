@@ -130,16 +130,20 @@ func TestGetEnvReturnsOverrides(t *testing.T) {
 }
 
 func TestLoginPageHTMLContainsFormAndScript(t *testing.T) {
-	html := loginPageHTML()
+	html := loginPageHTML("test-csrf-token-123")
 	assert.Contains(t, html, `<form id="loginForm">`)
 	assert.Contains(t, html, "fetch('/api/auth/login'")
 	assert.Contains(t, html, "window.location.href = '/dashboard'")
 }
 
-func TestLoginPageHTMLContainsCSRFTokenFetch(t *testing.T) {
-	html := loginPageHTML()
-	assert.Contains(t, html, "fetch('/api/auth/csrf')")
+func TestLoginPageHTMLContainsInjectedCSRFToken(t *testing.T) {
+	testToken := "test-csrf-token-abc123"
+	html := loginPageHTML(testToken)
+	// Should contain injected token
+	assert.Contains(t, html, "const csrfToken = '"+testToken+"'")
+	// Should send token in header
 	assert.Contains(t, html, "'X-CSRF-Token': csrfToken")
-	assert.Contains(t, html, "let csrfToken = ''")
-	assert.Contains(t, html, "fetchCSRFToken()")
+	// Should NOT fetch token (removed)
+	assert.NotContains(t, html, "fetch('/api/auth/csrf')")
+	assert.NotContains(t, html, "fetchCSRFToken()")
 }

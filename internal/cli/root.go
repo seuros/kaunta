@@ -173,15 +173,16 @@ func serveAnalytics(
 
 	// CSRF protection middleware
 	app.Use(csrf.New(csrf.Config{
-		KeyLookup:      "header:X-CSRF-Token",
-		CookieName:     "kaunta_csrf",
-		CookieSameSite: "Lax",
-		CookieHTTPOnly: true,
-		CookieSecure:   false, // Will be set dynamically based on protocol
-		Expiration:     7 * 24 * time.Hour,
+		KeyLookup:         "header:X-CSRF-Token",
+		CookieName:        "kaunta_csrf",
+		CookieSameSite:    "Lax",
+		CookieHTTPOnly:    true,
+		CookieSecure:      false, // Will be set dynamically based on protocol
+		Expiration:        7 * 24 * time.Hour,
+		HandlerContextKey: "csrf", // Make token available to handlers via c.Locals("csrf")
 		// Skip CSRF protection for tracking endpoint (public API)
 		Next: func(c *fiber.Ctx) bool {
-			return c.Path() == "/api/send" || c.Path() == "/api/auth/login"
+			return c.Path() == "/api/send"
 		},
 	}))
 
@@ -282,7 +283,9 @@ func serveAnalytics(
 	// Login page (public)
 	app.Get("/login", func(c *fiber.Ctx) error {
 		c.Set("Content-Type", "text/html; charset=utf-8")
-		return c.SendString(loginPageHTML())
+		// Extract CSRF token from middleware
+		csrfToken := c.Locals("csrf").(string)
+		return c.SendString(loginPageHTML(csrfToken))
 	})
 
 	// Dashboard UI (protected)
@@ -394,8 +397,8 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-// loginPageHTML returns a simple login page
-func loginPageHTML() string {
+// loginPageHTML returns a simple login page with injected CSRF token
+func loginPageHTML(csrfToken string) string {
 	return `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -662,24 +665,9 @@ func loginPageHTML() string {
       const form = document.getElementById('loginForm');
       const errorDiv = document.getElementById('error');
       const submitBtn = document.getElementById('submitBtn');
-      let csrfToken = '';
 
-      // Fetch CSRF token on page load
-      async function fetchCSRFToken() {
-        try {
-          const response = await fetch('/api/auth/csrf');
-          const data = await response.json();
-          csrfToken = data.token;
-        } catch (error) {
-          console.error('Failed to fetch CSRF token:', error);
-          errorDiv.textContent = 'Security initialization failed. Please reload the page.';
-          errorDiv.classList.add('show');
-          submitBtn.disabled = true;
-        }
-      }
-
-      // Initialize CSRF token
-      fetchCSRFToken();
+      // CSRF token injected server-side at page render
+      const csrfToken = '` + csrfToken + `';
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
