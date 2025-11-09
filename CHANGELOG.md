@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.3](https://github.com/seuros/kaunta/compare/v0.10.2...v0.10.3) (2025-11-09)
+
+
+### Bug Fixes
+
+* add checkout step to upload-release-assets job ([a586e32](https://github.com/seuros/kaunta/commit/a586e32c256782d6ad1aa4cf846ff9b28e90a090))
+
 ## [0.10.2](https://github.com/seuros/kaunta/compare/v0.10.1...v0.10.2) (2025-11-09)
 
 
