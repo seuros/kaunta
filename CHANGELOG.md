@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/seuros/kaunta/compare/v0.10.0...v0.10.1) (2025-11-09)
+
+
+### Bug Fixes
+
+* update release workflow for self-upgrade support ([77e760c](https://github.com/seuros/kaunta/commit/77e760c4db0d0e1c0cf0653d2c69b1bcdd77a559))
+
 ## [0.10.0](https://github.com/seuros/kaunta/compare/v0.9.0...v0.10.0) (2025-11-09)
 
 
