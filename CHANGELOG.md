@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/seuros/kaunta/compare/v0.13.2...v0.14.0) (2025-11-09)
+
+
+### Features
+
+* upgrade Fiber from v2 to v3 ([d901166](https://github.com/seuros/kaunta/commit/d90116665da61255586fb8ffef1d705042a33330))
+
 ## [0.13.2](https://github.com/seuros/kaunta/compare/v0.13.1...v0.13.2) (2025-11-09)
 
 
