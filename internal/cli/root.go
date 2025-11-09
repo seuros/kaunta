@@ -283,8 +283,11 @@ func serveAnalytics(
 	// Login page (public)
 	app.Get("/login", func(c *fiber.Ctx) error {
 		c.Set("Content-Type", "text/html; charset=utf-8")
-		// Extract CSRF token from middleware
-		csrfToken := c.Locals("csrf").(string)
+		// Extract CSRF token from middleware (safe type assertion)
+		var csrfToken string
+		if token := c.Locals("csrf"); token != nil {
+			csrfToken, _ = token.(string)
+		}
 		return c.SendString(loginPageHTML(csrfToken))
 	})
 
