@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/seuros/kaunta/compare/v0.11.0...v0.11.1) (2025-11-09)
+
+
+### Bug Fixes
+
+* **dashboard:** resolve chart rendering race condition ([#16](https://github.com/seuros/kaunta/issues/16)) ([de60e7b](https://github.com/seuros/kaunta/commit/de60e7b75afb602ed8205acabd2078c731d9a8e5))
+
 ## [0.11.0](https://github.com/seuros/kaunta/compare/v0.10.3...v0.11.0) (2025-11-09)
 
 
