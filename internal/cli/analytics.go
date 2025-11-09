@@ -77,6 +77,13 @@ var (
 	getTopPagesFn          = GetTopPages
 	getBreakdownStatsFn    = GetBreakdownStats
 	getLiveStatsFn         = GetLiveStats
+	tickerFactory          = func(d time.Duration) (<-chan time.Time, func()) {
+		ticker := time.NewTicker(d)
+		return ticker.C, ticker.Stop
+	}
+	signalNotifyFunc = func(c chan<- os.Signal, sig ...os.Signal) {
+		signal.Notify(c, sig...)
+	}
 )
 
 // Overview command flags
@@ -373,10 +380,10 @@ func runStatsLive(domain string, interval int, format string) error {
 
 	// Setup signal handler for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	signalNotifyFunc(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	ticker := time.NewTicker(time.Duration(interval) * time.Second)
-	defer ticker.Stop()
+	tickCh, stopTicker := tickerFactory(time.Duration(interval) * time.Second)
+	defer stopTicker()
 
 	fmt.Printf("Live stats for %s (updating every %d seconds, press Ctrl+C to exit)\n\n", domain, interval)
 
@@ -393,7 +400,7 @@ func runStatsLive(domain string, interval int, format string) error {
 		case <-sigChan:
 			fmt.Println("\n\nExiting live stats...")
 			return nil
-		case <-ticker.C:
+		case <-tickCh:
 			liveData, err := getLiveStatsFn(ctx, database.DB, websiteID)
 			if err != nil {
 				fmt.Printf("Error fetching live stats: %v\n", err)

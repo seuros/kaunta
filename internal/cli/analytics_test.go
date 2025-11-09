@@ -3,7 +3,9 @@ package cli
 import (
 	"context"
 	"database/sql"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -125,6 +127,71 @@ func TestRunStatsBreakdownInvalidDimension(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid dimension")
 }
 
+func TestRunStatsLiveTextHandlesTickerAndSignal(t *testing.T) {
+	stubDB(t)
+	stubConnectClose(t)
+
+	stubWebsiteIDLookup(t, func(ctx context.Context, domain string) (string, error) {
+		assert.Equal(t, "example.com", domain)
+		return "site-123", nil
+	})
+
+	tickCh := make(chan time.Time)
+	stopped := false
+	stubTickerFactory(t, func(d time.Duration) (<-chan time.Time, func()) {
+		return tickCh, func() { stopped = true }
+	})
+
+	var capturedSignal chan<- os.Signal
+	stubSignalNotify(t, func(c chan<- os.Signal, sig ...os.Signal) {
+		capturedSignal = c
+	})
+
+	callCh := make(chan int, 4)
+	callCount := 0
+	stubLiveStatsFetcher(t, func(ctx context.Context, db *sql.DB, websiteID string) (*LiveStatsData, error) {
+		callCount++
+		callCh <- callCount
+		return &LiveStatsData{
+			Timestamp:         time.Unix(int64(callCount), 0),
+			ActiveVisitorsNow: int64(callCount),
+			TopPageNow: &PageStat{
+				Path:      "/live",
+				Pageviews: int64(callCount),
+			},
+		}, nil
+	})
+
+	outputCh := make(chan string, 1)
+	errCh := make(chan error, 1)
+
+	go func() {
+		out, err := captureOutput(t, func() error {
+			return runStatsLive("example.com", 2, "text")
+		})
+		outputCh <- out
+		errCh <- err
+	}()
+
+	<-callCh // initial fetch
+	tickCh <- time.Now()
+	<-callCh // update fetch
+
+	require.Eventually(t, func() bool {
+		return capturedSignal != nil
+	}, time.Second, 10*time.Millisecond)
+
+	capturedSignal <- os.Interrupt
+
+	err := <-errCh
+	output := <-outputCh
+
+	require.NoError(t, err)
+	assert.Contains(t, output, "Live stats for example.com")
+	assert.Contains(t, output, "Active Visitors (last 5 min)")
+	assert.True(t, stopped)
+}
+
 func stubWebsiteIDLookup(t *testing.T, fn func(ctx context.Context, domain string) (string, error)) {
 	t.Helper()
 	original := getWebsiteIDByDomainFn
@@ -158,5 +225,14 @@ func stubBreakdownFetcher(t *testing.T, fn func(context.Context, *sql.DB, string
 	getBreakdownStatsFn = fn
 	t.Cleanup(func() {
 		getBreakdownStatsFn = original
+	})
+}
+
+func stubLiveStatsFetcher(t *testing.T, fn func(context.Context, *sql.DB, string) (*LiveStatsData, error)) {
+	t.Helper()
+	original := getLiveStatsFn
+	getLiveStatsFn = fn
+	t.Cleanup(func() {
+		getLiveStatsFn = original
 	})
 }

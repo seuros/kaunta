@@ -7,9 +7,12 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/csrf"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/spf13/cobra"
@@ -160,7 +163,7 @@ func serveAnalytics(
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept",
+		AllowHeaders: "Origin, Content-Type, Accept, X-CSRF-Token",
 		AllowMethods: "GET, POST, OPTIONS",
 	}))
 
@@ -169,6 +172,20 @@ func serveAnalytics(
 		c.Set("X-Kaunta-Version", Version)
 		return c.Next()
 	})
+
+	// CSRF protection middleware
+	app.Use(csrf.New(csrf.Config{
+		KeyLookup:      "header:X-CSRF-Token,form:_csrf",
+		CookieName:     "kaunta_csrf",
+		CookieSameSite: "Lax",
+		CookieHTTPOnly: true,
+		CookieSecure:   false, // Will be set dynamically based on protocol
+		Expiration:     7 * 24 * time.Hour,
+		// Skip CSRF protection for tracking endpoint (public API)
+		Next: func(c *fiber.Ctx) bool {
+			return c.Path() == "/api/send"
+		},
+	}))
 
 	// Static assets - serve embedded JS/CSS files
 	app.Get("/assets/vendor/:filename<*>", func(c *fiber.Ctx) error {
@@ -234,7 +251,29 @@ func serveAnalytics(
 	app.Get("/api/stats/realtime/:website_id", handlers.HandleCurrentVisitors)
 
 	// Auth API endpoints (public)
-	app.Post("/api/auth/login", handlers.HandleLogin)
+	// CSRF token endpoint
+	app.Get("/api/auth/csrf", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"token": c.Locals("csrf").(string),
+		})
+	})
+
+	// Rate limiter for login endpoint (5 requests per minute per IP)
+	loginLimiter := limiter.New(limiter.Config{
+		Max:        5,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"success": false,
+				"error":   "Too many login attempts. Please try again later.",
+			})
+		},
+	})
+
+	app.Post("/api/auth/login", loginLimiter, handlers.HandleLogin)
 
 	// Login page (public)
 	app.Get("/login", func(c *fiber.Ctx) error {
@@ -619,6 +658,24 @@ func loginPageHTML() string {
       const form = document.getElementById('loginForm');
       const errorDiv = document.getElementById('error');
       const submitBtn = document.getElementById('submitBtn');
+      let csrfToken = '';
+
+      // Fetch CSRF token on page load
+      async function fetchCSRFToken() {
+        try {
+          const response = await fetch('/api/auth/csrf');
+          const data = await response.json();
+          csrfToken = data.token;
+        } catch (error) {
+          console.error('Failed to fetch CSRF token:', error);
+          errorDiv.textContent = 'Security initialization failed. Please reload the page.';
+          errorDiv.classList.add('show');
+          submitBtn.disabled = true;
+        }
+      }
+
+      // Initialize CSRF token
+      fetchCSRFToken();
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -635,6 +692,7 @@ func loginPageHTML() string {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'X-CSRF-Token': csrfToken,
             },
             body: JSON.stringify({ username, password }),
           });

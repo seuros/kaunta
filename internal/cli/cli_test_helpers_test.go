@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/stretchr/testify/require"
@@ -48,5 +49,23 @@ func stubConnectClose(t *testing.T) {
 	t.Cleanup(func() {
 		connectDatabase = originalConnect
 		closeDatabase = originalClose
+	})
+}
+
+func stubTickerFactory(t *testing.T, fn func(time.Duration) (<-chan time.Time, func())) {
+	t.Helper()
+	original := tickerFactory
+	tickerFactory = fn
+	t.Cleanup(func() {
+		tickerFactory = original
+	})
+}
+
+func stubSignalNotify(t *testing.T, fn func(chan<- os.Signal, ...os.Signal)) {
+	t.Helper()
+	original := signalNotifyFunc
+	signalNotifyFunc = fn
+	t.Cleanup(func() {
+		signalNotifyFunc = original
 	})
 }

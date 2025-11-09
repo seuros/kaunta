@@ -135,3 +135,11 @@ func TestLoginPageHTMLContainsFormAndScript(t *testing.T) {
 	assert.Contains(t, html, "fetch('/api/auth/login'")
 	assert.Contains(t, html, "window.location.href = '/dashboard'")
 }
+
+func TestLoginPageHTMLContainsCSRFTokenFetch(t *testing.T) {
+	html := loginPageHTML()
+	assert.Contains(t, html, "fetch('/api/auth/csrf')")
+	assert.Contains(t, html, "'X-CSRF-Token': csrfToken")
+	assert.Contains(t, html, "let csrfToken = ''")
+	assert.Contains(t, html, "fetchCSRFToken()")
+}

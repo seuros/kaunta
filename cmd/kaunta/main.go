@@ -29,12 +29,11 @@ var dashboardTemplate []byte
 //go:embed index.html
 var indexTemplate []byte
 
-func main() {
-	// Extract version from embedded file
-	version := strings.TrimSpace(versionFile)
+var executeCLI = cli.Execute
 
-	// Execute CLI with embedded assets
-	if err := cli.Execute(
+func run() error {
+	version := strings.TrimSpace(versionFile)
+	return executeCLI(
 		version,
 		trackerScript,
 		vendorJS,
@@ -42,7 +41,11 @@ func main() {
 		countriesGeoJSON,
 		dashboardTemplate,
 		indexTemplate,
-	); err != nil {
+	)
+}
+
+func main() {
+	if err := run(); err != nil {
 		log.Fatal(err)
 	}
 }
