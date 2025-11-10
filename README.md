@@ -12,6 +12,7 @@ A simple, fast, privacy-focused web analytics engine. Drop-in replacement for Um
 - **Umami Compatible** - Same API & database schema
 - **Full Analytics** - Visitors, pageviews, referrers, devices, locations, real-time stats
 - **Geolocation** - City/region level with automatic MaxMind GeoLite2 download
+- **Multi-Domain Support** - Custom domains via CNAME with shared authentication
 
 ## Installation
 
@@ -151,6 +152,129 @@ After creating a user:
 3. You'll be redirected to `/dashboard`
 
 Sessions last 7 days and use HTTP-only cookies for security.
+
+## Domain Management
+
+Kaunta supports multiple custom domains for dashboard access (e.g., `analytics.yourdomain.com`, `stats.client.com`) using CNAME records. This allows you to provide white-label analytics dashboards while maintaining a single Kaunta instance with shared authentication.
+
+Trusted domains are stored in the database and managed via CLI commands. Changes take effect within 5 minutes (cache TTL).
+
+### Add a Trusted Domain
+
+```bash
+kaunta domain add <domain>
+
+# With description
+kaunta domain add analytics.example.com --description "Main analytics dashboard"
+```
+
+**Important:** Provide the domain without protocol (no `http://` or `https://`). Port numbers are handled automatically.
+
+Example:
+```bash
+$ kaunta domain add analytics.example.com --description "Client dashboard"
+
+✓ Trusted domain added successfully
+  ID:     1
+  Domain: analytics.example.com
+  Desc:   Client dashboard
+  Active: true
+  Added:  2025-01-10 10:30:00
+
+Note: Changes take effect within 5 minutes (cache TTL)
+```
+
+### List Trusted Domains
+
+```bash
+kaunta domain list           # Show all domains
+kaunta domain list --active  # Show only active domains
+```
+
+Example output:
+```
+Total domains: 3
+
+ID    Active  Domain                      Description            Created
+--------------------------------------------------------------------------------
+1     ✓       analytics.example.com       Main dashboard         2025-01-10 10:30:00
+2     ✓       stats.client.com            Client analytics       2025-01-10 11:45:00
+3     ✗       old.domain.com              Deprecated             2025-01-05 09:15:00
+```
+
+### Remove a Trusted Domain
+
+```bash
+kaunta domain remove <domain>
+# Or use domain ID:
+kaunta domain remove 1
+
+# Skip confirmation:
+kaunta domain remove analytics.example.com --force
+```
+
+### Toggle Domain Status
+
+Temporarily disable a domain without deleting it:
+
+```bash
+kaunta domain toggle <domain>
+# Or use ID:
+kaunta domain toggle 1
+```
+
+Example:
+```bash
+$ kaunta domain toggle analytics.example.com
+✓ Domain 'analytics.example.com' disabled successfully
+Note: Changes take effect within 5 minutes (cache TTL)
+
+$ kaunta domain toggle analytics.example.com
+✓ Domain 'analytics.example.com' enabled successfully
+```
+
+### Verify a Domain
+
+Test if an origin URL is trusted (useful for debugging CSRF issues):
+
+```bash
+kaunta domain verify <origin-url>
+```
+
+Example:
+```bash
+$ kaunta domain verify https://analytics.example.com
+✓ Origin 'https://analytics.example.com' is TRUSTED
+
+$ kaunta domain verify https://unknown.com
+✗ Origin 'https://unknown.com' is NOT TRUSTED
+
+Add the domain with: kaunta domain add <domain>
+```
+
+### Setting Up Custom Domains
+
+1. **Add domain to Kaunta:**
+   ```bash
+   kaunta domain add analytics.yourdomain.com
+   ```
+
+2. **Configure DNS CNAME:**
+   Point your custom domain to your Kaunta server:
+   ```
+   analytics.yourdomain.com  CNAME  kaunta.yourserver.com
+   ```
+
+3. **Configure reverse proxy** (if using nginx/Cloudflare):
+   - Ensure the proxy forwards the `Origin` header
+   - Enable HTTPS (required for `SameSite=None` cookies)
+
+4. **Test the configuration:**
+   ```bash
+   kaunta domain verify https://analytics.yourdomain.com
+   ```
+
+Users can now log in at `https://analytics.yourdomain.com/login` and access the dashboard. Sessions work across all trusted domains.
 
 ## Upgrading Kaunta
 
