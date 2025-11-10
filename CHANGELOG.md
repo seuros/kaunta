@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.3](https://github.com/seuros/kaunta/compare/v0.14.2...v0.14.3) (2025-11-10)
+
+
+### Bug Fixes
+
+* read CSRF token from cookie instead of server injection ([642cf05](https://github.com/seuros/kaunta/commit/642cf05b709ce25a2159b401f19a835e9497a686))
+
 ## [0.14.2](https://github.com/seuros/kaunta/compare/v0.14.1...v0.14.2) (2025-11-09)
 
 
