@@ -180,9 +180,9 @@ func serveAnalytics(
 	app.Use(csrf.New(csrf.Config{
 		Extractor:      extractors.FromHeader("X-CSRF-Token"),
 		CookieName:     "kaunta_csrf",
-		CookieSameSite: "Lax",
+		CookieSameSite: "None",
 		CookieHTTPOnly: false, // Must be false to allow JavaScript to read token
-		CookieSecure:   false, // Will be set dynamically based on protocol
+		CookieSecure:   true,  // Required for SameSite=None
 		IdleTimeout:    7 * 24 * time.Hour,
 		// Skip CSRF protection for tracking endpoint (public API)
 		Next: func(c fiber.Ctx) bool {
