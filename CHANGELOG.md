@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.9](https://github.com/seuros/kaunta/compare/v0.14.8...v0.14.9) (2025-11-10)
+
+
+### Bug Fixes
+
+* add TrustedOrigins for CSRF with Cloudflare proxy ([8d1b774](https://github.com/seuros/kaunta/commit/8d1b77498f8ec3b0969ab016669b9b409eaa9c67))
+
 ## [0.14.8](https://github.com/seuros/kaunta/compare/v0.14.7...v0.14.8) (2025-11-10)
 
 
