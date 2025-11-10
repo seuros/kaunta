@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.9](https://github.com/seuros/kaunta/compare/v0.14.8...v0.14.9) (2025-11-10)
+
+
+### Bug Fixes
+
+* use TRUSTED_ORIGINS env var for CSRF with proxy ([c0eb17e](https://github.com/seuros/kaunta/commit/c0eb17e04287ad848bbd200de451a0a55d799c24))
+
 ## [0.14.8](https://github.com/seuros/kaunta/compare/v0.14.7...v0.14.8) (2025-11-10)
 
 
