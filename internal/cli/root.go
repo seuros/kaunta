@@ -176,15 +176,15 @@ func serveAnalytics(
 		return c.Next()
 	})
 
-	// Debug middleware to log cookies
-	app.Use(func(c fiber.Ctx) error {
-		if c.Path() == "/api/auth/login" {
-			log.Printf("Login request - Cookie header: %s, CSRF header: %s", c.Get("Cookie"), c.Get("X-CSRF-Token"))
+	// CSRF protection middleware - get trusted origins from env
+	trustedOrigins := strings.Split(getEnv("TRUSTED_ORIGINS", ""), ",")
+	var filteredOrigins []string
+	for _, origin := range trustedOrigins {
+		if trimmed := strings.TrimSpace(origin); trimmed != "" {
+			filteredOrigins = append(filteredOrigins, trimmed)
 		}
-		return c.Next()
-	})
+	}
 
-	// CSRF protection middleware
 	app.Use(csrf.New(csrf.Config{
 		Extractor:      extractors.FromHeader("X-CSRF-Token"),
 		CookieName:     "kaunta_csrf",
@@ -192,6 +192,8 @@ func serveAnalytics(
 		CookieHTTPOnly: false, // Must be false to allow JavaScript to read token
 		CookieSecure:   true,  // Required for SameSite=None
 		IdleTimeout:    7 * 24 * time.Hour,
+		Session:        nil, // Use cookie-based tokens, not session
+		TrustedOrigins: filteredOrigins,
 		// Skip CSRF protection for tracking endpoint (public API)
 		Next: func(c fiber.Ctx) bool {
 			return c.Path() == "/api/send"
