@@ -4,49 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kaunta - Analytics without bloat</title>
-    <meta name="description" content="Kaunta - Privacy-focused web analytics without bloat. Lightweight, fast, self-hosted analytics engine." />
-    <link rel="canonical" href="https://seuros.github.io/kaunta/" />
-
-    <!-- Open Graph -->
-    <meta property="og:title" content="Kaunta - Analytics without bloat" />
-    <meta property="og:description" content="Privacy-focused web analytics. Lightweight, fast, self-hosted." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://seuros.github.io/kaunta/" />
-    <meta property="og:site_name" content="Kaunta Analytics" />
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Kaunta · Lightweight self-hosted analytics" />
-    <meta name="twitter:description" content="Self-hosted, privacy-first metrics in a single binary." />
-
-    <!-- Theme Color -->
-    <meta name="theme-color" content="#3b82f6" />
-
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
-
-    <!-- Structured Data -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Kaunta",
-      "applicationCategory": "AnalyticsApplication",
-      "operatingSystem": "Linux, macOS, Docker",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      },
-      "softwareVersion": "0.6.1",
-      "url": "https://seuros.github.io/kaunta/",
-      "downloadUrl": "https://github.com/seuros/kaunta/releases",
-      "description": "Privacy-focused web analytics without bloat. Lightweight, fast, self-hosted analytics engine."
-    }
-    </script>
-
-    <!-- Kaunta Analytics -->
-    <script defer src="https://census.derails.dev/k.js" data-website-id="e0820304-896d-4d78-b37d-02896b327352"></script>
-
     <style>
       * {
         margin: 0;
@@ -60,301 +17,494 @@
 
       :root {
         --bg-primary: #ffffff;
-        --bg-secondary: #f8f9fa;
-        --bg-accent: #f0f4ff;
-        --text-primary: #1a1a1a;
-        --text-secondary: #4b5563;
-        --text-tertiary: #6b7280;
-        --border-color: #e5e7eb;
-        --accent-color: #2563eb;
-        --accent-dark: #1f2937;
-        --code-bg: #282c34;
-        --code-text: #abb2bf;
-        --code-keyword: #c678dd;
-        --code-string: #98c379;
-        --code-comment: #5c6370;
-        --code-function: #61afef;
-      }
-
-      /* Accessibility: Reduced Motion */
-      @media (prefers-reduced-motion: reduce) {
-        html {
-          scroll-behavior: auto;
-        }
-        * {
-          transition-duration: 0.01ms !important;
-          animation-duration: 0.01ms !important;
-        }
+        --bg-secondary: #f0f4ff;
+        --bg-accent: #e8effe;
+        --bg-glass: rgba(255, 255, 255, 0.75);
+        --text-primary: #0a0e27;
+        --text-secondary: #4a5568;
+        --text-tertiary: #718096;
+        --border-color: #dce4f0;
+        --accent-color: #3b82f6;
+        --accent-dark: #1e40af;
+        --accent-light: #dbeafe;
+        --code-bg: #1e293b;
+        --code-text: #cbd5e1;
+        --code-keyword: #d946ef;
+        --code-string: #10b981;
+        --code-comment: #64748b;
+        --code-function: #60a5fa;
       }
 
       body {
-        font-family:
-          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-        background-color: var(--bg-primary);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+        background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-accent) 100%);
         color: var(--text-primary);
         line-height: 1.6;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
       }
 
-      /* Header & Navigation */
+      .glass {
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(16px) saturate(1.3);
+        -webkit-backdrop-filter: blur(16px) saturate(1.3);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      }
+
+      /* <CHANGE> Improved floating status banner with enhanced glass effect */
+      .floating-status {
+  
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px) saturate(1.4);
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: 12px;
+        padding: 12px 18px;
+        z-index: 200;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--accent-color);
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        animation: floatUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      @keyframes floatUp {
+        from {
+          opacity: 0;
+          transform: translateY(-20px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .status-indicator {
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        animation: pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+      }
+
+      @keyframes pulse {
+        0%, 100% { 
+          opacity: 1;
+          box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+        }
+        50% { 
+          opacity: 0.4;
+          box-shadow: 0 0 4px rgba(16, 185, 129, 0.3);
+        }
+      }
+
+      /* Centered header with glass effect and max-width 1200px */
       header {
-        border-bottom: 1px solid var(--border-color);
-        padding: 1.5rem 2rem;
-        position: sticky;
-        top: 0;
-        background: var(--bg-primary);
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        max-width: 1200px;
+        width: 90%;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px) saturate(1.4);
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        border-radius: 16px;
+        padding: 0;
         z-index: 100;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        animation: slideDown 0.6s ease-out;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      header:hover {
+        background: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 12px 48px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        transform: translateX(-50%) translateY(-2px);
       }
 
       nav {
-        max-width: 1200px;
-        margin: 0 auto;
+        width: 100%;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        padding: 16px 32px;
       }
 
       .logo {
         font-size: 1.5rem;
         font-weight: 700;
         letter-spacing: -0.5px;
+        background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        transition: transform 0.2s ease;
+      }
+
+      .logo:hover {
+        transform: scale(1.05);
       }
 
       .nav-links {
         display: flex;
-        gap: 2rem;
+        gap: 2.5rem;
       }
 
       .nav-links a {
         color: var(--text-secondary);
         text-decoration: none;
         font-size: 0.95rem;
+        font-weight: 500;
         transition: color 0.2s ease;
+        position: relative;
       }
 
       .nav-links a:hover {
         color: var(--accent-color);
       }
 
+      .nav-links a::after {
+        content: '';
+        position: absolute;
+        bottom: -4px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: var(--accent-color);
+        transition: width 0.3s ease;
+      }
+
+      .nav-links a:hover::after {
+        width: 100%;
+      }
+
       .cta-button {
-        background-color: var(--accent-dark);
+        background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
         color: white;
         border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
+        padding: 0.75rem 1.75rem;
+        border-radius: 12px;
         font-size: 0.95rem;
-        font-weight: 500;
+        font-weight: 600;
         cursor: pointer;
         text-decoration: none;
-        transition: background-color 0.2s ease;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
       }
 
       .cta-button:hover {
-        background-color: var(--accent-color);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.4);
       }
 
-      /* Hero Section */
+      .container {
+        width: 100%;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .main-content {
+        flex: 1;
+        width: 100%;
+      }
+
+      /* <CHANGE> Enhanced hero section with vertical layout */
       .hero {
+        position: relative;
+        width: 100%;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 140px 40px 80px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(232, 239, 254, 0.4) 100%);
+        overflow: hidden;
+      }
+
+      .hero::before {
+        content: '';
+        position: absolute;
+        top: -30%;
+        right: -15%;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+        border-radius: 50%;
+        z-index: 0;
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 10;
         max-width: 1200px;
-        margin: 0 auto;
-        padding: 4rem 2rem;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         text-align: center;
+        gap: 2.5rem;
+      }
+
+      .hero-text {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: center;
       }
 
       .hero h1 {
-        font-size: clamp(2rem, 5vw, 3.5rem);
-        margin-bottom: 1rem;
-        letter-spacing: -1px;
-        line-height: 1.2;
+        font-size: clamp(3.5rem, 8vw, 5.5rem);
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--accent-dark), var(--accent-color));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0;
+        letter-spacing: -2px;
+        line-height: 1.1;
       }
 
       .hero-subtitle {
-        font-size: 1.25rem;
+        font-size: clamp(1.1rem, 2vw, 1.35rem);
         color: var(--text-secondary);
-        margin-bottom: 2.5rem;
-        max-width: 600px;
-        margin-left: auto;
-        margin-right: auto;
+        font-weight: 400;
+        margin-bottom: 0;
+        line-height: 1.8;
+        max-width: 700px;
       }
 
+      /* <CHANGE> Hero buttons positioned before image in vertical layout */
       .hero-buttons {
         display: flex;
-        gap: 1rem;
-        justify-content: center;
+        gap: 16px;
         flex-wrap: wrap;
-        margin-bottom: 4rem;
+        justify-content: center;
+        margin-top: 2rem;
       }
 
-      .primary-btn {
-        background-color: var(--accent-color);
-        color: white;
-        border: none;
-        padding: 0.875rem 2rem;
-        border-radius: 8px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition:
-          background-color 0.2s ease,
-          transform 0.2s ease;
+      .hero-image-container {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        margin-top: 2rem;
+      }
+
+      /* <CHANGE> Enhanced image with improved glass container */
+      .hero-image {
+        width: 100%;
+        max-width: 700px;
+        height: auto;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(16px) saturate(1.3);
+        -webkit-backdrop-filter: blur(16px) saturate(1.3);
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        padding: 3px;
+        box-shadow: 0 40px 80px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        animation: floatImage 3s ease-in-out infinite;
+      }
+
+      @keyframes floatImage {
+        0%, 100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-16px);
+        }
+      }
+
+      .hero-image:hover {
+        transform: translateY(-12px) scale(1.01);
+        box-shadow: 0 60px 120px rgba(59, 130, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        animation: none;
+      }
+
+      .btn {
+        padding: 13px 28px;
+        border-radius: 12px;
         text-decoration: none;
-        display: inline-block;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1rem;
       }
 
-      .primary-btn:hover {
-        background-color: #2563eb;
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+        color: white;
+        border: 1px solid var(--accent-color);
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.4);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(16px) saturate(1.3);
+        -webkit-backdrop-filter: blur(16px) saturate(1.3);
+        color: var(--accent-color);
+        border: 1.5px solid rgba(59, 130, 246, 0.4);
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      }
+
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.95);
+        border-color: var(--accent-color);
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9);
         transform: translateY(-2px);
       }
 
-      .secondary-btn {
-        background-color: transparent;
-        color: var(--accent-color);
-        border: 2px solid var(--accent-color);
-        padding: 0.75rem 1.875rem;
-        border-radius: 8px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        text-decoration: none;
-        display: inline-block;
-      }
-
-      .secondary-btn:hover {
-        background-color: var(--bg-accent);
-      }
-
-      /* Accessibility: Focus Styles */
-      .primary-btn:focus-visible,
-      .secondary-btn:focus-visible,
-      .cta-button:focus-visible {
-        outline: 3px solid var(--accent-color);
-        outline-offset: 3px;
-      }
-
-      /* Status Box */
-      .status-container {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 0 2rem 4rem;
-      }
-
-      .status-box {
-        background: linear-gradient(135deg, #f8f9fa 0%, #f0f4ff 100%);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 2rem;
-        margin-bottom: 3rem;
-      }
-
-      .status-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 2rem;
-      }
-
-      .status-item {
-        text-align: left;
-      }
-
-      .status-label {
-        font-size: 0.85rem;
-        color: var(--text-tertiary);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.5rem;
-      }
-
-      .status-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 0.25rem;
-      }
-
-      .status-detail {
-        font-size: 0.95rem;
-        color: var(--text-secondary);
-      }
-
-      /* Section Container */
       .section {
+        width: 100%;
+        padding: 80px 40px;
+      }
+
+      .section-container {
         max-width: 1200px;
         margin: 0 auto;
-        padding: 5rem 2rem;
       }
 
       .section-alt {
-        background-color: var(--bg-secondary);
+        background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-accent) 100%);
       }
 
       .section-title {
-        font-size: 2rem;
-        margin-bottom: 2.5rem;
+        font-size: 2.2rem;
+        margin-bottom: 3rem;
         text-align: center;
         font-weight: 700;
+        color: var(--text-primary);
       }
 
-      /* Features Grid */
+      /* ... existing code ... */
+
       .features-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 2rem;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 24px;
+        max-width: 1200px;
+        margin: 0 auto;
       }
 
       .feature-card {
-        background: white;
-        padding: 2rem;
-        border-radius: 10px;
-        border: 1px solid var(--border-color);
-        transition:
-          border-color 0.2s ease,
-          box-shadow 0.2s ease;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(16px) saturate(1.3);
+        -webkit-backdrop-filter: blur(16px) saturate(1.3);
+        padding: 32px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        text-align: left;
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        animation: slideUp 0.6s ease-out backwards;
+      }
+
+      .feature-card:nth-child(1) { animation-delay: 0.1s; }
+      .feature-card:nth-child(2) { animation-delay: 0.15s; }
+      .feature-card:nth-child(3) { animation-delay: 0.2s; }
+      .feature-card:nth-child(4) { animation-delay: 0.25s; }
+      .feature-card:nth-child(5) { animation-delay: 0.3s; }
+      .feature-card:nth-child(6) { animation-delay: 0.35s; }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
 
       .feature-card:hover {
+        transform: translateY(-8px);
         border-color: var(--accent-color);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+        box-shadow: 0 20px 48px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        background: rgba(255, 255, 255, 0.95);
       }
 
       .feature-icon {
-        width: 48px;
-        height: 48px;
-        background-color: var(--bg-accent);
-        border-radius: 8px;
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.08) 100%);
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 1rem;
-        font-size: 1.5rem;
+        margin-bottom: 1.2rem;
+        font-size: 1.8rem;
+        border: 1px solid rgba(59, 130, 246, 0.25);
       }
 
       .feature-title {
-        font-size: 1.1rem;
+        font-size: 1.2rem;
         font-weight: 600;
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.8rem;
+        color: var(--text-primary);
       }
 
       .feature-description {
         color: var(--text-secondary);
         font-size: 0.95rem;
+        line-height: 1.7;
       }
 
-      /* Code Block with Syntax Highlighting */
+      /* ... existing code ... */
+
       .code-block {
         background-color: var(--code-bg);
-        border-radius: 8px;
+        border-radius: 12px;
         overflow: hidden;
         margin: 1.5rem 0;
-        border: 1px solid var(--border-color);
+        border: 1px solid rgba(203, 213, 225, 0.2);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        transition: all 0.3s ease;
+      }
+
+      .code-block:hover {
+        box-shadow: 0 12px 40px rgba(59, 130, 246, 0.15);
       }
 
       .code-header {
-        background-color: #21252b;
+        background-color: rgba(15, 23, 42, 0.9);
         padding: 0.75rem 1.5rem;
-        border-bottom: 1px solid #181a1f;
+        border-bottom: 1px solid rgba(203, 213, 225, 0.15);
         font-size: 0.85rem;
         color: var(--code-comment);
         font-family: 'Courier New', monospace;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
 
       .code-content {
@@ -363,12 +513,13 @@
       }
 
       .code-content code {
-        font-family: 'Courier New', Consolas, Monaco, monospace;
+        font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
         font-size: 0.9rem;
-        line-height: 1.5;
+        line-height: 1.6;
         color: var(--code-text);
         display: block;
-        white-space: pre;
+        white-space: pre-wrap;
+        word-break: break-word;
       }
 
       .code-keyword {
@@ -388,7 +539,6 @@
         color: var(--code-function);
       }
 
-      /* List Styles */
       .feature-list {
         list-style: none;
         padding: 0;
@@ -396,7 +546,7 @@
       }
 
       .feature-list li {
-        padding: 0.75rem 0;
+        padding: 0.8rem 0;
         padding-left: 2rem;
         position: relative;
         color: var(--text-secondary);
@@ -411,559 +561,357 @@
         font-size: 1.2rem;
       }
 
-      /* Dashboard Preview List */
       .dashboard-list {
         list-style: none;
         padding: 0;
         margin: 2rem 0;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 2rem;
       }
 
       .dashboard-list li {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(16px) saturate(1.3);
+        -webkit-backdrop-filter: blur(16px) saturate(1.3);
+        padding: 2rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        animation: slideUp 0.6s ease-out backwards;
+      }
+
+      .dashboard-list li:nth-child(1) { animation-delay: 0.1s; }
+      .dashboard-list li:nth-child(2) { animation-delay: 0.15s; }
+      .dashboard-list li:nth-child(3) { animation-delay: 0.2s; }
+      .dashboard-list li:nth-child(4) { animation-delay: 0.25s; }
+      .dashboard-list li:nth-child(5) { animation-delay: 0.3s; }
+      .dashboard-list li:nth-child(6) { animation-delay: 0.35s; }
+
+      .dashboard-list li:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 16px 40px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        border-color: var(--accent-color);
+        background: rgba(255, 255, 255, 0.95);
       }
 
       .dashboard-list strong {
         color: var(--accent-color);
         display: block;
         margin-bottom: 0.5rem;
-        font-size: 1.05rem;
+        font-size: 1.1rem;
       }
 
       .dashboard-list li span {
         color: var(--text-secondary);
         font-size: 0.95rem;
+        line-height: 1.6;
       }
 
-      /* Pricing Section */
-      .pricing-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 2rem;
-        max-width: 900px;
-        margin: 0 auto;
-      }
-
-      .pricing-card {
-        background: white;
-        padding: 2.5rem;
-        border-radius: 12px;
-        border: 2px solid var(--border-color);
-        position: relative;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-      }
-
-      .pricing-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-      }
-
-      .pricing-card-enterprise {
-        border-color: var(--accent-color);
-      }
-
-      .enterprise-badge {
-        position: absolute;
-        top: -12px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--accent-color);
-        color: white;
-        padding: 0.4rem 1rem;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 600;
-      }
-
-      .pricing-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin-bottom: 1rem;
-        text-align: center;
-      }
-
-      .pricing-price {
-        text-align: center;
-        margin-bottom: 1.5rem;
-      }
-
-      .price-amount {
-        font-size: 3rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        display: block;
-        line-height: 1;
-      }
-
-      .price-period {
-        font-size: 1rem;
-        color: var(--text-secondary);
-        display: block;
-        margin-top: 0.5rem;
-      }
-
-      .pricing-description {
-        text-align: center;
-        color: var(--text-secondary);
-        margin-bottom: 2rem;
-        font-size: 1rem;
-      }
-
-      .pricing-features {
-        list-style: none;
-        padding: 0;
-        margin: 0 0 2rem 0;
-      }
-
-      .pricing-features li {
-        padding: 0.75rem 0;
-        color: var(--text-secondary);
-        font-size: 0.95rem;
-      }
-
-      .pricing-button {
-        display: block;
-        width: 100%;
-        padding: 0.875rem 2rem;
-        border-radius: 8px;
-        font-size: 1rem;
-        font-weight: 600;
-        text-align: center;
-        text-decoration: none;
-        transition: all 0.2s ease;
-        border: none;
-        cursor: pointer;
-      }
-
-      .pricing-button-primary {
-        background-color: var(--accent-color);
-        color: white;
-      }
-
-      .pricing-button-primary:hover {
-        background-color: #1d4ed8;
-      }
-
-      .pricing-button-secondary {
-        background-color: transparent;
-        color: var(--accent-color);
-        border: 2px solid var(--accent-color);
-        margin-top: 0.75rem;
-      }
-
-      .pricing-button-secondary:hover {
-        background-color: var(--bg-accent);
-      }
-
-      .enterprise-links {
-        margin-top: 1.5rem;
-      }
-
-      /* Footer */
+      /* Non-floating footer with glass effect and max-width 1200px */
       footer {
-        background-color: var(--bg-secondary);
-        border-top: 1px solid var(--border-color);
-        padding: 3rem 2rem;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px) saturate(1.4);
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+        border-top: 1px solid rgba(255, 255, 255, 0.6);
+        padding: 48px 40px;
         text-align: center;
+        box-shadow: 0 -8px 32px rgba(59, 130, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        animation: slideUp 0.6s ease-out;
+        margin-top: auto;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      footer:hover {
+        background: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 -12px 48px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9);
       }
 
       .footer-content {
         max-width: 1200px;
         margin: 0 auto;
+        width: 100%;
       }
 
       .footer-text {
         color: var(--text-secondary);
         margin-bottom: 1.5rem;
+        font-size: 0.95rem;
+        line-height: 1.7;
       }
 
       .footer-link {
         color: var(--accent-color);
         text-decoration: none;
         font-weight: 600;
-        transition: color 0.2s ease;
+        transition: all 0.2s ease;
+        position: relative;
+      }
+
+      .footer-link::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: var(--accent-color);
+        transition: width 0.2s ease;
+      }
+
+      .footer-link:hover::after {
+        width: 100%;
       }
 
       .footer-link:hover {
-        color: #2563eb;
+        color: var(--accent-dark);
       }
 
-      /* Mobile Menu Toggle */
-      .menu-toggle {
-        display: none;
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        cursor: pointer;
-        color: var(--text-primary);
-        padding: 0.5rem;
-      }
-
-      .sr-only {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border-width: 0;
-      }
-
-      /* Announcement Bar */
-      .announcement-bar {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        padding: 0.875rem 2rem;
-        text-align: center;
-        position: sticky;
-        top: 0;
-        z-index: 101;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 1rem;
-        animation: slideDown 0.4s ease-out;
-      }
-
-      .announcement-bar[data-hidden="true"] {
-        display: none;
-      }
-
-      @keyframes slideDown {
-        from {
-          transform: translateY(-100%);
-          opacity: 0;
-        }
-        to {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-
-      .announcement-content {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        justify-content: center;
-      }
-
-      .announcement-text {
-        font-weight: 600;
-        font-size: 0.95rem;
-      }
-
-      .announcement-link {
-        color: white;
-        text-decoration: underline;
-        text-underline-offset: 3px;
-        font-weight: 700;
-        transition: opacity 0.2s ease;
-      }
-
-      .announcement-link:hover {
-        opacity: 0.8;
-      }
-
-      .announcement-close {
-        background: rgba(255, 255, 255, 0.2);
-        border: none;
-        color: white;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        line-height: 1;
-        transition: background 0.2s ease;
-        margin-left: 1rem;
-      }
-
-      .announcement-close:hover {
-        background: rgba(255, 255, 255, 0.3);
-      }
-
-      .announcement-close:focus-visible {
-        outline: 2px solid white;
-        outline-offset: 2px;
-      }
-
-      /* Responsive Design */
       @media (max-width: 768px) {
-        header {
-          padding: 1.25rem 1.5rem;
-        }
-
-        nav {
-          flex-wrap: wrap;
-          gap: 1rem;
-        }
-
-        .menu-toggle {
-          display: block;
-        }
-
-        .nav-links {
-          flex-basis: 100%;
-          flex-direction: column;
-          gap: 1rem;
-          display: none;
-        }
-
-        .nav-links[data-open="true"] {
-          display: flex;
+        .hero-content {
+          grid-template-columns: 1fr;
+          gap: 2rem;
         }
 
         .hero {
-          padding: 2.5rem 1.5rem;
+          padding: 100px 20px 60px;
         }
 
         .hero h1 {
-          font-size: 1.75rem;
+          font-size: clamp(2.5rem, 8vw, 4rem);
         }
 
         .hero-subtitle {
-          font-size: 1rem;
-          margin-bottom: 1.5rem;
+          font-size: clamp(1rem, 3vw, 1.25rem);
         }
 
         .hero-buttons {
           flex-direction: column;
-          align-items: center;
-        }
-
-        .primary-btn,
-        .secondary-btn {
           width: 100%;
-          max-width: 300px;
         }
 
-        .status-container {
-          padding: 0 1.5rem 2rem;
+        .btn {
+          width: 100%;
+          justify-content: center;
         }
 
-        .status-box {
-          padding: 1.5rem;
+        header {
+          top: 10px;
+          width: 95%;
         }
 
-        .status-grid {
-          gap: 1rem;
+        nav {
+          padding: 12px 20px;
         }
 
-        .status-item {
-          text-align: center;
+        .nav-links {
+          display: none;
+        }
+
+        .floating-status {
+          top: 10px;
+          right: 10px;
+          padding: 8px 12px;
+          font-size: 12px;
+        }
+
+        .hero-image-container {
+          margin: 32px auto 0;
+          width: 100%;
         }
 
         .section {
-          padding: 2.5rem 1.5rem;
+          padding: 60px 20px;
+        }
+
+        .section-container {
+          padding: 0;
         }
 
         .section-title {
-          font-size: 1.5rem;
-          margin-bottom: 2rem;
+          font-size: 1.75rem;
+          margin-bottom: 40px;
         }
 
         .features-grid {
           grid-template-columns: 1fr;
+          gap: 20px;
+        }
+
+        .dashboard-list {
+          grid-template-columns: 1fr;
           gap: 1.5rem;
         }
 
+        .feature-card {
+          padding: 24px;
+          text-align: center;
+        }
+
         footer {
-          padding: 2rem 1.5rem;
+          padding: 32px 20px;
         }
       }
 
       @media (max-width: 480px) {
+        .hero-content {
+          grid-template-columns: 1fr;
+        }
+
+        .hero {
+          padding: 80px 15px 40px;
+        }
+
+        .hero-buttons {
+          gap: 12px;
+        }
+
+        .btn {
+          padding: 10px 18px;
+          font-size: 0.9rem;
+        }
+
         .logo {
           font-size: 1.25rem;
         }
 
-        .hero h1 {
-          font-size: 1.5rem;
+        nav {
+          padding: 12px 15px;
         }
 
-        .status-value {
-          font-size: 1.25rem;
+        .floating-status {
+          top: 8px;
+          right: 8px;
+          padding: 6px 10px;
+          font-size: 11px;
+        }
+
+        .section {
+          padding: 40px 15px;
         }
 
         .section-title {
-          font-size: 1.25rem;
+          font-size: 1.5rem;
+          margin-bottom: 30px;
+        }
+
+        .feature-card {
+          padding: 20px;
+        }
+
+        footer {
+          padding: 24px 15px;
         }
       }
     </style>
   </head>
 
   <body>
-    <!-- Announcement Bar -->
-    <div class="announcement-bar" id="announcement-bar" role="banner" data-hidden="false">
-      <div class="announcement-content">
-        <span class="announcement-text">
-          🎉 We just raised <strong>$100 Trillion</strong> from Satoshi Nakamoto!
-          <a href="https://en.wikipedia.org/wiki/Zimbabwean_one_hundred_trillion_dollar_note" target="_blank" rel="noopener" class="announcement-link">Learn more</a>
-        </span>
-      </div>
-      <button class="announcement-close" onclick="dismissAnnouncement()" aria-label="Close announcement">
-        ×
-      </button>
-    </div>
 
     <!-- Header -->
     <header>
       <nav>
         <div class="logo">Kaunta</div>
-        <button class="menu-toggle" aria-expanded="false" aria-controls="primary-nav" aria-label="Toggle navigation">
-          <span aria-hidden="true">☰</span>
-        </button>
-        <div id="primary-nav" class="nav-links" data-open="false">
+        <div class="nav-links">
           <a href="#features">Features</a>
           <a href="#installation">Installation</a>
-          <a href="#pricing">Pricing</a>
+          <a href="#usage">Usage</a>
           <a href="https://github.com/seuros/kaunta#readme">Documentation</a>
         </div>
         <a href="https://github.com/seuros/kaunta" class="cta-button">GitHub</a>
       </nav>
     </header>
 
-    <!-- Hero Section -->
-    <main>
-      <section class="hero">
-        <h1>Analytics without bloat</h1>
-        <p class="hero-subtitle">
-          A simple, fast, privacy-focused web analytics engine. Self-hosted and lightweight.
-        </p>
-        <div class="hero-buttons">
-          <a href="https://github.com/seuros/kaunta#readme" class="primary-btn"
-            >Get Started</a
-          >
-          <a href="https://github.com/seuros/kaunta/releases" class="secondary-btn">Download</a>
-        </div>
-      </section>
+    <div class="container">
+      <div class="main-content">
+        <!-- Hero Section -->
+        <section class="hero">
+          <div class="hero-content">
+            <div class="hero-text">
+              <h1>Analytics without bloat</h1>
+              <p class="hero-subtitle">
+                A simple, fast, privacy-focused web analytics engine. Drop-in replacement for Umami.
+              </p>
+            </div>
+            
+            <div class="hero-buttons">
+              <a href="https://github.com/seuros/kaunta#readme" class="btn btn-primary">
+                <span>🚀</span>
+                Get Started
+              </a>
+              <a href="/dashboard" class="btn btn-secondary">
+                <span>📊</span>
+                Live Demo
+              </a>
+            </div>
+            
+            <div class="hero-image-container">
+              <img src="assets/hero_section.png" alt="Kaunta Analytics Dashboard" class="hero-image">
+            </div>
+          </div>
+        </section>
 
-      <!-- Status Box -->
-      <section class="status-container">
-        <div class="status-box">
-          <dl class="status-grid">
-            <div class="status-item">
-              <dt class="status-label">Binary Size</dt>
-              <dd class="status-value">11 MB</dd>
-              <dd class="status-detail">Stripped binary</dd>
-            </div>
-            <div class="status-item">
-              <dt class="status-label">Deployment</dt>
-              <dd class="status-value">Single Binary</dd>
-              <dd class="status-detail">Ready to run</dd>
-            </div>
-            <div class="status-item">
-              <dt class="status-label">License</dt>
-              <dd class="status-value">MIT</dd>
-              <dd class="status-detail">Free & open source</dd>
-            </div>
-          </dl>
-        </div>
-      </section>
+      </div>
+    </div>
 
-      <!-- Features Section -->
-      <section class="section" id="features">
+    <!-- Features Section -->
+    <section class="section" id="features">
+      <div class="section-container">
         <h2 class="section-title">Features</h2>
         <div class="features-grid">
           <div class="feature-card">
-            <div class="feature-icon" aria-hidden="true">🔒</div>
+            <div class="feature-icon">🔒</div>
             <h3 class="feature-title">Privacy-First</h3>
-            <p class="feature-description">
-              No cookies, no tracking, privacy by design
-            </p>
+            <p class="feature-description">No cookies, no tracking, privacy by design</p>
           </div>
           <div class="feature-card">
-            <div class="feature-icon" aria-hidden="true">⚡</div>
+            <div class="feature-icon">⚡</div>
             <h3 class="feature-title">Fast Deployment</h3>
             <p class="feature-description">Single binary, ready to run</p>
           </div>
           <div class="feature-card">
-            <div class="feature-icon" aria-hidden="true">📦</div>
+            <div class="feature-icon">📦</div>
             <h3 class="feature-title">Lightweight</h3>
             <p class="feature-description">Minimal memory footprint</p>
           </div>
           <div class="feature-card">
-            <div class="feature-icon" aria-hidden="true">📊</div>
-            <h3 class="feature-title">Full Analytics</h3>
-            <p class="feature-description">
-              Visitors, pageviews, referrers, devices, locations, real-time
-              stats
-            </p>
+            <div class="feature-icon">🔄</div>
+            <h3 class="feature-title">Umami Compatible</h3>
+            <p class="feature-description">Same API & database schema</p>
           </div>
           <div class="feature-card">
-            <div class="feature-icon" aria-hidden="true">🌍</div>
+            <div class="feature-icon">📊</div>
+            <h3 class="feature-title">Full Analytics</h3>
+            <p class="feature-description">Visitors, pageviews, referrers, devices, locations, real-time stats</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🌍</div>
             <h3 class="feature-title">Geolocation</h3>
-            <p class="feature-description">
-              City/region level with automatic MaxMind GeoLite2 download
-            </p>
+            <p class="feature-description">City/region level with automatic MaxMind GeoLite2 download</p>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- Installation Section -->
-      <div class="section-alt">
-        <section class="section" id="installation">
+    <!-- Installation Section -->
+    <div class="section-alt">
+      <section class="section" id="installation">
+        <div class="section-container">
           <h2 class="section-title">Installation</h2>
-
-          <p
-            style="
-              text-align: center;
-              color: var(--text-secondary);
-              margin-bottom: 2rem;
-            "
-          >
+          <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">
             Kaunta requires PostgreSQL 17+
           </p>
 
-          <h3
-            style="
-              font-size: 1.25rem;
-              margin: 2rem 0 1rem;
-              font-weight: 600;
-              text-align: center;
-            "
-          >
-            Configuration
-          </h3>
-
           <div class="code-block">
-            <div class="code-header">kaunta.toml (recommended)</div>
-            <div class="code-content">
-              <code><span class="code-function">database_url</span> = <span class="code-string">"postgresql://user:password@localhost:5432/kaunta"</span>
-<span class="code-function">port</span> = <span class="code-string">"3000"</span>
-<span class="code-function">data_dir</span> = <span class="code-string">"./data"</span></code>
-            </div>
-          </div>
-
-          <div class="code-block">
-            <div class="code-header">Or use environment variables</div>
+            <div class="code-header">Setup Database</div>
             <div class="code-content">
               <code><span class="code-keyword">export</span> <span class="code-function">DATABASE_URL</span>=<span class="code-string">"postgresql://user:password@localhost:5432/kaunta"</span></code>
             </div>
           </div>
 
-          <h3
-            style="
-              font-size: 1.25rem;
-              margin: 2rem 0 1rem;
-              font-weight: 600;
-              text-align: center;
-            "
-          >
-            Docker
-          </h3>
+          <h3 style="font-size: 1.25rem; margin: 2rem 0 1rem; font-weight: 600; text-align: center; color: var(--text-primary);">Docker</h3>
           <div class="code-block">
             <div class="code-header">docker</div>
             <div class="code-content">
@@ -971,16 +919,7 @@
             </div>
           </div>
 
-          <h3
-            style="
-              font-size: 1.25rem;
-              margin: 2rem 0 1rem;
-              font-weight: 600;
-              text-align: center;
-            "
-          >
-            Standalone Binary
-          </h3>
+          <h3 style="font-size: 1.25rem; margin: 2rem 0 1rem; font-weight: 600; text-align: center; color: var(--text-primary);">Standalone Binary</h3>
           <div class="code-block">
             <div class="code-header">bash</div>
             <div class="code-content">
@@ -988,51 +927,26 @@
             </div>
           </div>
 
-          <div
-            style="
-              margin-top: 2rem;
-              background: white;
-              padding: 2rem;
-              border-radius: 10px;
-              border: 1px solid var(--border-color);
-            "
-          >
-            <h3
-              style="font-size: 1.1rem; margin-bottom: 1rem; font-weight: 600"
-            >
-              The server will:
-            </h3>
+          <div style="margin-top: 2rem; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(16px) saturate(1.3); padding: 2rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.7); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);">
+            <h3 style="font-size: 1.1rem; margin-bottom: 1rem; font-weight: 600; color: var(--text-primary);">The server will:</h3>
             <ul class="feature-list">
               <li>Auto-run database migrations on startup</li>
               <li>Download GeoIP database if missing</li>
               <li>Start on port 3000 (configurable with PORT env var)</li>
             </ul>
-            <p style="margin-top: 1rem; color: var(--text-secondary)">
-              <strong>Health check endpoint:</strong>
-              <code
-                style="
-                  background: var(--bg-secondary);
-                  padding: 0.25rem 0.5rem;
-                  border-radius: 4px;
-                "
-                >GET /up</code
-              >
+            <p style="margin-top: 1rem; color: var(--text-secondary);">
+              <strong>Health check endpoint:</strong> <code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">GET /up</code>
             </p>
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
+    </div>
 
-      <!-- Usage Section -->
-      <section class="section" id="usage">
+    <!-- Usage Section -->
+    <section class="section" id="usage">
+      <div class="section-container">
         <h2 class="section-title">Usage</h2>
-
-        <p
-          style="
-            text-align: center;
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-          "
-        >
+        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">
           Add this to your website (works like Google Analytics):
         </p>
 
@@ -1043,216 +957,63 @@
           </div>
         </div>
 
-        <p
-          style="
-            text-align: center;
-            color: var(--accent-color);
-            font-weight: 600;
-            font-size: 1.1rem;
-            margin-top: 2rem;
-          "
-        >
+        <p style="text-align: center; color: var(--accent-color); font-weight: 600; font-size: 1.1rem; margin-top: 2rem;">
           That's it! Analytics start collecting.
         </p>
-      </section>
+      </div>
+    </section>
 
-      <!-- Dashboard Section -->
-      <div class="section-alt">
-        <section class="section" id="dashboard">
+    <!-- Dashboard Section -->
+    <div class="section-alt">
+      <section class="section" id="dashboard">
+        <div class="section-container">
           <h2 class="section-title">Dashboard</h2>
-
-          <p
-            style="
-              text-align: center;
-              color: var(--text-secondary);
-              margin-bottom: 2rem;
-            "
-          >
-            Visit
-            <code
-              style="
-                background: white;
-                padding: 0.25rem 0.5rem;
-                border-radius: 4px;
-                border: 1px solid var(--border-color);
-              "
-              >http://your-server:3000/dashboard</code
-            >
-            to see:
+          <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">
+            Visit <code style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(16px); padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.2);">http://your-server:3000/dashboard</code> to see:
           </p>
 
           <ul class="dashboard-list">
-            <li>
-              <strong>Overview</strong>
-              <span
-                >Total visitors, pageviews, bounce rate, session duration</span
-              >
-            </li>
-            <li>
-              <strong>Pages</strong>
-              <span>Which pages get the most traffic</span>
-            </li>
-            <li>
-              <strong>Referrers</strong>
-              <span>Where your visitors come from</span>
-            </li>
-            <li>
-              <strong>Browsers/Devices</strong>
-              <span>What devices people use</span>
-            </li>
-            <li>
-              <strong>Locations</strong>
-              <span>Map showing visitor countries and cities</span>
-            </li>
-            <li>
-              <strong>Real-time</strong>
-              <span>Live visitor activity (updates every few seconds)</span>
-            </li>
+            <li><strong>Overview</strong><span>Total visitors, pageviews, bounce rate, session duration</span></li>
+            <li><strong>Pages</strong><span>Which pages get the most traffic</span></li>
+            <li><strong>Referrers</strong><span>Where your visitors come from</span></li>
+            <li><strong>Browsers/Devices</strong><span>What devices people use</span></li>
+            <li><strong>Locations</strong><span>Map showing visitor countries and cities</span></li>
+            <li><strong>Real-time</strong><span>Live visitor activity (updates every few seconds)</span></li>
           </ul>
-        </section>
-      </div>
-
-      <!-- Why Kaunta Section -->
-      <section class="section">
-        <h2 class="section-title">Why Kaunta?</h2>
-
-        <p
-          style="
-            text-align: center;
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-            font-size: 1.1rem;
-            line-height: 1.8;
-          "
-        >
-          Kaunta was built for a simple purpose: <strong>count visitors and understand basic usage patterns</strong>.
-          Know which browsers people use, what versions, which pages get traffic, and where visitors come from.
-        </p>
-
-        <p
-          style="
-            text-align: center;
-            color: var(--text-secondary);
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-            font-size: 1.1rem;
-            line-height: 1.8;
-          "
-        >
-          It's <strong>not</strong> designed for conversion funnels, A/B testing, or tracking people across multiple websites.
-          Just clean, privacy-focused analytics that respect your visitors.
-        </p>
+        </div>
       </section>
+    </div>
 
-      <!-- Pricing Section -->
-      <div class="section-alt">
-        <section class="section" id="pricing">
-          <h2 class="section-title">Pricing</h2>
+    <!-- Umami Compatibility Section -->
+    <section class="section">
+      <div class="section-container">
+        <h2 class="section-title">Umami Compatibility</h2>
+        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem; max-width: 800px; margin-left: auto; margin-right: auto;">
+          Drop-in replacement for Umami. Works with Umami's JavaScript tracker and seamlessly migrates existing databases:
+        </p>
 
-          <div class="pricing-grid">
-            <div class="pricing-card">
-              <h3 class="pricing-title">Self-Hosted</h3>
-              <div class="pricing-price">
-                <span class="price-amount">$0</span>
-                <span class="price-period">forever</span>
-              </div>
-              <p class="pricing-description">Deploy Kaunta on your own infrastructure</p>
-              <ul class="pricing-features">
-                <li>✓ MIT License - unlimited instances</li>
-                <li>✓ No usage limits</li>
-                <li>✓ Your data, your control</li>
-                <li>✓ No tracking, no phone-home</li>
-                <li>✓ Commercial use allowed</li>
-                <li>✓ Community support via GitHub</li>
-              </ul>
-              <a href="https://github.com/seuros/kaunta#readme" class="pricing-button pricing-button-primary">Get Started</a>
-            </div>
-
-            <div class="pricing-card pricing-card-enterprise">
-              <div class="enterprise-badge">Need Support?</div>
-              <h3 class="pricing-title">Enterprise</h3>
-              <div class="pricing-price">
-                <span class="price-amount">Managed</span>
-              </div>
-              <p class="pricing-description">Need hosting, support, or enterprise features?</p>
-              <ul class="pricing-features">
-                <li>✓ Fully managed hosting</li>
-                <li>✓ Professional support</li>
-                <li>✓ SLA guarantees</li>
-                <li>✓ Advanced features</li>
-                <li>✓ Team collaboration</li>
-                <li>✓ Priority updates</li>
-              </ul>
-              <div class="enterprise-links">
-                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
-                  Consider these excellent managed analytics services:
-                </p>
-                <a href="https://umami.is" target="_blank" rel="noopener" class="pricing-button pricing-button-secondary">Umami Cloud</a>
-                <a href="https://plausible.io" target="_blank" rel="noopener" class="pricing-button pricing-button-secondary">Plausible Analytics</a>
-              </div>
-            </div>
-          </div>
-        </section>
+        <ul class="feature-list" style="max-width: 600px; margin: 0 auto">
+          <li>Compatible tracking API</li>
+          <li>Umami's JS tracker just works</li>
+          <li>Auto-migrates existing Umami databases on startup</li>
+          <li>Enhanced with bot detection and advanced analytics</li>
+        </ul>
       </div>
-
-    </main>
+    </section>
 
     <!-- Footer -->
     <footer>
       <div class="footer-content">
         <p class="footer-text">
-          <strong>Kaunta (カウンタ)</strong> - Simple, fast analytics for
-          everyone
+          <strong>Kaunta (カウンタ)</strong> - Simple, fast analytics for everyone
         </p>
         <p class="footer-text">
-          MIT License - Built for developers who value simplicity and
-          performance
+          MIT License - Built for developers who value simplicity and performance
         </p>
         <p>
-          <a href="https://github.com/seuros/kaunta" class="footer-link"
-            >GitHub Repository</a
-          >
+          <a href="https://github.com/seuros/kaunta" class="footer-link">GitHub Repository</a>
         </p>
       </div>
     </footer>
-
-    <!-- Mobile Menu Toggle Script -->
-    <script>
-      (function() {
-        const toggle = document.querySelector('.menu-toggle');
-        const nav = document.querySelector('#primary-nav');
-
-        if (toggle && nav) {
-          toggle.addEventListener('click', function() {
-            const isOpen = nav.getAttribute('data-open') === 'true';
-            nav.setAttribute('data-open', String(!isOpen));
-            toggle.setAttribute('aria-expanded', String(!isOpen));
-          });
-        }
-      })();
-
-      // Announcement Bar
-      (function() {
-        const announcementBar = document.getElementById('announcement-bar');
-        const STORAGE_KEY = 'kaunta-announcement-dismissed';
-
-        // Check if user previously dismissed the announcement
-        if (localStorage.getItem(STORAGE_KEY) === 'true') {
-          announcementBar.setAttribute('data-hidden', 'true');
-        }
-      })();
-
-      function dismissAnnouncement() {
-        const announcementBar = document.getElementById('announcement-bar');
-        const STORAGE_KEY = 'kaunta-announcement-dismissed';
-
-        announcementBar.setAttribute('data-hidden', 'true');
-        localStorage.setItem(STORAGE_KEY, 'true');
-      }
-    </script>
   </body>
 </html>
