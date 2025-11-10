@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.6](https://github.com/seuros/kaunta/compare/v0.14.5...v0.14.6) (2025-11-10)
+
+
+### Bug Fixes
+
+* enable CORS credentials for cookie auth ([88b7f44](https://github.com/seuros/kaunta/commit/88b7f446a8632d4d1a0ae6837b4f963985aea22c))
+
 ## [0.14.5](https://github.com/seuros/kaunta/compare/v0.14.4...v0.14.5) (2025-11-10)
 
 
