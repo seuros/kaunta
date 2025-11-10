@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.5](https://github.com/seuros/kaunta/compare/v0.14.4...v0.14.5) (2025-11-10)
+
+
+### Bug Fixes
+
+* add credentials include to login fetch ([cd45a8b](https://github.com/seuros/kaunta/commit/cd45a8bcc0eb8592ca8ce1791b6aca4beb09eb4b))
+
 ## [0.14.4](https://github.com/seuros/kaunta/compare/v0.14.3...v0.14.4) (2025-11-10)
 
 
