@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.4](https://github.com/seuros/kaunta/compare/v0.14.3...v0.14.4) (2025-11-10)
+
+
+### Bug Fixes
+
+* include credentials in login fetch request for CSRF validation ([d51c56f](https://github.com/seuros/kaunta/commit/d51c56f45476dbd02b36d29fdd277cc05099a488))
+
 ## [0.14.3](https://github.com/seuros/kaunta/compare/v0.14.2...v0.14.3) (2025-11-10)
 
 
