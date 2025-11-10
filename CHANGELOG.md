@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.7](https://github.com/seuros/kaunta/compare/v0.14.6...v0.14.7) (2025-11-10)
+
+
+### Bug Fixes
+
+* use AllowOriginsFunc for CORS credentials ([be62fc7](https://github.com/seuros/kaunta/commit/be62fc72970727691df51483e34d54001e8e2488))
+
 ## [0.14.6](https://github.com/seuros/kaunta/compare/v0.14.5...v0.14.6) (2025-11-10)
 
 
