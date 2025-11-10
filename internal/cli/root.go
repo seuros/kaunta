@@ -176,6 +176,14 @@ func serveAnalytics(
 		return c.Next()
 	})
 
+	// Debug middleware to log cookies
+	app.Use(func(c fiber.Ctx) error {
+		if c.Path() == "/api/auth/login" {
+			log.Printf("Login request - Cookie header: %s, CSRF header: %s", c.Get("Cookie"), c.Get("X-CSRF-Token"))
+		}
+		return c.Next()
+	})
+
 	// CSRF protection middleware
 	app.Use(csrf.New(csrf.Config{
 		Extractor:      extractors.FromHeader("X-CSRF-Token"),
