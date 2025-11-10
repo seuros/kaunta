@@ -21,6 +21,20 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       version: ${{ steps.release.outputs.version }}
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: kaunta_test
+          POSTGRES_USER: kaunta
+          POSTGRES_PASSWORD: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -49,6 +63,8 @@ jobs:
 
       - name: Run full CI validation
         if: ${{ steps.release.outputs.release_created }}
+        env:
+          DATABASE_URL: postgresql://kaunta:test@localhost:5432/kaunta_test?sslmode=disable
         run: mage ci
 
   build-binaries:
