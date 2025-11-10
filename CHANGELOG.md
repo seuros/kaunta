@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.2](https://github.com/seuros/kaunta/compare/v0.15.1...v0.15.2) (2025-11-10)
+
+
+### Bug Fixes
+
+* test ci ([25c5067](https://github.com/seuros/kaunta/commit/25c5067fb2c09856b5fcd19659ff47b1a29aef9c))
+
 ## [0.15.1](https://github.com/seuros/kaunta/compare/v0.15.0...v0.15.1) (2025-11-10)
 
 
