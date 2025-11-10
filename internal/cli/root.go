@@ -162,7 +162,9 @@ func serveAnalytics(
 	app.Use(recover.New())
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
+		AllowOriginsFunc: func(origin string) bool {
+			return true // Allow all origins
+		},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "X-CSRF-Token"},
 		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
 		AllowCredentials: true,
