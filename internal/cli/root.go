@@ -162,9 +162,10 @@ func serveAnalytics(
 	app.Use(recover.New())
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"*"},
-		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "X-CSRF-Token"},
-		AllowMethods: []string{"GET", "POST", "OPTIONS"},
+		AllowOrigins:     []string{"*"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "X-CSRF-Token"},
+		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
+		AllowCredentials: true,
 	}))
 
 	// Add version header to all responses
