@@ -275,9 +275,7 @@ func serveAnalytics(
 	// Login page (public)
 	app.Get("/login", func(c fiber.Ctx) error {
 		c.Set("Content-Type", "text/html; charset=utf-8")
-		// Extract CSRF token from middleware (Fiber v3 uses csrf.TokenFromContext)
-		csrfToken := csrf.TokenFromContext(c)
-		return c.SendString(loginPageHTML(csrfToken))
+		return c.SendString(loginPageHTML())
 	})
 
 	// Dashboard UI (protected)
@@ -381,7 +379,7 @@ func getEnv(key, defaultValue string) string {
 }
 
 // loginPageHTML returns a simple login page with injected CSRF token
-func loginPageHTML(csrfToken string) string {
+func loginPageHTML() string {
 	return `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -649,8 +647,14 @@ func loginPageHTML(csrfToken string) string {
       const errorDiv = document.getElementById('error');
       const submitBtn = document.getElementById('submitBtn');
 
-      // CSRF token injected server-side at page render
-      const csrfToken = '` + csrfToken + `';
+      // Read CSRF token from cookie
+      function getCsrfToken() {
+        const value = '; ' + document.cookie;
+        const parts = value.split('; kaunta_csrf=');
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return '';
+      }
+      const csrfToken = getCsrfToken();
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
