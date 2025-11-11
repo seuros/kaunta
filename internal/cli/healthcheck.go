@@ -15,7 +15,11 @@ var healthcheckCmd = &cobra.Command{
 	Short: "Check if the server is healthy",
 	Long:  "Performs an HTTP request to the /up endpoint to verify the server and database are operational",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		port := viper.GetString("port")
+		// Try environment variable first, then viper config, then default
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = viper.GetString("port")
+		}
 		if port == "" {
 			port = "3000" // Default port
 		}

@@ -43,7 +43,7 @@ func HandleTopReferrers(c fiber.Ctx) error {
 		_ = rows.Close()
 	}()
 
-	var items []BreakdownItem
+	items := make([]BreakdownItem, 0)
 	for rows.Next() {
 		var item BreakdownItem
 		if err := rows.Scan(&item.Name, &item.Count); err != nil {
@@ -88,7 +88,7 @@ func HandleTopBrowsers(c fiber.Ctx) error {
 	}
 	defer func() { _ = rows.Close() }()
 
-	var items []BreakdownItem
+	items := make([]BreakdownItem, 0)
 	for rows.Next() {
 		var item BreakdownItem
 		if err := rows.Scan(&item.Name, &item.Count); err != nil {
@@ -133,7 +133,7 @@ func HandleTopDevices(c fiber.Ctx) error {
 	}
 	defer func() { _ = rows.Close() }()
 
-	var items []BreakdownItem
+	items := make([]BreakdownItem, 0)
 	for rows.Next() {
 		var item BreakdownItem
 		if err := rows.Scan(&item.Name, &item.Count); err != nil {
@@ -178,7 +178,7 @@ func HandleTopCountries(c fiber.Ctx) error {
 	}
 	defer func() { _ = rows.Close() }()
 
-	var items []BreakdownItem
+	items := make([]BreakdownItem, 0)
 	for rows.Next() {
 		var item BreakdownItem
 		if err := rows.Scan(&item.Name, &item.Count); err != nil {
@@ -223,7 +223,7 @@ func HandleTopCities(c fiber.Ctx) error {
 	}
 	defer func() { _ = rows.Close() }()
 
-	var items []BreakdownItem
+	items := make([]BreakdownItem, 0)
 	for rows.Next() {
 		var item BreakdownItem
 		if err := rows.Scan(&item.Name, &item.Count); err != nil {
@@ -268,7 +268,7 @@ func HandleTopRegions(c fiber.Ctx) error {
 	}
 	defer func() { _ = rows.Close() }()
 
-	var items []BreakdownItem
+	items := make([]BreakdownItem, 0)
 	for rows.Next() {
 		var item BreakdownItem
 		if err := rows.Scan(&item.Name, &item.Count); err != nil {
