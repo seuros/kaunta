@@ -42,7 +42,7 @@ COPY --from=builder /app/kaunta /kaunta
 # No need to copy templates/ or assets/ directories
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD ["/kaunta", "-version"]
+    CMD ["/kaunta", "--version"]
 
 EXPOSE 3000
 ENTRYPOINT ["/kaunta"]
