@@ -46,7 +46,7 @@ func HandleTimeSeries(c fiber.Ctx) error {
 	}
 	defer func() { _ = rows.Close() }()
 
-	var points []TimeSeriesPoint
+	points := make([]TimeSeriesPoint, 0)
 	for rows.Next() {
 		var timestamp string
 		var value int

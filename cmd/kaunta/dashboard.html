@@ -1286,10 +1286,9 @@
               );
               if (response.ok) {
                 const data = await response.json();
-                if (!data || !Array.isArray(data) || data.length === 0) {
-                  return;
-                }
-                const labels = data.map((point) => {
+
+                // Handle empty data
+                const labels = (data && data.length > 0) ? data.map((point) => {
                   const date = new Date(point.timestamp);
                   return days === 1
                     ? date.toLocaleTimeString("en-US", {
@@ -1300,8 +1299,8 @@
                         month: "short",
                         day: "numeric",
                       });
-                });
-                const values = data.map((point) => point.value);
+                }) : [];
+                const values = (data && data.length > 0) ? data.map((point) => point.value) : [];
                 if (this.chart) {
                   this.chart.destroy();
                 }

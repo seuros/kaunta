@@ -46,7 +46,7 @@ func HandleTopPages(c fiber.Ctx) error {
 	}
 	defer func() { _ = rows.Close() }()
 
-	var pages []TopPage
+	pages := make([]TopPage, 0)
 	for rows.Next() {
 		var page TopPage
 		if err := rows.Scan(&page.Path, &page.Views); err != nil {
