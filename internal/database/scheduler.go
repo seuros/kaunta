@@ -2,8 +2,9 @@ package database
 
 import (
 	"fmt"
-	"log"
 	"time"
+
+	"github.com/seuros/kaunta/internal/logging"
 )
 
 // PartitionScheduler manages automatic partition creation and cleanup
@@ -22,7 +23,7 @@ func NewPartitionScheduler(databaseURL string) *PartitionScheduler {
 
 // Start begins the partition management tasks
 func (ps *PartitionScheduler) Start() {
-	log.Println("🗓️  Starting partition scheduler...")
+	logging.L().Info("starting partition scheduler")
 
 	// Create future partitions daily at 2 AM
 	go ps.schedulePartitionCreation()
@@ -56,7 +57,7 @@ func (ps *PartitionScheduler) schedulePartitionCreation() {
 
 // createFuturePartitions creates partitions for the next 30 days
 func (ps *PartitionScheduler) createFuturePartitions() {
-	log.Println("Creating future partitions...")
+	logging.L().Info("creating future partitions")
 
 	for i := 1; i <= 30; i++ {
 		date := time.Now().AddDate(0, 0, i)
@@ -72,11 +73,11 @@ func (ps *PartitionScheduler) createFuturePartitions() {
 
 		_, err := DB.Exec(query)
 		if err != nil {
-			log.Printf("⚠️  Failed to create partition %s: %v", partitionName, err)
+			logging.L().Warn("failed to create partition", "partition", partitionName, "error", err)
 			continue
 		}
 
-		log.Printf("✓ Created partition: %s", partitionName)
+		logging.L().Info("created partition", "partition", partitionName)
 	}
 }
 
@@ -100,7 +101,7 @@ func (ps *PartitionScheduler) cleanupOldPartitions() {
 	retentionDays := 90 // Keep 90 days of data
 	cutoffDate := time.Now().AddDate(0, 0, -retentionDays)
 
-	log.Printf("Cleaning up partitions older than %s...", cutoffDate.Format("2006-01-02"))
+	logging.L().Info("cleaning up old partitions", "cutoff", cutoffDate.Format("2006-01-02"))
 
 	// Find old partitions
 	rows, err := DB.Query(`
@@ -113,12 +114,12 @@ func (ps *PartitionScheduler) cleanupOldPartitions() {
 	`, fmt.Sprintf("website_event_%s", cutoffDate.Format("2006_01_02")))
 
 	if err != nil {
-		log.Printf("⚠️  Failed to query old partitions: %v", err)
+		logging.L().Warn("failed to query old partitions", "error", err)
 		return
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Warning: failed to close rows: %v", err)
+			logging.L().Warn("failed to close partition rows", "error", err)
 		}
 	}()
 
@@ -133,16 +134,16 @@ func (ps *PartitionScheduler) cleanupOldPartitions() {
 		query := fmt.Sprintf("DROP TABLE IF EXISTS %s", tableName)
 		_, err := DB.Exec(query)
 		if err != nil {
-			log.Printf("⚠️  Failed to drop partition %s: %v", tableName, err)
+			logging.L().Warn("failed to drop partition", "partition", tableName, "error", err)
 			continue
 		}
 
-		log.Printf("🗑️  Dropped old partition: %s", tableName)
+		logging.L().Info("dropped old partition", "partition", tableName)
 		droppedCount++
 	}
 
 	if droppedCount > 0 {
-		log.Printf("✓ Cleaned up %d old partitions", droppedCount)
+		logging.L().Info("partition cleanup complete", "dropped_count", droppedCount)
 	}
 }
 
@@ -160,7 +161,7 @@ func NewMaterializedViewScheduler() *MaterializedViewScheduler {
 
 // Start begins the refresh tasks
 func (mvs *MaterializedViewScheduler) Start() {
-	log.Println("🔄 Starting materialized view refresh scheduler...")
+	logging.L().Info("starting materialized view refresh scheduler")
 
 	// Real-time stats: every minute
 	go mvs.scheduleRefresh("realtime_website_stats", 1*time.Minute)
@@ -205,11 +206,11 @@ func (mvs *MaterializedViewScheduler) refreshView(viewName string) {
 	duration := time.Since(start)
 
 	if err != nil {
-		log.Printf("⚠️  Failed to refresh %s: %v", viewName, err)
+		logging.L().Warn("failed to refresh materialized view", "view", viewName, "error", err)
 		return
 	}
 
-	log.Printf("✓ Refreshed %s in %v", viewName, duration)
+	logging.L().Info("refreshed materialized view", "view", viewName, "duration", duration)
 }
 
 // GetMaterializedViewStats returns refresh statistics
@@ -232,7 +233,7 @@ func GetMaterializedViewStats() (map[string]interface{}, error) {
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Warning: failed to close rows: %v", err)
+			logging.L().Warn("failed to close stats rows", "error", err)
 		}
 	}()
 

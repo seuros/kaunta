@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
-	"log"
 	"net/url"
 	"strings"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/geoip"
+	"github.com/seuros/kaunta/internal/logging"
 )
 
 const MaxURLSize = 2000 // Max URL length (Plausible standard)
@@ -104,14 +104,14 @@ func HandleTracking(c fiber.Ctx) error {
 	).Scan(&originAllowed)
 
 	if err != nil {
-		log.Printf("Origin validation error for website %s: %v", websiteID, err)
+		logging.L().Warn("origin validation error", "website_id", websiteID, "error", err)
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Origin validation failed",
 		})
 	}
 
 	if !originAllowed {
-		log.Printf("Origin blocked: %s for website %s", origin, websiteID)
+		logging.L().Warn("origin blocked", "origin", origin, "website_id", websiteID)
 		return c.Status(403).JSON(fiber.Map{
 			"error": "Origin not allowed",
 		})
@@ -145,7 +145,7 @@ func HandleTracking(c fiber.Ctx) error {
 
 	if err != nil {
 		// Log error but don't block traffic on bot detection failure
-		log.Printf("Bot detection error for IP %s: %v", ip, err)
+		logging.L().Warn("bot detection error", "ip", ip, "error", err)
 		// Default to not a bot if detection fails
 		isBotVal := false
 		isBot = &isBotVal
@@ -194,7 +194,10 @@ func HandleTracking(c fiber.Ctx) error {
 		country, region, city, distinctID)
 
 	if err != nil {
-		log.Printf("Session creation error for website %s, sessionID %s: %v", websiteID, sessionID, err)
+		logging.L().Error("session creation error",
+			"website_id", websiteID,
+			"session_id", sessionID,
+			"error", err)
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to create session: " + err.Error(),
 		})
@@ -348,8 +351,13 @@ func saveEvent(websiteID, sessionID, visitID uuid.UUID, createdAt time.Time,
 		)
 	`
 
-	log.Printf("Inserting event: type=%d eventID=%s, websiteID=%s, sessionID=%s, visitID=%s",
-		eventType, eventID, websiteID, sessionID, visitID)
+	logging.L().Debug("inserting event",
+		"event_type", eventType,
+		"event_id", eventID,
+		"website_id", websiteID,
+		"session_id", sessionID,
+		"visit_id", visitID,
+	)
 
 	_, err := database.DB.Exec(query,
 		eventID, websiteID, sessionID, visitID, createdAt,
@@ -360,7 +368,7 @@ func saveEvent(websiteID, sessionID, visitID uuid.UUID, createdAt time.Time,
 	)
 
 	if err != nil {
-		log.Printf("SQL Error: %v", err)
+		logging.L().Error("failed to insert event", "error", err)
 	}
 
 	return err

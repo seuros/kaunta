@@ -3,7 +3,6 @@ package cli
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"syscall"
@@ -13,6 +12,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/seuros/kaunta/internal/database"
+	"github.com/seuros/kaunta/internal/logging"
 )
 
 var userCmd = &cobra.Command{
@@ -292,7 +292,7 @@ Example:
 		// Invalidate all sessions
 		_, err = database.DB.Exec("DELETE FROM user_sessions WHERE user_id = (SELECT user_id FROM users WHERE username = $1)", username)
 		if err != nil {
-			log.Printf("Warning: failed to invalidate sessions: %v", err)
+			logging.L().Warn("failed to invalidate sessions after password reset", "error", err, "username", username)
 		}
 
 		fmt.Printf("✓ Password reset successfully for '%s'\n", username)

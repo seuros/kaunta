@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -23,6 +22,7 @@ import (
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/geoip"
 	"github.com/seuros/kaunta/internal/handlers"
+	"github.com/seuros/kaunta/internal/logging"
 	"github.com/seuros/kaunta/internal/middleware"
 )
 
@@ -44,7 +44,7 @@ It provides real-time analytics and a clean dashboard interface.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.LoadWithOverrides(databaseURL, port, dataDir)
 		if err != nil {
-			log.Printf("Warning: failed to load config: %v", err)
+			logging.L().Warn("failed to load config overrides", "error", err)
 			return
 		}
 
@@ -116,31 +116,31 @@ func serveAnalytics(
 	// Get database URL
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
-		log.Fatal("DATABASE_URL environment variable is required")
+		logging.Fatal("DATABASE_URL environment variable is required")
 	}
 
 	// Run migrations
-	log.Println("Running database migrations...")
+	logging.L().Info("running database migrations")
 	if err := database.RunMigrations(databaseURL); err != nil {
-		log.Printf("⚠️  Migration warning: %v", err)
+		logging.L().Warn("migration warning", "error", err)
 	} else {
-		log.Println("✓ Migrations completed")
+		logging.L().Info("migrations completed")
 	}
 
 	// Connect to database
 	if err := database.Connect(); err != nil {
-		log.Fatalf("Database connection failed: %v", err)
+		logging.Fatal("database connection failed", "error", err)
 	}
 	defer func() {
 		if err := database.Close(); err != nil {
-			log.Printf("Error closing database: %v", err)
+			logging.L().Warn("error closing database", "error", err)
 		}
 	}()
 
 	// Initialize trusted origins cache from database
-	log.Println("Initializing trusted origins cache...")
+	logging.L().Info("initializing trusted origins cache")
 	if err := middleware.InitTrustedOriginsCache(); err != nil {
-		log.Printf("⚠️  Warning: failed to initialize trusted origins cache: %v", err)
+		logging.L().Warn("failed to initialize trusted origins cache", "error", err)
 	}
 
 	// Initialize GeoIP database (downloads if missing)
@@ -149,11 +149,11 @@ func serveAnalytics(
 		dataDir = "./data"
 	}
 	if err := geoip.Init(dataDir); err != nil {
-		log.Fatalf("GeoIP initialization failed: %v", err)
+		logging.Fatal("geoip initialization failed", "error", err)
 	}
 	defer func() {
 		if err := geoip.Close(); err != nil {
-			log.Printf("Error closing GeoIP: %v", err)
+			logging.L().Warn("error closing geoip", "error", err)
 		}
 	}()
 
@@ -186,7 +186,7 @@ func serveAnalytics(
 	// Get initial trusted origins from cache
 	trustedOrigins, err := middleware.GetTrustedOrigins()
 	if err != nil {
-		log.Printf("⚠️  Warning: failed to get trusted origins: %v", err)
+		logging.L().Warn("failed to get trusted origins", "error", err)
 		trustedOrigins = []string{} // Empty list if error
 	}
 
@@ -324,8 +324,10 @@ func serveAnalytics(
 
 	// Start server
 	port := getEnv("PORT", "3000")
-	log.Printf("Kaunta starting on port %s", port)
-	log.Fatal(app.Listen(":" + port))
+	logging.L().Info("starting kaunta server", "port", port)
+	if err := app.Listen(":" + port); err != nil {
+		logging.Fatal("fiber server exited", "error", err)
+	}
 
 	return nil
 }

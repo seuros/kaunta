@@ -2,10 +2,10 @@ package main
 
 import (
 	_ "embed"
-	"log"
 	"strings"
 
 	"github.com/seuros/kaunta/internal/cli"
+	"github.com/seuros/kaunta/internal/logging"
 )
 
 //go:embed VERSION
@@ -46,6 +46,6 @@ func run() error {
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatal(err)
+		logging.Fatal("kaunta execution failed", "error", err)
 	}
 }
