@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.4](https://github.com/seuros/kaunta/compare/v0.15.3...v0.15.4) (2025-11-11)
+
+
+### Bug Fixes
+
+* introduce structured logging ([df99b17](https://github.com/seuros/kaunta/commit/df99b175e17a8428f6dd6df4c402829d13133120))
+
 ## [0.15.3](https://github.com/seuros/kaunta/compare/v0.15.2...v0.15.3) (2025-11-10)
 
 
