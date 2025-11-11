@@ -1,19 +1,23 @@
-FROM golang:1.25-alpine AS builder
-
-RUN apk add --no-cache git ca-certificates tzdata bash curl libstdc++ libgcc
+FROM oven/bun:alpine AS frontend-builder
 WORKDIR /app
+
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
+COPY tracker/ ./tracker/
+COPY frontend/ ./frontend/
+RUN bun run build
+
+FROM golang:1.25-alpine AS backend-builder
+WORKDIR /app
+
+RUN apk add --no-cache git ca-certificates tzdata
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-
-ENV BUN_INSTALL=/root/.bun
-ENV PATH="/root/.bun/bin:$PATH"
-
-RUN curl -fsSL https://bun.sh/install | bash
-RUN bun install --frozen-lockfile
-RUN bun run build
+COPY --from=frontend-builder /app/cmd/kaunta/assets ./cmd/kaunta/assets
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build \
@@ -37,9 +41,7 @@ LABEL org.opencontainers.image.title="Kaunta" \
 
 RUN apk add --no-cache ca-certificates tzdata
 
-COPY --from=builder /app/kaunta /kaunta
-# All assets and templates are embedded in the binary via //go:embed directives
-# No need to copy templates/ or assets/ directories
+COPY --from=backend-builder /app/kaunta /kaunta
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD ["/kaunta", "healthcheck"]
