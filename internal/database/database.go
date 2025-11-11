@@ -3,10 +3,11 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 
 	_ "github.com/lib/pq"
+
+	"github.com/seuros/kaunta/internal/logging"
 )
 
 var DB *sql.DB
@@ -37,7 +38,7 @@ func ConnectWithURL(databaseURL string) error {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Println("✓ Database connected")
+	logging.L().Info("database connected")
 	return nil
 }
 

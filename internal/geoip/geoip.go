@@ -4,13 +4,14 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/oschwald/geoip2-golang"
+
+	"github.com/seuros/kaunta/internal/logging"
 )
 
 var (
@@ -25,29 +26,28 @@ func Init(dataDir string) error {
 
 	// Download if missing
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		log.Printf("GeoIP database not found at %s, attempting download...", dbPath)
+		logging.L().Info("geoip database not found; attempting download", "path", dbPath)
 		if err := downloadDatabase(dbPath); err != nil {
-			log.Printf("⚠️  Warning: GeoIP database download failed: %v", err)
-			log.Println("⚠️  GeoIP lookups will return 'Unknown'. To enable geolocation:")
-			log.Printf("   1. Download from https://geoip.maxmind.com/")
-			log.Printf("   2. Place at: %s", dbPath)
+			logging.L().Warn("geoip database download failed", "error", err)
+			logging.L().Warn("geoip lookups will return 'Unknown' until database is installed manually")
+			logging.L().Info("download GeoIP from https://geoip.maxmind.com/ and place file", "path", dbPath)
 			// Don't fail - continue without GeoIP
 			return nil
 		}
-		log.Println("✓ GeoIP database downloaded successfully")
+		logging.L().Info("geoip database downloaded successfully")
 	}
 
 	// Open database
 	var err error
 	reader, err = geoip2.Open(dbPath)
 	if err != nil {
-		log.Printf("⚠️  Warning: Could not load GeoIP database: %v", err)
-		log.Println("⚠️  GeoIP lookups will return 'Unknown'")
+		logging.L().Warn("could not load geoip database", "error", err)
+		logging.L().Warn("geoip lookups will return 'Unknown'")
 		// Don't fail - continue without GeoIP
 		return nil
 	}
 
-	log.Println("✓ GeoIP database loaded")
+	logging.L().Info("geoip database loaded")
 	return nil
 }
 
@@ -64,7 +64,7 @@ func LookupIP(ipStr string) (country, city, region string) {
 
 	record, err := reader.City(ip)
 	if err != nil {
-		log.Printf("GeoIP lookup error for %s: %v", ipStr, err)
+		logging.L().Warn("geoip lookup error", "ip", ipStr, "error", err)
 		return "", "", ""
 	}
 
@@ -102,7 +102,7 @@ func downloadDatabase(dbPath string) error {
 	// Source: https://www.npmjs.com/package/geolite2-city
 	url := "https://cdn.jsdelivr.net/npm/geolite2-city/GeoLite2-City.mmdb.gz"
 
-	log.Printf("Downloading GeoIP database from %s", url)
+	logging.L().Info("downloading geoip database", "url", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -110,7 +110,7 @@ func downloadDatabase(dbPath string) error {
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Printf("Warning: failed to close response body: %v", err)
+			logging.L().Warn("failed to close geoip response body", "error", err)
 		}
 	}()
 
@@ -125,7 +125,7 @@ func downloadDatabase(dbPath string) error {
 	}
 	defer func() {
 		if err := gzReader.Close(); err != nil {
-			log.Printf("Warning: failed to close gzip reader: %v", err)
+			logging.L().Warn("failed to close geoip gzip reader", "error", err)
 		}
 	}()
 
@@ -136,7 +136,7 @@ func downloadDatabase(dbPath string) error {
 	}
 	defer func() {
 		if err := out.Close(); err != nil {
-			log.Printf("Warning: failed to close output file: %v", err)
+			logging.L().Warn("failed to close geoip output file", "error", err)
 		}
 	}()
 
