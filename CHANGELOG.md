@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.16.0](https://github.com/seuros/kaunta/compare/v0.15.4...v0.16.0) (2025-11-11)
+
+
+### Features
+
+* improve Docker workflow and fix dashboard issues ([a84647b](https://github.com/seuros/kaunta/commit/a84647b1b46bc36631a326953c89925f62f75a8d))
+
+
+### Bug Fixes
+
+* improve Docker healthcheck to test service health ([98a327e](https://github.com/seuros/kaunta/commit/98a327e0f1f419c04c7c1e414141abcb77d941a5))
+* render empty chart and fix null array responses ([a7a087b](https://github.com/seuros/kaunta/commit/a7a087ba5dc4618a7d822e69df3af231d78e369c))
+
 ## [0.15.4](https://github.com/seuros/kaunta/compare/v0.15.3...v0.15.4) (2025-11-11)
 
 
