@@ -15,6 +15,7 @@ services:
       retries: 5
 
   kaunta:
+    image: ghcr.io/seuros/kaunta:latest
     build:
       context: .
       dockerfile: Dockerfile
