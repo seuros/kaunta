@@ -7,6 +7,7 @@ import (
 )
 
 // HandleTimeSeries returns time-series data for charts
+// Uses PostgreSQL function get_timeseries() for optimized hourly aggregation
 func HandleTimeSeries(c fiber.Ctx) error {
 	websiteIDStr := c.Params("website_id")
 	websiteID, err := uuid.Parse(websiteIDStr)
@@ -16,28 +17,44 @@ func HandleTimeSeries(c fiber.Ctx) error {
 		})
 	}
 
-	// Get date range (default 7 days)
+	// Get date range (default 7 days, max 90)
 	days := fiber.Query[int](c, "days", 7)
 	if days > 90 {
-		days = 90 // Max 90 days
+		days = 90
 	}
 
-	filterClause, filterArgs := buildFilterClause(c, []interface{}{websiteID, days})
+	// Extract filter parameters
+	country := c.Query("country")
+	browser := c.Query("browser")
+	device := c.Query("device")
+	page := c.Query("page")
 
-	// Query for hourly pageview counts
-	query := `
-		SELECT
-			DATE_TRUNC('hour', e.created_at) as hour,
-			COUNT(*) as views
-		FROM website_event e
-		JOIN session s ON e.session_id = s.session_id
-		WHERE e.website_id = $1
-		  AND e.created_at >= NOW() - INTERVAL '1 day' * $2
-		  AND e.event_type = 1` + filterClause + `
-		GROUP BY hour
-		ORDER BY hour ASC`
+	// Convert empty strings to NULL for SQL
+	var countryParam, browserParam, deviceParam, pageParam interface{}
+	if country != "" {
+		countryParam = country
+	}
+	if browser != "" {
+		browserParam = browser
+	}
+	if device != "" {
+		deviceParam = device
+	}
+	if page != "" {
+		pageParam = page
+	}
 
-	rows, err := database.DB.Query(query, filterArgs...)
+	// Call get_timeseries() function
+	query := `SELECT * FROM get_timeseries($1, $2, $3, $4, $5, $6)`
+	rows, err := database.DB.Query(
+		query,
+		websiteID,
+		days,
+		countryParam,
+		browserParam,
+		deviceParam,
+		pageParam,
+	)
 
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
@@ -49,13 +66,13 @@ func HandleTimeSeries(c fiber.Ctx) error {
 	points := make([]TimeSeriesPoint, 0)
 	for rows.Next() {
 		var timestamp string
-		var value int
+		var value int64
 		if err := rows.Scan(&timestamp, &value); err != nil {
 			continue
 		}
 		points = append(points, TimeSeriesPoint{
 			Timestamp: timestamp,
-			Value:     value,
+			Value:     int(value),
 		})
 	}
 

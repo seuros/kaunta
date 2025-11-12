@@ -9,6 +9,7 @@ import (
 )
 
 // HandleDashboardStats returns aggregated stats for the dashboard
+// Uses PostgreSQL function get_dashboard_stats() for optimized query execution
 func HandleDashboardStats(c fiber.Ctx) error {
 	websiteIDStr := c.Params("website_id")
 	websiteID, err := uuid.Parse(websiteIDStr)
@@ -18,84 +19,58 @@ func HandleDashboardStats(c fiber.Ctx) error {
 		})
 	}
 
-	// Build filter clause
-	filterClause, filterArgs := buildFilterClause(c, []interface{}{websiteID})
+	// Extract filter parameters from query string
+	country := c.Query("country")
+	browser := c.Query("browser")
+	device := c.Query("device")
+	page := c.Query("page")
 
-	// Get current visitors (last 5 minutes)
-	var currentVisitors int
-	query := `
-		SELECT COUNT(DISTINCT e.session_id)
-		FROM website_event e
-		JOIN session s ON e.session_id = s.session_id
-		WHERE e.website_id = $1
-		  AND e.created_at >= NOW() - INTERVAL '5 minutes'
-		  AND e.event_type = 1` + filterClause
+	// Convert empty strings to NULL for SQL
+	var countryParam, browserParam, deviceParam, pageParam interface{}
+	if country != "" {
+		countryParam = country
+	}
+	if browser != "" {
+		browserParam = browser
+	}
+	if device != "" {
+		deviceParam = device
+	}
+	if page != "" {
+		pageParam = page
+	}
 
-	err = database.DB.QueryRow(query, filterArgs...).Scan(&currentVisitors)
+	// Call get_dashboard_stats() function - replaces 4 separate queries
+	var currentVisitors, todayPageviews, todayVisitors int64
+	var bounceRateNumeric float64
+
+	query := `SELECT * FROM get_dashboard_stats($1, 1, $2, $3, $4, $5)`
+	err = database.DB.QueryRow(
+		query,
+		websiteID,
+		countryParam,
+		browserParam,
+		deviceParam,
+		pageParam,
+	).Scan(&currentVisitors, &todayPageviews, &todayVisitors, &bounceRateNumeric)
+
 	if err != nil {
-		currentVisitors = 0
+		// On error, return zero values
+		return c.JSON(DashboardStats{
+			CurrentVisitors: 0,
+			TodayPageviews:  0,
+			TodayVisitors:   0,
+			TodayBounceRate: "0%",
+		})
 	}
 
-	// Get today's pageviews
-	var todayPageviews int
-	filterClause, filterArgs = buildFilterClause(c, []interface{}{websiteID})
-	query = `
-		SELECT COUNT(*)
-		FROM website_event e
-		JOIN session s ON e.session_id = s.session_id
-		WHERE e.website_id = $1
-		  AND e.created_at >= CURRENT_DATE
-		  AND e.event_type = 1` + filterClause
-
-	err = database.DB.QueryRow(query, filterArgs...).Scan(&todayPageviews)
-	if err != nil {
-		todayPageviews = 0
-	}
-
-	// Get today's unique visitors
-	var todayVisitors int
-	filterClause, filterArgs = buildFilterClause(c, []interface{}{websiteID})
-	query = `
-		SELECT COUNT(DISTINCT e.session_id)
-		FROM website_event e
-		JOIN session s ON e.session_id = s.session_id
-		WHERE e.website_id = $1
-		  AND e.created_at >= CURRENT_DATE
-		  AND e.event_type = 1` + filterClause
-
-	err = database.DB.QueryRow(query, filterArgs...).Scan(&todayVisitors)
-	if err != nil {
-		todayVisitors = 0
-	}
-
-	// Calculate bounce rate (simplified: sessions with only 1 pageview)
-	bounceRate := "0%"
-	if todayVisitors > 0 {
-		var bounces int
-		filterClause, filterArgs = buildFilterClause(c, []interface{}{websiteID})
-		query = `
-			SELECT COUNT(*)
-			FROM (
-				SELECT e.session_id, COUNT(*) as views
-				FROM website_event e
-				JOIN session s ON e.session_id = s.session_id
-				WHERE e.website_id = $1
-				  AND e.created_at >= CURRENT_DATE
-				  AND e.event_type = 1` + filterClause + `
-				GROUP BY e.session_id
-				HAVING COUNT(*) = 1
-			) bounced_sessions`
-
-		_ = database.DB.QueryRow(query, filterArgs...).Scan(&bounces)
-
-		bounceRatePercent := float64(bounces) / float64(todayVisitors) * 100
-		bounceRate = fmt.Sprintf("%.1f%%", bounceRatePercent)
-	}
+	// Format bounce rate as percentage string
+	bounceRate := fmt.Sprintf("%.1f%%", bounceRateNumeric)
 
 	return c.JSON(DashboardStats{
-		CurrentVisitors: currentVisitors,
-		TodayPageviews:  todayPageviews,
-		TodayVisitors:   todayVisitors,
+		CurrentVisitors: int(currentVisitors),
+		TodayPageviews:  int(todayPageviews),
+		TodayVisitors:   int(todayVisitors),
 		TodayBounceRate: bounceRate,
 	})
 }
