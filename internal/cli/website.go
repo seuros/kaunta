@@ -134,26 +134,16 @@ Use --force to skip the confirmation prompt.`,
 }
 
 var websiteTrackingCodeCmd = &cobra.Command{
-	Use:   "tracking-code <domain> [--format js|html|snippet]",
+	Use:   "tracking-code <domain>",
 	Short: "Generate tracking code snippet",
 	Long: `Generate a JavaScript tracking code snippet ready to embed in your website.
 
-Supported formats:
-  js       - JavaScript only (default)
-  html     - Full HTML with script tags
-  snippet  - HTML comment with instructions
-
-This command outputs code that you can copy and paste into your site.`,
+This command outputs code that you can copy and paste into the <head> section of your site.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runWebsiteTrackingCode(args[0], trackingFormat)
+		return runWebsiteTrackingCode(args[0])
 	},
 }
-
-// Domain management command flags
-var (
-	trackingFormat string
-)
 
 var (
 	fetchWebsiteByDomain  = GetWebsiteByDomain
@@ -394,11 +384,7 @@ func runWebsiteDelete(domain string, force bool) error {
 	return nil
 }
 
-func runWebsiteTrackingCode(domain string, format string) error {
-	if format == "" {
-		format = "js"
-	}
-
+func runWebsiteTrackingCode(domain string) error {
 	if database.DB == nil {
 		if err := connectDatabase(); err != nil {
 			return fmt.Errorf("database connection failed: %w", err)
@@ -414,41 +400,8 @@ func runWebsiteTrackingCode(domain string, format string) error {
 		return err
 	}
 
-	// Generate tracking code based on format
-	var trackingCode string
-	switch format {
-	case "js":
-		trackingCode = fmt.Sprintf(`<script>
-  window.kaunataConfig = { websiteId: "%s" };
-</script>
-<script async src="/k.js"></script>`, website.WebsiteID)
-	case "html":
-		trackingCode = fmt.Sprintf(`<!-- Kaunta Analytics Tracking Code -->
-<script>
-  window.kaunataConfig = {
-    websiteId: "%s"
-  };
-</script>
-<script async src="/k.js"></script>
-<!-- End Kaunta Code -->`, website.WebsiteID)
-	case "snippet":
-		trackingCode = fmt.Sprintf(`<!--
-  Kaunta Analytics Tracking Code
-
-  Copy and paste the below code into the <head> section of your website.
-  This code will automatically track page views and visitor interactions.
-
-  Website ID: %s
-
-  For installation instructions, visit: https://github.com/seuros/kaunta
--->
-<script>
-  window.kaunataConfig = { websiteId: "%s" };
-</script>
-<script async src="/k.js"></script>`, website.WebsiteID, website.WebsiteID)
-	default:
-		return fmt.Errorf("invalid format: %s (use js, html, or snippet)", format)
-	}
+	// Generate single inline tracking code
+	trackingCode := fmt.Sprintf(`<script async src="/k.js" data-website-id="%s"></script>`, website.WebsiteID)
 
 	fmt.Println(trackingCode)
 
@@ -736,9 +689,6 @@ func init() {
 
 	// Delete command flags
 	websiteDeleteCmd.Flags().BoolVarP(&deleteForce, "force", "f", false, "Skip confirmation prompt")
-
-	// Tracking code command flags
-	websiteTrackingCodeCmd.Flags().StringVarP(&trackingFormat, "format", "f", "js", "Output format (js, html, snippet)")
 
 	// Add domain command flags
 	websiteAddDomainCmd.Flags().StringVarP(&addDomainAllowed, "allowed", "a", "", "Comma-separated list of additional domains to allow")

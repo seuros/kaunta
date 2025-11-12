@@ -82,42 +82,11 @@ func TestRunWebsiteTrackingCodeFormats(t *testing.T) {
 	}
 	defer func() { fetchWebsiteByDomain = originalFetcher }()
 
-	cases := []struct {
-		format       string
-		expectString string
-	}{
-		{"js", `window.kaunataConfig = { websiteId: "site-123" };`},
-		{"html", "<!-- Kaunta Analytics Tracking Code -->"},
-		{"snippet", "Kaunta Analytics Tracking Code"},
-		{"", `window.kaunataConfig = { websiteId: "site-123" };`}, // default js
-	}
-
-	for _, tt := range cases {
-		t.Run(tt.format, func(t *testing.T) {
-			output, err := captureOutput(t, func() error {
-				return runWebsiteTrackingCode("example.com", tt.format)
-			})
-			require.NoError(t, err)
-			assert.Contains(t, output, tt.expectString)
-		})
-	}
-}
-
-func TestRunWebsiteTrackingCodeInvalidFormat(t *testing.T) {
-	stubDB(t)
-	stubConnectClose(t)
-
-	originalFetcher := fetchWebsiteByDomain
-	fetchWebsiteByDomain = func(ctx context.Context, domain string, websiteID *string) (*WebsiteDetail, error) {
-		return &WebsiteDetail{WebsiteID: "site-123"}, nil
-	}
-	defer func() { fetchWebsiteByDomain = originalFetcher }()
-
-	_, err := captureOutput(t, func() error {
-		return runWebsiteTrackingCode("example.com", "xml")
+	output, err := captureOutput(t, func() error {
+		return runWebsiteTrackingCode("example.com")
 	})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid format")
+	require.NoError(t, err)
+	assert.Contains(t, output, `<script async src="/k.js" data-website-id="site-123"></script>`)
 }
 
 func TestRunListDomainsFormats(t *testing.T) {
