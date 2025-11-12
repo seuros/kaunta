@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1](https://github.com/seuros/kaunta/compare/v0.18.0...v0.18.1) (2025-11-12)
+
+
+### Bug Fixes
+
+* tag generation ([dea35dd](https://github.com/seuros/kaunta/commit/dea35ddb5abf19be3be94b807952c49c1a20e8c7))
+
 ## [0.18.0](https://github.com/seuros/kaunta/compare/v0.17.0...v0.18.0) (2025-11-12)
 
 
