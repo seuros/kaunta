@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0](https://github.com/seuros/kaunta/compare/v0.16.0...v0.17.0) (2025-11-12)
+
+
+### Features
+
+* add real-time WebSocket updates and fix dashboard filters ([413e0ed](https://github.com/seuros/kaunta/commit/413e0ede747f339c3320c078dd0a3bd564e8b34b))
+* migrate analytics queries to PostgreSQL functions ([8fc01cd](https://github.com/seuros/kaunta/commit/8fc01cd1a88d257d62d80cfb612cd1169b2d043b))
+
 ## [0.16.0](https://github.com/seuros/kaunta/compare/v0.15.4...v0.16.0) (2025-11-11)
 
 
