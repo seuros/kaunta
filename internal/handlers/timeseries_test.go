@@ -16,12 +16,12 @@ func TestHandleTimeSeries_Success(t *testing.T) {
 	websiteID := uuid.New()
 	responses := []mockResponse{
 		{
-			match:   "SELECT DATE_TRUNC('hour', e.created_at) as hour",
-			args:    []interface{}{websiteID, 7},
+			match:   "SELECT * FROM get_timeseries",
+			args:    []interface{}{websiteID, 7, nil, nil, nil, nil},
 			columns: []string{"hour", "views"},
 			rows: [][]interface{}{
-				{"2025-11-05T14:00:00Z", 10},
-				{"2025-11-05T15:00:00Z", 7},
+				{"2025-11-05T14:00:00Z", int64(10)},
+				{"2025-11-05T15:00:00Z", int64(7)},
 			},
 		},
 	}
@@ -46,11 +46,11 @@ func TestHandleTimeSeries_WithFilters(t *testing.T) {
 	websiteID := uuid.New()
 	responses := []mockResponse{
 		{
-			match:   "SELECT DATE_TRUNC('hour', e.created_at) as hour",
+			match:   "SELECT * FROM get_timeseries",
 			args:    []interface{}{websiteID, 30, "US", "Chrome", "mobile", "/docs"},
 			columns: []string{"hour", "views"},
 			rows: [][]interface{}{
-				{"2025-11-05T14:00:00Z", 5},
+				{"2025-11-05T14:00:00Z", int64(5)},
 			},
 		},
 	}
@@ -84,8 +84,8 @@ func TestHandleTimeSeries_QueryError(t *testing.T) {
 	websiteID := uuid.New()
 	responses := []mockResponse{
 		{
-			match: "SELECT DATE_TRUNC('hour', e.created_at) as hour",
-			args:  []interface{}{websiteID, 7},
+			match: "SELECT * FROM get_timeseries",
+			args:  []interface{}{websiteID, 7, nil, nil, nil, nil},
 			err:   assert.AnError,
 		},
 	}
