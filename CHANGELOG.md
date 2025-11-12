@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.18.0](https://github.com/seuros/kaunta/compare/v0.17.0...v0.18.0) (2025-11-12)
+
+
+### Features
+
+* add pagination support to list endpoints ([735db9a](https://github.com/seuros/kaunta/commit/735db9a83a10403115abe189bf4aa3f5f1f263da))
+
+
+### Bug Fixes
+
+* add assets ([3bdb1b9](https://github.com/seuros/kaunta/commit/3bdb1b95b51909fc91445b2754eb1d634d0aefce))
+* push fixing migration ([67f0af2](https://github.com/seuros/kaunta/commit/67f0af256e6fb8d28d39c90be83cbdc293fd286c))
+
 ## [0.17.0](https://github.com/seuros/kaunta/compare/v0.16.0...v0.17.0) (2025-11-12)
 
 
