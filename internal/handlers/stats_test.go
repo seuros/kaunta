@@ -17,28 +17,10 @@ func TestHandleDashboardStats_Success(t *testing.T) {
 
 	responses := []mockResponse{
 		{
-			match:   "SELECT COUNT(DISTINCT e.session_id)",
-			args:    []interface{}{websiteID},
-			columns: []string{"count"},
-			rows:    [][]interface{}{{3}},
-		},
-		{
-			match:   "SELECT COUNT(*)",
-			args:    []interface{}{websiteID},
-			columns: []string{"count"},
-			rows:    [][]interface{}{{12}},
-		},
-		{
-			match:   "SELECT COUNT(DISTINCT e.session_id)",
-			args:    []interface{}{websiteID},
-			columns: []string{"count"},
-			rows:    [][]interface{}{{6}},
-		},
-		{
-			match:   "SELECT COUNT(*)",
-			args:    []interface{}{websiteID},
-			columns: []string{"count"},
-			rows:    [][]interface{}{{2}},
+			match:   "SELECT * FROM get_dashboard_stats",
+			args:    []interface{}{websiteID, nil, nil, nil, nil},
+			columns: []string{"current_visitors", "today_pageviews", "today_visitors", "bounce_rate"},
+			rows:    [][]interface{}{{int64(3), int64(12), int64(6), 33.3}},
 		},
 	}
 
@@ -79,21 +61,9 @@ func TestHandleDashboardStats_QueryErrors(t *testing.T) {
 
 	responses := []mockResponse{
 		{
-			match: "SELECT COUNT(DISTINCT e.session_id)",
-			args:  []interface{}{websiteID},
+			match: "SELECT * FROM get_dashboard_stats",
+			args:  []interface{}{websiteID, nil, nil, nil, nil},
 			err:   assert.AnError,
-		},
-		{
-			match:   "SELECT COUNT(*)",
-			args:    []interface{}{websiteID},
-			columns: []string{"count"},
-			rows:    [][]interface{}{{0}},
-		},
-		{
-			match:   "SELECT COUNT(DISTINCT e.session_id)",
-			args:    []interface{}{websiteID},
-			columns: []string{"count"},
-			rows:    [][]interface{}{{0}},
 		},
 	}
 
@@ -110,7 +80,9 @@ func TestHandleDashboardStats_QueryErrors(t *testing.T) {
 	var stats DashboardStats
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&stats))
 	assert.Equal(t, 0, stats.CurrentVisitors)
+	assert.Equal(t, 0, stats.TodayPageviews)
 	assert.Equal(t, 0, stats.TodayVisitors)
+	assert.Equal(t, "0%", stats.TodayBounceRate)
 
 	require.NoError(t, queue.expectationsMet())
 }
