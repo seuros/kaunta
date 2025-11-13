@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.19.0](https://github.com/seuros/kaunta/compare/v0.18.1...v0.19.0) (2025-11-13)
+
+
+### Features
+
+* add FreeBSD build support with Deno fallback ([9e0f84a](https://github.com/seuros/kaunta/commit/9e0f84ae9462df048f57ff11db563964e47b46ba)), closes [#47](https://github.com/seuros/kaunta/issues/47)
+* add trusted origins config sync and non-interactive password reset ([c3b476d](https://github.com/seuros/kaunta/commit/c3b476dadcf4a5988cfb06172d8f343d97fbe353))
+
 ## [0.18.1](https://github.com/seuros/kaunta/compare/v0.18.0...v0.18.1) (2025-11-12)
 
 
