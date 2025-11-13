@@ -1,8 +1,16 @@
 # Kaunta
 
+[![Go Version](https://img.shields.io/badge/go-1.25-00ADD8?style=flat-square&logo=go)](https://go.dev/)
+[![PostgreSQL](https://img.shields.io/badge/postgresql-17+-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![Website](https://img.shields.io/badge/website-live-success?style=flat-square&logo=github)](https://seuros.github.io/kaunta/)
+[![GitHub Release](https://img.shields.io/github/v/release/seuros/kaunta?style=flat-square)](https://github.com/seuros/kaunta/releases)
+
 Analytics without bloat.
 
 A simple, fast, privacy-focused web analytics engine. Drop-in replacement for Umami.
+
+🌐 **[Visit Website](https://seuros.github.io/kaunta/)**
 
 ## Features
 
