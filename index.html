@@ -4,6 +4,52 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kaunta - Analytics without bloat</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="96x96" href="assets/favicon-96x96.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+    <link rel="manifest" href="assets/site.webmanifest" />
+
+    <!-- SEO Meta Tags -->
+    <meta
+      name="description"
+      content="Kaunta - Privacy-focused analytics without bloat. Lightweight visitor tracking solution with real-time analytics and a clean dashboard interface. Drop-in replacement for Umami."
+    />
+    <meta
+      name="keywords"
+      content="analytics, web analytics, privacy, tracking, dashboard, real-time, kaunta, umami, alternative"
+    />
+    <meta name="author" content="Kaunta Analytics" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Kaunta - Analytics without bloat" />
+    <meta
+      property="og:description"
+      content="Privacy-focused analytics without bloat. Lightweight visitor tracking solution with real-time analytics and a clean dashboard interface. Drop-in replacement for Umami."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="/" />
+    <meta property="og:site_name" content="Kaunta Analytics" />
+    <meta property="og:image" content="assets/web-app-manifest-512x512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="Kaunta Analytics Logo" />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kaunta - Analytics without bloat" />
+    <meta
+      name="twitter:description"
+      content="Privacy-focused analytics without bloat. Lightweight visitor tracking solution with real-time analytics and a clean dashboard interface."
+    />
+    <meta name="twitter:image" content="assets/web-app-manifest-512x512.png" />
+
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="msapplication-TileColor" content="#3b82f6" />
     <style>
       * {
         margin: 0;
@@ -17,16 +63,17 @@
 
       :root {
         --bg-primary: #ffffff;
-        --bg-secondary: #f0f4ff;
-        --bg-accent: #e8effe;
-        --bg-glass: rgba(255, 255, 255, 0.75);
-        --text-primary: #0a0e27;
-        --text-secondary: #4a5568;
-        --text-tertiary: #718096;
-        --border-color: #dce4f0;
+        --bg-secondary: #f8f9fa;
+        --bg-accent: #e6f0ff;
+        --bg-glass: rgba(230, 240, 255, 0.7);
+        --text-primary: #1a1a1a;
+        --text-secondary: #4b5e7a;
+        --text-tertiary: #7b8aa6;
+        --border-color: #d6e2ff;
         --accent-color: #3b82f6;
-        --accent-dark: #1e40af;
+        --accent-dark: #1e3a8a;
         --accent-light: #dbeafe;
+        --gradient-primary: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
         --code-bg: #1e293b;
         --code-text: #cbd5e1;
         --code-keyword: #d946ef;
@@ -37,7 +84,7 @@
 
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
-        background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-accent) 100%);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(200, 220, 255, 0.4));
         color: var(--text-primary);
         line-height: 1.6;
         min-height: 100vh;
@@ -45,17 +92,25 @@
         flex-direction: column;
       }
 
+      h1 {
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
       .glass {
         background: rgba(255, 255, 255, 0.65);
         backdrop-filter: blur(16px) saturate(1.3);
         -webkit-backdrop-filter: blur(16px) saturate(1.3);
         border: 1px solid rgba(255, 255, 255, 0.6);
-        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        box-shadow:
+          0 8px 32px rgba(59, 130, 246, 0.1),
+          inset 0 1px 0 rgba(255, 255, 255, 0.6);
       }
 
       /* <CHANGE> Improved floating status banner with enhanced glass effect */
       .floating-status {
-  
         background: rgba(255, 255, 255, 0.7);
         backdrop-filter: blur(20px) saturate(1.4);
         -webkit-backdrop-filter: blur(20px) saturate(1.4);
@@ -69,7 +124,9 @@
         font-size: 14px;
         font-weight: 500;
         color: var(--accent-color);
-        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        box-shadow:
+          0 8px 32px rgba(59, 130, 246, 0.15),
+          inset 0 1px 0 rgba(255, 255, 255, 0.8);
         animation: floatUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
 
@@ -94,11 +151,12 @@
       }
 
       @keyframes pulse {
-        0%, 100% { 
+        0%,
+        100% {
           opacity: 1;
           box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
         }
-        50% { 
+        50% {
           opacity: 0.4;
           box-shadow: 0 0 4px rgba(16, 185, 129, 0.3);
         }
@@ -112,33 +170,21 @@
         transform: translateX(-50%);
         max-width: 1200px;
         width: 90%;
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(20px) saturate(1.4);
-        -webkit-backdrop-filter: blur(20px) saturate(1.4);
-        border: 1px solid rgba(255, 255, 255, 0.6);
+        background: var(--bg-glass);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
         border-radius: 16px;
         padding: 0;
         z-index: 100;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-        animation: slideDown 0.6s ease-out;
-      }
-
-      @keyframes slideDown {
-        from {
-          opacity: 0;
-          transform: translateY(-20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
+        transition: all 0.2s ease;
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.08);
       }
 
       header:hover {
-        background: rgba(255, 255, 255, 0.85);
-        box-shadow: 0 12px 48px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-        transform: translateX(-50%) translateY(-2px);
+        background: rgba(230, 240, 255, 0.9);
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.12);
+        transform: translateX(-50%) translateY(-1px);
       }
 
       nav {
@@ -150,18 +196,13 @@
       }
 
       .logo {
-        font-size: 1.5rem;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-        background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        display: flex;
+        align-items: center;
         transition: transform 0.2s ease;
       }
 
       .logo:hover {
-        transform: scale(1.05);
+        transform: scale(1.02);
       }
 
       .nav-links {
@@ -183,7 +224,7 @@
       }
 
       .nav-links a::after {
-        content: '';
+        content: "";
         position: absolute;
         bottom: -4px;
         left: 0;
@@ -238,12 +279,16 @@
         align-items: center;
         justify-content: center;
         padding: 140px 40px 80px;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(232, 239, 254, 0.4) 100%);
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.5) 0%,
+          rgba(232, 239, 254, 0.4) 100%
+        );
         overflow: hidden;
       }
 
       .hero::before {
-        content: '';
+        content: "";
         position: absolute;
         top: -30%;
         right: -15%;
@@ -257,7 +302,6 @@
       .hero-content {
         position: relative;
         z-index: 10;
-        max-width: 1200px;
         width: 100%;
         display: flex;
         flex-direction: column;
@@ -315,7 +359,7 @@
       /* <CHANGE> Enhanced image with improved glass container */
       .hero-image {
         width: 100%;
-        max-width: 700px;
+        max-width: 1000px;
         height: auto;
         border-radius: 20px;
         background: rgba(255, 255, 255, 0.6);
@@ -323,13 +367,16 @@
         -webkit-backdrop-filter: blur(16px) saturate(1.3);
         border: 1px solid rgba(255, 255, 255, 0.7);
         padding: 3px;
-        box-shadow: 0 40px 80px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        box-shadow:
+          0 40px 80px rgba(59, 130, 246, 0.2),
+          inset 0 1px 0 rgba(255, 255, 255, 0.9);
         transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
         animation: floatImage 3s ease-in-out infinite;
       }
 
       @keyframes floatImage {
-        0%, 100% {
+        0%,
+        100% {
           transform: translateY(0px);
         }
         50% {
@@ -339,7 +386,9 @@
 
       .hero-image:hover {
         transform: translateY(-12px) scale(1.01);
-        box-shadow: 0 60px 120px rgba(59, 130, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        box-shadow:
+          0 60px 120px rgba(59, 130, 246, 0.25),
+          inset 0 1px 0 rgba(255, 255, 255, 0.9);
         animation: none;
       }
 
@@ -373,24 +422,37 @@
         -webkit-backdrop-filter: blur(16px) saturate(1.3);
         color: var(--accent-color);
         border: 1.5px solid rgba(59, 130, 246, 0.4);
-        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        box-shadow:
+          0 4px 20px rgba(59, 130, 246, 0.1),
+          inset 0 1px 0 rgba(255, 255, 255, 0.8);
       }
 
       .btn-secondary:hover {
         background: rgba(255, 255, 255, 0.95);
         border-color: var(--accent-color);
-        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        box-shadow:
+          0 8px 32px rgba(59, 130, 246, 0.2),
+          inset 0 1px 0 rgba(255, 255, 255, 0.9);
         transform: translateY(-2px);
       }
 
       .section {
         width: 100%;
-        padding: 80px 40px;
+        padding: 80px 0;
       }
 
       .section-container {
-        max-width: 1200px;
+        max-width: 1000px;
         margin: 0 auto;
+        width: 100%;
+        padding: 0 40px;
+      }
+
+      /* Hero section uses larger width */
+      .hero .hero-content {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 0 40px;
       }
 
       .section-alt {
@@ -424,16 +486,30 @@
         border: 1px solid rgba(255, 255, 255, 0.7);
         transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         text-align: left;
-        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        box-shadow:
+          0 4px 20px rgba(59, 130, 246, 0.08),
+          inset 0 1px 0 rgba(255, 255, 255, 0.8);
         animation: slideUp 0.6s ease-out backwards;
       }
 
-      .feature-card:nth-child(1) { animation-delay: 0.1s; }
-      .feature-card:nth-child(2) { animation-delay: 0.15s; }
-      .feature-card:nth-child(3) { animation-delay: 0.2s; }
-      .feature-card:nth-child(4) { animation-delay: 0.25s; }
-      .feature-card:nth-child(5) { animation-delay: 0.3s; }
-      .feature-card:nth-child(6) { animation-delay: 0.35s; }
+      .feature-card:nth-child(1) {
+        animation-delay: 0.1s;
+      }
+      .feature-card:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+      .feature-card:nth-child(3) {
+        animation-delay: 0.2s;
+      }
+      .feature-card:nth-child(4) {
+        animation-delay: 0.25s;
+      }
+      .feature-card:nth-child(5) {
+        animation-delay: 0.3s;
+      }
+      .feature-card:nth-child(6) {
+        animation-delay: 0.35s;
+      }
 
       @keyframes slideUp {
         from {
@@ -449,14 +525,20 @@
       .feature-card:hover {
         transform: translateY(-8px);
         border-color: var(--accent-color);
-        box-shadow: 0 20px 48px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        box-shadow:
+          0 20px 48px rgba(59, 130, 246, 0.2),
+          inset 0 1px 0 rgba(255, 255, 255, 0.9);
         background: rgba(255, 255, 255, 0.95);
       }
 
       .feature-icon {
         width: 50px;
         height: 50px;
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.08) 100%);
+        background: linear-gradient(
+          135deg,
+          rgba(59, 130, 246, 0.15) 0%,
+          rgba(59, 130, 246, 0.08) 100%
+        );
         border-radius: 12px;
         display: flex;
         align-items: center;
@@ -501,7 +583,7 @@
         border-bottom: 1px solid rgba(203, 213, 225, 0.15);
         font-size: 0.85rem;
         color: var(--code-comment);
-        font-family: 'Courier New', monospace;
+        font-family: "Courier New", monospace;
         font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -513,7 +595,7 @@
       }
 
       .code-content code {
-        font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+        font-family: "Monaco", "Menlo", "Courier New", monospace;
         font-size: 0.9rem;
         line-height: 1.6;
         color: var(--code-text);
@@ -553,7 +635,7 @@
       }
 
       .feature-list li:before {
-        content: '✓';
+        content: "✓";
         position: absolute;
         left: 0;
         color: var(--accent-color);
@@ -578,20 +660,36 @@
         border-radius: 12px;
         border: 1px solid rgba(255, 255, 255, 0.7);
         transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        box-shadow:
+          0 4px 20px rgba(59, 130, 246, 0.08),
+          inset 0 1px 0 rgba(255, 255, 255, 0.8);
         animation: slideUp 0.6s ease-out backwards;
       }
 
-      .dashboard-list li:nth-child(1) { animation-delay: 0.1s; }
-      .dashboard-list li:nth-child(2) { animation-delay: 0.15s; }
-      .dashboard-list li:nth-child(3) { animation-delay: 0.2s; }
-      .dashboard-list li:nth-child(4) { animation-delay: 0.25s; }
-      .dashboard-list li:nth-child(5) { animation-delay: 0.3s; }
-      .dashboard-list li:nth-child(6) { animation-delay: 0.35s; }
+      .dashboard-list li:nth-child(1) {
+        animation-delay: 0.1s;
+      }
+      .dashboard-list li:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+      .dashboard-list li:nth-child(3) {
+        animation-delay: 0.2s;
+      }
+      .dashboard-list li:nth-child(4) {
+        animation-delay: 0.25s;
+      }
+      .dashboard-list li:nth-child(5) {
+        animation-delay: 0.3s;
+      }
+      .dashboard-list li:nth-child(6) {
+        animation-delay: 0.35s;
+      }
 
       .dashboard-list li:hover {
         transform: translateY(-6px);
-        box-shadow: 0 16px 40px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        box-shadow:
+          0 16px 40px rgba(59, 130, 246, 0.15),
+          inset 0 1px 0 rgba(255, 255, 255, 0.9);
         border-color: var(--accent-color);
         background: rgba(255, 255, 255, 0.95);
       }
@@ -612,21 +710,20 @@
       /* Non-floating footer with glass effect and max-width 1200px */
       footer {
         width: 100%;
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(20px) saturate(1.4);
-        -webkit-backdrop-filter: blur(20px) saturate(1.4);
-        border-top: 1px solid rgba(255, 255, 255, 0.6);
+        background: var(--bg-glass);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-top: 1px solid var(--border-color);
         padding: 48px 40px;
         text-align: center;
-        box-shadow: 0 -8px 32px rgba(59, 130, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-        animation: slideUp 0.6s ease-out;
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.08);
         margin-top: auto;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.2s ease;
       }
 
       footer:hover {
-        background: rgba(255, 255, 255, 0.85);
-        box-shadow: 0 -12px 48px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        background: rgba(230, 240, 255, 0.9);
+        box-shadow: 0 8px 32px rgba(59, 130, 246, 0.12);
       }
 
       .footer-content {
@@ -637,21 +734,30 @@
 
       .footer-text {
         color: var(--text-secondary);
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
         font-size: 0.95rem;
         line-height: 1.7;
+        text-align: center;
+      }
+
+      .company-name {
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 600;
       }
 
       .footer-link {
         color: var(--accent-color);
         text-decoration: none;
-        font-weight: 600;
+        font-weight: 500;
         transition: all 0.2s ease;
         position: relative;
       }
 
       .footer-link::after {
-        content: '';
+        content: "";
         position: absolute;
         bottom: -2px;
         left: 0;
@@ -667,6 +773,7 @@
 
       .footer-link:hover {
         color: var(--accent-dark);
+        text-decoration: underline;
       }
 
       @media (max-width: 768px) {
@@ -723,11 +830,15 @@
         }
 
         .section {
-          padding: 60px 20px;
+          padding: 60px 0;
         }
 
         .section-container {
-          padding: 0;
+          padding: 0 20px;
+        }
+
+        .hero .hero-content {
+          padding: 0 20px;
         }
 
         .section-title {
@@ -748,6 +859,12 @@
         .feature-card {
           padding: 24px;
           text-align: center;
+        }
+
+        /* User Management section mobile */
+        #user-management .section-container > div {
+          grid-template-columns: 1fr !important;
+          gap: 2rem !important;
         }
 
         footer {
@@ -809,11 +926,26 @@
   </head>
 
   <body>
-
     <!-- Header -->
     <header>
       <nav>
-        <div class="logo">Kaunta</div>
+        <div class="logo">
+          <img src="assets/kaunta.svg" alt="Kaunta" style="height: 32px; width: auto" />
+          <span
+            style="
+              margin-left: 10px;
+              font-size: 1.5rem;
+              font-weight: 700;
+              letter-spacing: -0.5px;
+              background: var(--gradient-primary);
+              -webkit-background-clip: text;
+              -webkit-text-fill-color: transparent;
+              background-clip: text;
+              line-height: 1;
+            "
+            >Kaunta</span
+          >
+        </div>
         <div class="nav-links">
           <a href="#features">Features</a>
           <a href="#installation">Installation</a>
@@ -830,25 +962,35 @@
         <section class="hero">
           <div class="hero-content">
             <div class="hero-text">
-              <h1>Analytics without bloat</h1>
+              <h1 style="margin: 0; font-weight: 500; margin-bottom: 8px">Kaunta (カウンタ)</h1>
+              <div style="text-align: center; margin-bottom: 24px">
+                <span
+                  style="
+                    font-size: clamp(1.5rem, 4vw, 2.5rem);
+                    font-weight: 400;
+                    color: var(--text-secondary);
+                    letter-spacing: -0.5px;
+                  "
+                  >Analytics without bloat</span
+                >
+              </div>
               <p class="hero-subtitle">
                 A simple, fast, privacy-focused web analytics engine. Drop-in replacement for Umami.
               </p>
             </div>
-            
+
             <div class="hero-buttons">
               <a href="https://github.com/seuros/kaunta#readme" class="btn btn-primary">
                 <span>🚀</span>
                 Get Started
               </a>
             </div>
-            
+
             <div class="hero-image-container">
-              <img src="assets/hero_section.png" alt="Kaunta Analytics Dashboard" class="hero-image">
+              <img src="assets/Dashboard.png" alt="Kaunta Analytics Dashboard" class="hero-image" />
             </div>
           </div>
         </section>
-
       </div>
     </div>
 
@@ -880,12 +1022,16 @@
           <div class="feature-card">
             <div class="feature-icon">📊</div>
             <h3 class="feature-title">Full Analytics</h3>
-            <p class="feature-description">Visitors, pageviews, referrers, devices, locations, real-time stats</p>
+            <p class="feature-description">
+              Visitors, pageviews, referrers, devices, locations, real-time stats
+            </p>
           </div>
           <div class="feature-card">
             <div class="feature-icon">🌍</div>
             <h3 class="feature-title">Geolocation</h3>
-            <p class="feature-description">City/region level with automatic MaxMind GeoLite2 download</p>
+            <p class="feature-description">
+              City/region level with automatic MaxMind GeoLite2 download
+            </p>
           </div>
         </div>
       </div>
@@ -896,26 +1042,57 @@
       <section class="section" id="installation">
         <div class="section-container">
           <h2 class="section-title">Installation</h2>
-          <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">
+          <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem">
             Kaunta requires PostgreSQL 17+
           </p>
 
           <div class="code-block">
             <div class="code-header">Setup Database</div>
             <div class="code-content">
-              <code><span class="code-keyword">export</span> <span class="code-function">DATABASE_URL</span>=<span class="code-string">"postgresql://user:password@localhost:5432/kaunta"</span></code>
+              <code
+                ><span class="code-keyword">export</span>
+                <span class="code-function">DATABASE_URL</span>=<span class="code-string"
+                  >"postgresql://user:password@localhost:5432/kaunta"</span
+                ></code
+              >
             </div>
           </div>
 
-          <h3 style="font-size: 1.25rem; margin: 2rem 0 1rem; font-weight: 600; text-align: center; color: var(--text-primary);">Docker</h3>
+          <h3
+            style="
+              font-size: 1.25rem;
+              margin: 2rem 0 1rem;
+              font-weight: 600;
+              text-align: center;
+              color: var(--text-primary);
+            "
+          >
+            Docker
+          </h3>
           <div class="code-block">
             <div class="code-header">docker</div>
             <div class="code-content">
-              <code><span class="code-function">docker</span> run -e <span class="code-function">DATABASE_URL</span>=<span class="code-string">"postgresql://..."</span> -p 3000:3000 kaunta</code>
+              <code
+                ><span class="code-function">docker</span> run -e
+                <span class="code-function">DATABASE_URL</span>=<span class="code-string"
+                  >"postgresql://..."</span
+                >
+                -p 3000:3000 kaunta</code
+              >
             </div>
           </div>
 
-          <h3 style="font-size: 1.25rem; margin: 2rem 0 1rem; font-weight: 600; text-align: center; color: var(--text-primary);">Standalone Binary</h3>
+          <h3
+            style="
+              font-size: 1.25rem;
+              margin: 2rem 0 1rem;
+              font-weight: 600;
+              text-align: center;
+              color: var(--text-primary);
+            "
+          >
+            Standalone Binary
+          </h3>
           <div class="code-block">
             <div class="code-header">bash</div>
             <div class="code-content">
@@ -923,15 +1100,40 @@
             </div>
           </div>
 
-          <div style="margin-top: 2rem; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(16px) saturate(1.3); padding: 2rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.7); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);">
-            <h3 style="font-size: 1.1rem; margin-bottom: 1rem; font-weight: 600; color: var(--text-primary);">The server will:</h3>
+          <div
+            style="
+              margin-top: 2rem;
+              background: rgba(255, 255, 255, 0.7);
+              backdrop-filter: blur(16px) saturate(1.3);
+              padding: 2rem;
+              border-radius: 12px;
+              border: 1px solid rgba(255, 255, 255, 0.7);
+              box-shadow:
+                0 4px 20px rgba(59, 130, 246, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            "
+          >
+            <h3
+              style="
+                font-size: 1.1rem;
+                margin-bottom: 1rem;
+                font-weight: 600;
+                color: var(--text-primary);
+              "
+            >
+              The server will:
+            </h3>
             <ul class="feature-list">
               <li>Auto-run database migrations on startup</li>
               <li>Download GeoIP database if missing</li>
               <li>Start on port 3000 (configurable with PORT env var)</li>
             </ul>
-            <p style="margin-top: 1rem; color: var(--text-secondary);">
-              <strong>Health check endpoint:</strong> <code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">GET /up</code>
+            <p style="margin-top: 1rem; color: var(--text-secondary)">
+              <strong>Health check endpoint:</strong>
+              <code
+                style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px"
+                >GET /up</code
+              >
             </p>
           </div>
         </div>
@@ -942,72 +1144,335 @@
     <section class="section" id="usage">
       <div class="section-container">
         <h2 class="section-title">Usage</h2>
-        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">
+        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem">
           Add this to your website (works like Google Analytics):
         </p>
 
         <div class="code-block">
           <div class="code-header">html</div>
           <div class="code-content">
-            <code><span class="code-keyword">&lt;script</span> <span class="code-function">src</span>=<span class="code-string">"https://your-kaunta-server.com/k.js"</span> <span class="code-function">data-website-id</span>=<span class="code-string">"your-website-uuid"</span> <span class="code-function">async defer</span><span class="code-keyword">&gt;&lt;/script&gt;</span></code>
+            <code
+              ><span class="code-keyword">&lt;script</span>
+              <span class="code-function">src</span>=<span class="code-string"
+                >"https://your-kaunta-server.com/k.js"</span
+              >
+              <span class="code-function">data-website-id</span>=<span class="code-string"
+                >"your-website-uuid"</span
+              >
+              <span class="code-function">async defer</span
+              ><span class="code-keyword">&gt;&lt;/script&gt;</span></code
+            >
           </div>
         </div>
 
-        <p style="text-align: center; color: var(--accent-color); font-weight: 600; font-size: 1.1rem; margin-top: 2rem;">
+        <p
+          style="
+            text-align: center;
+            color: var(--accent-color);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-top: 2rem;
+          "
+        >
           That's it! Analytics start collecting.
         </p>
       </div>
     </section>
 
-    <!-- Dashboard Section -->
+    <!-- User Management Section -->
     <div class="section-alt">
-      <section class="section" id="dashboard">
+      <section class="section" id="user-management">
         <div class="section-container">
-          <h2 class="section-title">Dashboard</h2>
-          <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">
-            Visit <code style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(16px); padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.2);">http://your-server:3000/dashboard</code> to see:
+          <h2 class="section-title">User Management</h2>
+          <p
+            style="
+              text-align: center;
+              color: var(--text-secondary);
+              margin-bottom: 2rem;
+              max-width: 800px;
+              margin-left: auto;
+              margin-right: auto;
+            "
+          >
+            Kaunta uses CLI-based user management for security. No web registration - all users must
+            be created via command line.
           </p>
 
-          <ul class="dashboard-list">
-            <li><strong>Overview</strong><span>Total visitors, pageviews, bounce rate, session duration</span></li>
-            <li><strong>Pages</strong><span>Which pages get the most traffic</span></li>
-            <li><strong>Referrers</strong><span>Where your visitors come from</span></li>
-            <li><strong>Browsers/Devices</strong><span>What devices people use</span></li>
-            <li><strong>Locations</strong><span>Map showing visitor countries and cities</span></li>
-            <li><strong>Real-time</strong><span>Live visitor activity (updates every few seconds)</span></li>
-          </ul>
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center"
+          >
+            <div>
+              <h3
+                style="
+                  font-size: 1.4rem;
+                  margin-bottom: 1.5rem;
+                  font-weight: 600;
+                  color: var(--text-primary);
+                "
+              >
+                Create Your First User
+              </h3>
+
+              <div class="code-block">
+                <div class="code-header">bash</div>
+                <div class="code-content">
+                  <code
+                    ><span class="code-function">kaunta</span> user create
+                    <span class="code-string">admin</span>
+                    <span class="code-comment"
+                      ># You'll be prompted for name and password</span
+                    ></code
+                  >
+                </div>
+              </div>
+
+              <ul class="feature-list" style="margin-top: 1.5rem">
+                <li>Secure CLI-only user creation</li>
+                <li>Password must be at least 8 characters</li>
+                <li>Sessions last 7 days with HTTP-only cookies</li>
+                <li>
+                  Access dashboard at
+                  <code
+                    style="
+                      background: var(--bg-secondary);
+                      padding: 0.25rem 0.5rem;
+                      border-radius: 4px;
+                    "
+                    >/login</code
+                  >
+                </li>
+              </ul>
+            </div>
+
+            <div style="text-align: center">
+              <img
+                src="assets/login.png"
+                alt="Kaunta Login Page"
+                style="
+                  width: 100%;
+                  max-width: 400px;
+                  border-radius: 16px;
+                  box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+                  border: 1px solid var(--border-color);
+                "
+              />
+            </div>
+          </div>
         </div>
       </section>
     </div>
 
-    <!-- Umami Compatibility Section -->
-    <section class="section">
+    <!-- Dashboard Showcase Section -->
+    <section class="section" id="dashboard">
       <div class="section-container">
-        <h2 class="section-title">Umami Compatibility</h2>
-        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem; max-width: 800px; margin-left: auto; margin-right: auto;">
-          Drop-in replacement for Umami. Works with Umami's JavaScript tracker and seamlessly migrates existing databases:
+        <h2 class="section-title">Powerful Analytics Dashboard</h2>
+        <p
+          style="
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+          "
+        >
+          Get comprehensive insights with real-time analytics, advanced filtering, and beautiful
+          visualizations. Everything you need to understand your audience.
         </p>
 
-        <ul class="feature-list" style="max-width: 600px; margin: 0 auto">
-          <li>Compatible tracking API</li>
-          <li>Umami's JS tracker just works</li>
-          <li>Auto-migrates existing Umami databases on startup</li>
-          <li>Enhanced with bot detection and advanced analytics</li>
-        </ul>
+        <!-- Dashboard Image -->
+        <div style="text-align: center; margin-bottom: 4rem">
+          <img
+            src="assets/Dashboard.png"
+            alt="Kaunta Analytics Dashboard"
+            style="
+              width: 100%;
+              max-width: 1000px;
+              border-radius: 20px;
+              box-shadow: 0 40px 80px rgba(59, 130, 246, 0.2);
+              border: 1px solid var(--border-color);
+            "
+          />
+        </div>
+
+        <!-- Dashboard Features Grid -->
+        <div class="features-grid" style="margin-bottom: 3rem">
+          <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3 class="feature-title">Real-Time Stats</h3>
+            <p class="feature-description">
+              Live visitor counts, pageviews, and activity updates every few seconds
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🔍</div>
+            <h3 class="feature-title">Advanced Filtering</h3>
+            <p class="feature-description">
+              Filter by country, browser, device, page, and date ranges for deep insights
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🗺️</div>
+            <h3 class="feature-title">Interactive Map</h3>
+            <p class="feature-description">
+              Visualize visitor locations with country and city-level geographic data
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📈</div>
+            <h3 class="feature-title">Trend Analysis</h3>
+            <p class="feature-description">
+              Time-series charts showing traffic patterns over time with customizable periods
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🎯</div>
+            <h3 class="feature-title">Audience Insights</h3>
+            <p class="feature-description">
+              Detailed breakdowns of browsers, devices, operating systems, and referrer sources
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">⚡</div>
+            <h3 class="feature-title">Performance Metrics</h3>
+            <p class="feature-description">
+              Bounce rate, session duration, popular pages, and conversion tracking
+            </p>
+          </div>
+        </div>
+
+        <!-- Analytics Features Overview -->
+        <div style="margin-top: 3rem">
+          <h3
+            style="
+              font-size: 1.4rem;
+              margin-bottom: 2rem;
+              font-weight: 600;
+              color: var(--text-primary);
+              text-align: center;
+            "
+          >
+            Complete Analytics Overview
+          </h3>
+
+          <!-- Analytics Screenshot -->
+          <div style="text-align: center; margin-bottom: 3rem">
+            <img
+              src="assets/analytics.png"
+              alt="Kaunta Analytics Features"
+              style="
+                width: 100%;
+                max-width: 950px;
+                border-radius: 16px;
+                box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+                border: 1px solid var(--border-color);
+              "
+            />
+          </div>
+
+          <ul class="dashboard-list" style="margin-bottom: 0">
+            <li>
+              <strong>Visitor Analytics</strong
+              ><span>Total visitors, unique sessions, returning vs new visitors</span>
+            </li>
+            <li>
+              <strong>Page Performance</strong
+              ><span>Most popular pages, entry/exit points, page load insights</span>
+            </li>
+            <li>
+              <strong>Traffic Sources</strong
+              ><span>Referrer tracking, search engines, direct traffic, social media</span>
+            </li>
+            <li>
+              <strong>Geographic Data</strong
+              ><span
+                >Country, region, and city-level visitor distribution with map visualization</span
+              >
+            </li>
+            <li>
+              <strong>Technology Stack</strong
+              ><span>Browser types, device categories, screen resolutions, operating systems</span>
+            </li>
+            <li>
+              <strong>Real-Time Monitoring</strong
+              ><span>Live visitor activity, current page views, active users online now</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </section>
+
+    <!-- Umami Compatibility Section -->
+    <div class="section-alt">
+      <section class="section">
+        <div class="section-container">
+          <h2 class="section-title">Drop-in Umami Replacement</h2>
+          <p
+            style="
+              text-align: center;
+              color: var(--text-secondary);
+              margin-bottom: 3rem;
+              max-width: 800px;
+              margin-left: auto;
+              margin-right: auto;
+            "
+          >
+            Seamlessly migrate from Umami with zero downtime. Compatible with existing trackers and
+            databases while adding powerful enhancements.
+          </p>
+
+          <div class="features-grid">
+            <div class="feature-card">
+              <div class="feature-icon">🔄</div>
+              <h3 class="feature-title">Compatible API</h3>
+              <p class="feature-description">
+                Same tracking API as Umami - no code changes needed in your applications
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">📦</div>
+              <h3 class="feature-title">Auto Migration</h3>
+              <p class="feature-description">
+                Automatically migrates existing Umami databases on startup with zero data loss
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🚀</div>
+              <h3 class="feature-title">Enhanced Performance</h3>
+              <p class="feature-description">
+                Faster queries, better caching, and improved real-time capabilities
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🛡️</div>
+              <h3 class="feature-title">Advanced Bot Detection</h3>
+              <p class="feature-description">
+                Enhanced filtering to exclude bots and provide cleaner analytics data
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
 
     <!-- Footer -->
     <footer>
       <div class="footer-content">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+          "
+        >
+          <img src="assets/kaunta.svg" alt="Kaunta" style="height: 32px; width: auto" />
+          <span class="company-name">Kaunta Analytics</span>
+        </div>
+        <p class="footer-text">Built with Go, Fiber, Alpine.js, PostgreSQL, and Leaflet</p>
         <p class="footer-text">
-          <strong>Kaunta (カウンタ)</strong> - Simple, fast analytics for everyone
-        </p>
-        <p class="footer-text">
-          MIT License - Built for developers who value simplicity and performance
-        </p>
-        <p>
-          <a href="https://github.com/seuros/kaunta" class="footer-link">GitHub Repository</a>
+          <a href="https://github.com/seuros/kaunta" class="footer-link">View on GitHub</a>
         </p>
       </div>
     </footer>
