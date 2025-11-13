@@ -1,12 +1,14 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png" />
+
+    <!-- Private dashboard - not for indexing -->
+    <meta name="robots" content="noindex, nofollow" />
+
     <title>{{.Title}} - Kaunta</title>
     <link rel="stylesheet" href="/assets/vendor/vendor.css?v={{.Version}}" />
     <style>
@@ -30,6 +32,7 @@
           rgba(255, 255, 255, 0.9),
           rgba(200, 220, 255, 0.4)
         );
+        --gradient-primary: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
       }
 
       * {
@@ -43,11 +46,17 @@
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-          sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
         background: var(--bg-primary);
         color: var(--text-primary);
         line-height: 1.6;
+      }
+
+      h1 {
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
       }
 
       /* ===== UTILITY CLASSES ===== */
@@ -61,8 +70,12 @@
 
       /* Standard transitions */
       .transition-standard {
-        transition: border-color 0.2s ease, box-shadow 0.2s ease,
-          background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        transition:
+          border-color 0.2s ease,
+          box-shadow 0.2s ease,
+          background-color 0.2s ease,
+          color 0.2s ease,
+          transform 0.2s ease;
       }
 
       /* Card styling */
@@ -79,7 +92,9 @@
 
       /* Interactive element hover effects */
       .hover-lift {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
       }
 
       .hover-lift:hover {
@@ -538,6 +553,26 @@
         color: var(--text-tertiary);
         font-size: 14px;
         margin: 0 0 8px 0;
+        text-align: center;
+      }
+
+      footer .company-name {
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 600;
+      }
+
+      footer .repo-link {
+        color: var(--accent-color);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      footer .repo-link:hover {
+        color: var(--accent-dark);
+        text-decoration: underline;
       }
 
       footer p:last-child {
@@ -643,8 +678,13 @@
     <div class="container" x-data="dashboard()" x-init="init()" x-cloak>
       <header class="glass card">
         <div class="header-left">
-          <h1>Kaunta (カウンタ)</h1>
-          <div class="subtitle">Analytics Dashboard</div>
+          <div style="display: flex; align-items: center; gap: 12px">
+            <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 48px; width: auto" />
+            <div style="line-height: 1.2">
+              <h1 style="margin: 0; margin-bottom: 2px">Kaunta (カウンタ)</h1>
+              <div class="subtitle">Analytics Dashboard</div>
+            </div>
+          </div>
         </div>
         <div class="header-controls">
           <select
@@ -655,10 +695,7 @@
           >
             <option value="">Select Website...</option>
             <template x-for="site in websites" :key="site.id">
-              <option
-                :value="site.id"
-                x-text="site.name || site.domain"
-              ></option>
+              <option :value="site.id" x-text="site.name || site.domain"></option>
             </template>
           </select>
           <div class="date-range-buttons glass">
@@ -692,10 +729,7 @@
               class="filter-select glass transition-standard focus-accent"
             >
               <option value="">All Countries</option>
-              <template
-                x-for="country in availableFilters.countries"
-                :key="country.name"
-              >
+              <template x-for="country in availableFilters.countries" :key="country.name">
                 <option
                   :value="country.name"
                   x-text="`${country.name} (${country.count})`"
@@ -708,10 +742,7 @@
               class="filter-select glass transition-standard focus-accent"
             >
               <option value="">All Browsers</option>
-              <template
-                x-for="browser in availableFilters.browsers"
-                :key="browser.name"
-              >
+              <template x-for="browser in availableFilters.browsers" :key="browser.name">
                 <option
                   :value="browser.name"
                   x-text="`${browser.name} (${browser.count})`"
@@ -724,14 +755,8 @@
               class="filter-select glass transition-standard focus-accent"
             >
               <option value="">All Devices</option>
-              <template
-                x-for="device in availableFilters.devices"
-                :key="device.name"
-              >
-                <option
-                  :value="device.name"
-                  x-text="`${device.name} (${device.count})`"
-                ></option>
+              <template x-for="device in availableFilters.devices" :key="device.name">
+                <option :value="device.name" x-text="`${device.name} (${device.count})`"></option>
               </template>
             </select>
             <select
@@ -741,10 +766,7 @@
             >
               <option value="">All Pages</option>
               <template x-for="page in availableFilters.pages" :key="page.path">
-                <option
-                  :value="page.path"
-                  x-text="`${page.path} (${page.views})`"
-                ></option>
+                <option :value="page.path" x-text="`${page.path} (${page.views})`"></option>
               </template>
             </select>
             <button
@@ -752,12 +774,7 @@
               x-show="hasActiveFilters"
               @click="clearFilters()"
             >
-              <svg
-                class="icon-sm"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -770,10 +787,9 @@
           </div>
         </div>
       </header>
+
       <!-- Dashboard App -->
-      <div
-        x-show="!websitesLoading && !websitesError && selectedWebsite && websites.length > 0"
-      >
+      <div x-show="!websitesLoading && !websitesError && selectedWebsite && websites.length > 0">
         <!-- Stats Grid -->
         <div class="stats-grid">
           <div class="stat-card glass card">
@@ -791,8 +807,7 @@
               <div class="stat-label">Current Visitors</div>
             </div>
             <div class="stat-value live">
-              <span class="pulse"></span
-              ><span x-text="stats.current_visitors"></span>
+              <span class="pulse"></span><span x-text="stats.current_visitors"></span>
             </div>
             <div class="progress-container">
               <div
@@ -862,10 +877,7 @@
           </div>
         </div>
         <!-- Pageviews Chart -->
-        <div
-          class="section glass card"
-          x-intersect.once="loadChartAndSetupIntervals()"
-        >
+        <div class="section glass card" x-intersect.once="loadChartAndSetupIntervals()">
           <div class="section-header">
             <h2>
               <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
@@ -911,9 +923,7 @@
               @click="activeTab = 'browsers'; await loadBreakdown()"
             >
               <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                <path
-                  d="M4 5a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V5z"
-                ></path>
+                <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V5z"></path>
               </svg>
               Browsers
             </button>
@@ -949,9 +959,7 @@
               @click="activeTab = 'cities'; await loadBreakdown()"
             >
               <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                <path
-                  d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"
-                ></path>
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
               </svg>
               Cities
             </button>
@@ -1006,11 +1014,7 @@
                   <tr>
                     <td x-text="item.name"></td>
                     <td
-                      style="
-                        text-align: right;
-                        font-weight: 500;
-                        color: var(--accent-color);
-                      "
+                      style="text-align: right; font-weight: 500; color: var(--accent-color)"
                       x-text="item.count.toLocaleString()"
                     ></td>
                   </tr>
@@ -1024,9 +1028,7 @@
             <div class="empty-state">
               <div class="empty-state-icon">📊</div>
               <div class="empty-state-title">No data yet</div>
-              <div class="empty-state-text">
-                Start tracking to see breakdown data
-              </div>
+              <div class="empty-state-text">Start tracking to see breakdown data</div>
             </div>
           </template>
           <template x-if="activeTab === 'map'">
@@ -1049,10 +1051,7 @@
                   position: relative;
                 "
               >
-                <div
-                  id="choropleth-map"
-                  style="width: 100%; height: 100%"
-                ></div>
+                <div id="choropleth-map" style="width: 100%; height: 100%"></div>
               </div>
             </div>
           </template>
@@ -1078,37 +1077,35 @@
       >
         <div class="empty-state-icon">🛰️</div>
         <div class="empty-state-title">No websites found</div>
-        <div class="empty-state-text">
-          Add a website in Kaunta to get started.
-        </div>
+        <div class="empty-state-text">Add a website in Kaunta to get started.</div>
       </div>
       <!-- Websites Load Error -->
-      <div
-        x-show="!websitesLoading && websitesError"
-        class="empty-state"
-        style="margin-top: 100px"
-      >
+      <div x-show="!websitesLoading && websitesError" class="empty-state" style="margin-top: 100px">
         <div class="empty-state-icon">⚠️</div>
         <div class="empty-state-title">Unable to load websites</div>
         <div class="empty-state-text">
           Check the server logs for /api/websites errors and try again.
         </div>
       </div>
+
       <footer class="glass card">
-        <div style="text-align: center">
-          <p>
-            <strong>Kaunta Analytics</strong> - Built with Go, Fiber, Alpine.js,
-            PostgreSQL, and Leaflet
-          </p>
-          <p>
-            <a
-              href="https://github.com/seuros/kaunta"
-              style="color: var(--accent-color); text-decoration: none"
-              >View on GitHub</a
-            >
-            · <strong>v{{.Version}}</strong>
-          </p>
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+          "
+        >
+          <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 32px; width: auto" />
+          <span class="company-name">Kaunta Analytics</span>
         </div>
+        <p>Built with Go, Fiber, Alpine.js, PostgreSQL, and Leaflet</p>
+        <p>
+          <a href="https://github.com/seuros/kaunta" class="repo-link">View on GitHub</a>
+          · <strong>v{{.Version}}</strong>
+        </p>
       </footer>
     </div>
     <script defer src="/assets/vendor/vendor.js?v={{.Version}}"></script>
@@ -1156,14 +1153,10 @@
           async init() {
             // Load filters from URL parameters
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get("country"))
-              this.filters.country = urlParams.get("country");
-            if (urlParams.get("browser"))
-              this.filters.browser = urlParams.get("browser");
-            if (urlParams.get("device"))
-              this.filters.device = urlParams.get("device");
-            if (urlParams.get("page"))
-              this.filters.page = urlParams.get("page");
+            if (urlParams.get("country")) this.filters.country = urlParams.get("country");
+            if (urlParams.get("browser")) this.filters.browser = urlParams.get("browser");
+            if (urlParams.get("device")) this.filters.device = urlParams.get("device");
+            if (urlParams.get("page")) this.filters.page = urlParams.get("page");
 
             await this.loadWebsites();
             if (this.websitesError) {
@@ -1199,7 +1192,9 @@
                 this.websitesError = true;
                 return;
               }
-              const sites = await response.json();
+              const response_data = await response.json();
+              // Handle paginated response format: {data: [...], pagination: {...}}
+              const sites = response_data.data || response_data;
               this.websites = Array.isArray(sites) ? sites : [];
               const hasStoredSelection =
                 this.selectedWebsite &&
@@ -1263,8 +1258,7 @@
               this.realtimeReconnectTimer = null;
             }
 
-            const protocol =
-              window.location.protocol === "https:" ? "wss" : "ws";
+            const protocol = window.location.protocol === "https:" ? "wss" : "ws";
             const wsUrl = `${protocol}://${window.location.host}/ws/realtime`;
 
             try {
@@ -1274,10 +1268,7 @@
               socket.onmessage = (event) => {
                 try {
                   const payload = JSON.parse(event.data);
-                  if (
-                    payload.website_id &&
-                    payload.website_id === this.selectedWebsite
-                  ) {
+                  if (payload.website_id && payload.website_id === this.selectedWebsite) {
                     this.scheduleRealtimeRefresh();
                   }
                 } catch (error) {
@@ -1287,10 +1278,7 @@
 
               socket.onclose = () => {
                 this.realtimeSocket = null;
-                this.realtimeReconnectTimer = setTimeout(
-                  () => this.connectRealtime(),
-                  5000
-                );
+                this.realtimeReconnectTimer = setTimeout(() => this.connectRealtime(), 5000);
               };
 
               socket.onerror = () => {
@@ -1298,10 +1286,7 @@
               };
             } catch (error) {
               console.warn("Realtime connection error:", error);
-              this.realtimeReconnectTimer = setTimeout(
-                () => this.connectRealtime(),
-                5000
-              );
+              this.realtimeReconnectTimer = setTimeout(() => this.connectRealtime(), 5000);
             }
           },
           scheduleRealtimeRefresh() {
@@ -1313,14 +1298,14 @@
               this.realtimeRefreshTimeout = null;
             }, 750);
           },
-          buildFilterParams(prefix = '') {
+          buildFilterParams(prefix = "") {
             const params = new URLSearchParams();
-            if (this.filters.country) params.set('country', this.filters.country);
-            if (this.filters.browser) params.set('browser', this.filters.browser);
-            if (this.filters.device) params.set('device', this.filters.device);
-            if (this.filters.page) params.set('page', this.filters.page);
+            if (this.filters.country) params.set("country", this.filters.country);
+            if (this.filters.browser) params.set("browser", this.filters.browser);
+            if (this.filters.device) params.set("device", this.filters.device);
+            if (this.filters.page) params.set("page", this.filters.page);
             const queryString = params.toString();
-            return queryString ? prefix + queryString : '';
+            return queryString ? prefix + queryString : "";
           },
           async setDateRange(range) {
             this.dateRange = range;
@@ -1338,9 +1323,9 @@
           async loadStats() {
             if (!this.selectedWebsite) return;
             try {
-              const filterParams = this.buildFilterParams('?');
+              const filterParams = this.buildFilterParams("?");
               const response = await fetch(
-                `/api/dashboard/stats/${this.selectedWebsite}${filterParams}`
+                `/api/dashboard/stats/${this.selectedWebsite}${filterParams}`,
               );
               if (response.ok) {
                 this.stats = await response.json();
@@ -1352,9 +1337,9 @@
           async loadTopPages() {
             if (!this.selectedWebsite) return;
             try {
-              const filterParams = this.buildFilterParams('&');
+              const filterParams = this.buildFilterParams("&");
               const response = await fetch(
-                `/api/dashboard/pages/${this.selectedWebsite}?limit=10${filterParams}`
+                `/api/dashboard/pages/${this.selectedWebsite}?limit=10${filterParams}`,
               );
               if (response.ok) {
                 this.pages = await response.json();
@@ -1368,29 +1353,31 @@
           async loadChart() {
             if (!this.selectedWebsite) return;
             try {
-              const days =
-                this.dateRange === "1" ? 1 : this.dateRange === "7" ? 7 : 30;
-              const filterParams = this.buildFilterParams('&');
+              const days = this.dateRange === "1" ? 1 : this.dateRange === "7" ? 7 : 30;
+              const filterParams = this.buildFilterParams("&");
               const response = await fetch(
-                `/api/dashboard/timeseries/${this.selectedWebsite}?days=${days}${filterParams}`
+                `/api/dashboard/timeseries/${this.selectedWebsite}?days=${days}${filterParams}`,
               );
               if (response.ok) {
                 const data = await response.json();
 
                 // Handle empty data
-                const labels = (data && data.length > 0) ? data.map((point) => {
-                  const date = new Date(point.timestamp);
-                  return days === 1
-                    ? date.toLocaleTimeString("en-US", {
-                        hour: "numeric",
-                        hour12: true,
+                const labels =
+                  data && data.length > 0
+                    ? data.map((point) => {
+                        const date = new Date(point.timestamp);
+                        return days === 1
+                          ? date.toLocaleTimeString("en-US", {
+                              hour: "numeric",
+                              hour12: true,
+                            })
+                          : date.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            });
                       })
-                    : date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      });
-                }) : [];
-                const values = (data && data.length > 0) ? data.map((point) => point.value) : [];
+                    : [];
+                const values = data && data.length > 0 ? data.map((point) => point.value) : [];
                 if (this.chart) {
                   this.chart.destroy();
                 }
@@ -1485,9 +1472,9 @@
 
             try {
               const endpoint = this.activeTab;
-              const filterParams = this.buildFilterParams('?');
+              const filterParams = this.buildFilterParams("?");
               const response = await fetch(
-                `/api/dashboard/${endpoint}/${this.selectedWebsite}${filterParams}`
+                `/api/dashboard/${endpoint}/${this.selectedWebsite}${filterParams}`,
               );
               if (response.ok) {
                 const data = await response.json();
@@ -1495,11 +1482,7 @@
                 this.breakdownData = Array.isArray(data)
                   ? data.map((item, index) => ({
                       ...item,
-                      name:
-                        item.name ||
-                        item.path ||
-                        item.country_name ||
-                        `Item ${index + 1}`,
+                      name: item.name || item.path || item.country_name || `Item ${index + 1}`,
                       count: item.count || item.views || item.visitors || 0,
                     }))
                   : [];
@@ -1517,25 +1500,25 @@
             if (!this.selectedWebsite) return;
             try {
               const countriesRes = await fetch(
-                `/api/dashboard/countries/${this.selectedWebsite}?limit=100`
+                `/api/dashboard/countries/${this.selectedWebsite}?limit=100`,
               );
               if (countriesRes.ok) {
                 this.availableFilters.countries = await countriesRes.json();
               }
               const browsersRes = await fetch(
-                `/api/dashboard/browsers/${this.selectedWebsite}?limit=100`
+                `/api/dashboard/browsers/${this.selectedWebsite}?limit=100`,
               );
               if (browsersRes.ok) {
                 this.availableFilters.browsers = await browsersRes.json();
               }
               const devicesRes = await fetch(
-                `/api/dashboard/devices/${this.selectedWebsite}?limit=100`
+                `/api/dashboard/devices/${this.selectedWebsite}?limit=100`,
               );
               if (devicesRes.ok) {
                 this.availableFilters.devices = await devicesRes.json();
               }
               const pagesRes = await fetch(
-                `/api/dashboard/pages/${this.selectedWebsite}?limit=100`
+                `/api/dashboard/pages/${this.selectedWebsite}?limit=100`,
               );
               if (pagesRes.ok) {
                 this.availableFilters.pages = await pagesRes.json();
@@ -1567,10 +1550,8 @@
           },
           updateURL() {
             const params = new URLSearchParams();
-            if (this.filters.country)
-              params.set("country", this.filters.country);
-            if (this.filters.browser)
-              params.set("browser", this.filters.browser);
+            if (this.filters.country) params.set("country", this.filters.country);
+            if (this.filters.browser) params.set("browser", this.filters.browser);
             if (this.filters.device) params.set("device", this.filters.device);
             if (this.filters.page) params.set("page", this.filters.page);
             const newURL = params.toString()
@@ -1588,8 +1569,7 @@
           },
           sortBy(column) {
             if (this.sortColumn === column) {
-              this.sortDirection =
-                this.sortDirection === "asc" ? "desc" : "asc";
+              this.sortDirection = this.sortDirection === "asc" ? "desc" : "asc";
             } else {
               this.sortColumn = column;
               this.sortDirection = "desc";
@@ -1613,27 +1593,18 @@
             if (!this.selectedWebsite || this.activeTab !== "map") return;
             this.mapLoading = true;
             try {
-              const days =
-                this.dateRange === "1" ? 1 : this.dateRange === "7" ? 7 : 30;
+              const days = this.dateRange === "1" ? 1 : this.dateRange === "7" ? 7 : 30;
               const params = new URLSearchParams({ days });
-              if (this.filters.country)
-                params.append("country", this.filters.country);
-              if (this.filters.browser)
-                params.append("browser", this.filters.browser);
-              if (this.filters.device)
-                params.append("device", this.filters.device);
+              if (this.filters.country) params.append("country", this.filters.country);
+              if (this.filters.browser) params.append("browser", this.filters.browser);
+              if (this.filters.device) params.append("device", this.filters.device);
               if (this.filters.page) params.append("page", this.filters.page);
-              const response = await fetch(
-                `/api/dashboard/map/${this.selectedWebsite}?${params}`
-              );
+              const response = await fetch(`/api/dashboard/map/${this.selectedWebsite}?${params}`);
               if (response.ok) {
                 this.mapData = await response.json();
-                const containerExists =
-                  document.getElementById("choropleth-map");
+                const containerExists = document.getElementById("choropleth-map");
                 if (!containerExists) {
-                  console.warn(
-                    "Choropleth map container not found yet; will retry once rendered."
-                  );
+                  console.warn("Choropleth map container not found yet; will retry once rendered.");
                   return;
                 }
                 if (!this.mapInitialized) {
@@ -1664,9 +1635,7 @@
                         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                             <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px; color: #1a1a1a;">${countryName}</div>
                             <div style="font-size: 13px; color: #666666;">
-                                ${visitors.toLocaleString()} visitors (${percentage.toFixed(
-              1
-            )}%)
+                                ${visitors.toLocaleString()} visitors (${percentage.toFixed(1)}%)
                             </div>
                         </div>
                     `;
@@ -1691,36 +1660,22 @@
                 doubleClickZoom: true,
                 touchZoom: true,
               }).setView([20, 0], 2);
-              L.tileLayer(
-                "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                {
-                  attribution:
-                    '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                  maxZoom: 18,
-                  minZoom: 1,
-                }
-              ).addTo(map);
+              L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution:
+                  '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 18,
+                minZoom: 1,
+              }).addTo(map);
               const response = await fetch("/assets/data/countries-110m.json");
               if (!response.ok) {
-                throw new Error(
-                  `Failed to load TopoJSON: ${response.statusText}`
-                );
+                throw new Error(`Failed to load TopoJSON: ${response.statusText}`);
               }
               const world = await response.json();
-              const features = topojson.feature(
-                world,
-                world.objects.countries
-              ).features;
+              const features = topojson.feature(world, world.objects.countries).features;
               const dataMap = new Map();
               let maxValue = 0;
-              if (
-                this.mapData &&
-                this.mapData.data &&
-                Array.isArray(this.mapData.data)
-              ) {
-                maxValue = Math.max(
-                  ...this.mapData.data.map((d) => d.visitors || 0)
-                );
+              if (this.mapData && this.mapData.data && Array.isArray(this.mapData.data)) {
+                maxValue = Math.max(...this.mapData.data.map((d) => d.visitors || 0));
                 this.mapData.data.forEach((d) => {
                   dataMap.set(d.country_name, {
                     visitors: d.visitors || 0,
@@ -1741,8 +1696,7 @@
               const getStyle = (feature) => {
                 const countryName = feature.properties.name;
                 const countryId = feature.id;
-                const countryData =
-                  dataMap.get(countryName) || dataMap.get(countryId);
+                const countryData = dataMap.get(countryName) || dataMap.get(countryId);
                 const fillColor = countryData
                   ? this.getColorForValue(countryData.visitors, maxValue)
                   : "#e5e5e5";
@@ -1757,13 +1711,12 @@
               const onEachFeature = (feature, layer) => {
                 const countryName = feature.properties.name;
                 const countryId = feature.id;
-                const countryData =
-                  dataMap.get(countryName) || dataMap.get(countryId);
+                const countryData = dataMap.get(countryName) || dataMap.get(countryId);
                 const tooltipContent = countryData
                   ? this.formatTooltipText(
                       countryData.name,
                       countryData.visitors,
-                      countryData.percentage
+                      countryData.percentage,
                     )
                   : `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                                      <div style="font-weight: 500; font-size: 14px; color: #1a1a1a;">${
@@ -1855,14 +1808,8 @@
               }
               const dataMap = new Map();
               let maxValue = 0;
-              if (
-                this.mapData &&
-                this.mapData.data &&
-                Array.isArray(this.mapData.data)
-              ) {
-                maxValue = Math.max(
-                  ...this.mapData.data.map((d) => d.visitors || 0)
-                );
+              if (this.mapData && this.mapData.data && Array.isArray(this.mapData.data)) {
+                maxValue = Math.max(...this.mapData.data.map((d) => d.visitors || 0));
                 this.mapData.data.forEach((d) => {
                   dataMap.set(d.country_name, {
                     visitors: d.visitors || 0,
@@ -1884,8 +1831,7 @@
                 const feature = layer.feature;
                 const countryName = feature.properties.name;
                 const countryId = feature.id;
-                const countryData =
-                  dataMap.get(countryName) || dataMap.get(countryId);
+                const countryData = dataMap.get(countryName) || dataMap.get(countryId);
                 const fillColor = countryData
                   ? this.getColorForValue(countryData.visitors, maxValue)
                   : "#e5e5e5";
@@ -1900,7 +1846,7 @@
                   ? this.formatTooltipText(
                       countryData.name,
                       countryData.visitors,
-                      countryData.percentage
+                      countryData.percentage,
                     )
                   : `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                                      <div style="font-weight: 500; font-size: 14px; color: #1a1a1a;">${
