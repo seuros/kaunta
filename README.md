@@ -157,11 +157,38 @@ When you delete a user:
 ```bash
 kaunta user reset-password <username>
 # You'll be prompted for the new password
+
+# Or provide password via flag (useful for Docker/automation)
+kaunta user reset-password <username> --password "new-password"
 ```
 
 This will:
 - Update the user's password
 - Invalidate all existing sessions (user must log in again)
+
+### Docker User Management
+
+When running in Docker, use `sh` instead of `bash` (Alpine Linux doesn't include bash):
+
+```bash
+# Create a user interactively
+docker exec -it kaunta-container sh -c "kaunta user create admin"
+
+# Or use the --password flag for non-interactive mode
+docker exec kaunta-container kaunta user create admin --password "your-password-here"
+
+# Using docker-compose
+docker-compose exec kaunta sh -c "kaunta user create admin"
+docker-compose exec kaunta kaunta user create admin --password "your-password-here"
+
+# List users
+docker exec kaunta-container kaunta user list
+
+# Reset password (non-interactive)
+docker exec kaunta-container kaunta user reset-password admin --password "new-password"
+```
+
+**Note:** The `--password` flag allows non-interactive password setup, useful for Docker environments and automation scripts.
 
 ### Access the Dashboard
 

@@ -41,10 +41,10 @@ LABEL org.opencontainers.image.title="Kaunta" \
 
 RUN apk add --no-cache ca-certificates tzdata
 
-COPY --from=backend-builder /app/kaunta /kaunta
+COPY --from=backend-builder /app/kaunta /usr/local/bin/kaunta
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD ["/kaunta", "healthcheck"]
+    CMD ["kaunta", "healthcheck"]
 
 EXPOSE 3000
-ENTRYPOINT ["/kaunta"]
+ENTRYPOINT ["kaunta"]
