@@ -26,6 +26,7 @@ go.work
 # Environment
 .env
 .env.local
+kaunta.toml
 
 # OS
 .DS_Store
@@ -39,6 +40,7 @@ kaunta-linux-amd64*
 tmp/
 docs/
 kaunta-linux
+data/
 
 # Frontend tooling
 node_modules/

@@ -51,7 +51,6 @@ func TestHandleHealthPayload(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "healthy", payload["status"])
 	assert.Equal(t, "kaunta", payload["service"])
-	assert.Equal(t, false, payload["react"])
 }
 
 func stubPingDatabase(t *testing.T, fn func() error) {

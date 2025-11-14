@@ -47,11 +47,11 @@ Kaunta is a privacy-focused visitor tracking solution with minimal resource usag
 It provides real-time analytics and a clean dashboard interface.`,
 	Version: Version,
 	// Load config from file/env/flags (runs before all commands)
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.LoadWithOverrides(databaseURL, port, dataDir)
 		if err != nil {
 			logging.L().Warn("failed to load config overrides", "error", err)
-			return
+			return nil
 		}
 
 		// Set environment variables from config (for backward compatibility)
@@ -64,6 +64,7 @@ It provides real-time analytics and a clean dashboard interface.`,
 		if cfg.DataDir != "" {
 			_ = os.Setenv("DATA_DIR", cfg.DataDir)
 		}
+		return nil
 	},
 	// Default to serve command if no subcommand provided
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -420,8 +421,6 @@ func handleHealth(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"status":  "healthy",
 		"service": "kaunta",
-		"react":   false,
-		"bloat":   false,
 	})
 }
 
@@ -481,12 +480,12 @@ func loginPageHTML() string {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - Kaunta</title>
-    
+
     <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
-    
+
     <!-- Private page - not for indexing -->
     <meta name="robots" content="noindex, nofollow" />
-    
+
     <style>
       :root {
         --bg-primary: #ffffff;
@@ -570,7 +569,7 @@ func loginPageHTML() string {
         background-clip: text;
         margin-bottom: 16px;
       }
-      
+
       h1 {
         background: var(--gradient-primary);
         -webkit-background-clip: text;
