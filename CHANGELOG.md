@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.20.0](https://github.com/seuros/kaunta/compare/v0.19.0...v0.20.0) (2025-11-14)
+
+
+### Features
+
+* add branding, favicon, and Open Graph meta tags ([#48](https://github.com/seuros/kaunta/issues/48)) ([4d1de1a](https://github.com/seuros/kaunta/commit/4d1de1ae9c6776fdedce3c2532fc8370dd63354b))
+
+
+### Bug Fixes
+
+* make CSRF cookies work without HTTPS ([7af65b1](https://github.com/seuros/kaunta/commit/7af65b112dacc025a9e11216c8eefb97b5f6bef1))
+* move binary to /usr/local/bin and add Docker user management docs ([4337716](https://github.com/seuros/kaunta/commit/4337716e55463800c55ab5733a2214904a3d6ed8)), closes [#53](https://github.com/seuros/kaunta/issues/53)
+* use PersistentPreRunE to ensure config file loading works ([bf06d84](https://github.com/seuros/kaunta/commit/bf06d84de266f95d54f4a66eedc5f9dbae7fa09f))
+
 ## [0.19.0](https://github.com/seuros/kaunta/compare/v0.18.1...v0.19.0) (2025-11-13)
 
 
