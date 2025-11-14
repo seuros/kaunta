@@ -3,10 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
     <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png" />
+    
+    <!-- Private app homepage - not for indexing -->
+    <meta name="robots" content="noindex, nofollow" />
+    
     <title>Kaunta - Analytics without bloat</title>
     <style>
       :root {
@@ -20,6 +22,7 @@
         --border-color: #d6e2ff;
         --accent-color: #3b82f6;
         --accent-dark: #1e3a8a;
+        --gradient-primary: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
       }
 
       * {
@@ -83,8 +86,18 @@
       .hero h1 {
         font-size: 48px;
         font-weight: 500;
-        color: var(--accent-dark);
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         margin-bottom: 16px;
+      }
+      
+      h1 {
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
       }
 
       .hero .subtitle {
@@ -153,6 +166,27 @@
       .footer p {
         color: var(--text-tertiary);
         font-size: 14px;
+        text-align: center;
+        margin-bottom: 8px;
+      }
+
+      .footer .company-name {
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 600;
+      }
+
+      .footer .repo-link {
+        color: var(--accent-color);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .footer .repo-link:hover {
+        color: var(--accent-dark);
+        text-decoration: underline;
       }
 
       /* Responsive */
@@ -186,7 +220,10 @@
     <div class="container">
       <div class="main-content">
         <div class="hero">
-          <h1>Welcome to Kaunta</h1>
+          <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+            <img src="/assets/kaunta.svg" alt="Kaunta Analytics" style="height: 88px; width: auto;" />
+          </div>
+          <h1 style="text-align: center; margin: 0 auto 16px auto;">Welcome to Kaunta</h1>
           <p class="subtitle">Analytics without bloat</p>
         </div>
 
@@ -208,16 +245,15 @@
       </div>
 
       <div class="footer">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px;">
+          <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 32px; width: auto;" />
+          <span class="company-name">Kaunta Analytics</span>
+        </div>
         <p>
-          <strong>Kaunta Analytics</strong> - Built with Go, Fiber, Alpine.js,
-          PostgreSQL, and Leaflet
+          Built with Go, Fiber, Alpine.js, PostgreSQL, and Leaflet
         </p>
         <p>
-          <a
-            href="https://github.com/seuros/kaunta"
-            style="color: var(--accent-color); text-decoration: none"
-            >View on GitHub</a
-          >
+          <a href="https://github.com/seuros/kaunta" class="repo-link">View on GitHub</a>
         </p>
       </div>
     </div>

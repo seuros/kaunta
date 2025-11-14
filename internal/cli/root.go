@@ -481,6 +481,12 @@ func loginPageHTML() string {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - Kaunta</title>
+    
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+    
+    <!-- Private page - not for indexing -->
+    <meta name="robots" content="noindex, nofollow" />
+    
     <style>
       :root {
         --bg-primary: #ffffff;
@@ -493,6 +499,7 @@ func loginPageHTML() string {
         --border-color: #d6e2ff;
         --accent-color: #3b82f6;
         --accent-dark: #1e3a8a;
+        --gradient-primary: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
       }
 
       * {
@@ -557,8 +564,18 @@ func loginPageHTML() string {
       .hero h1 {
         font-size: 48px;
         font-weight: 500;
-        color: var(--accent-dark);
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         margin-bottom: 16px;
+      }
+      
+      h1 {
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
       }
 
       .hero .subtitle {
@@ -672,6 +689,27 @@ func loginPageHTML() string {
       .footer p {
         color: var(--text-tertiary);
         font-size: 14px;
+        text-align: center;
+        margin-bottom: 8px;
+      }
+
+      .footer .company-name {
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 600;
+      }
+
+      .footer .repo-link {
+        color: var(--accent-color);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .footer .repo-link:hover {
+        color: var(--accent-dark);
+        text-decoration: underline;
       }
 
       /* Responsive */
@@ -698,6 +736,9 @@ func loginPageHTML() string {
     <div class="container">
       <div class="main-content">
         <div class="hero">
+          <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+            <img src="/assets/kaunta.svg" alt="Kaunta Analytics" style="height: 88px; width: auto;" />
+          </div>
           <h1>Kaunta</h1>
           <p class="subtitle">Analytics without bloat</p>
         </div>
@@ -723,16 +764,15 @@ func loginPageHTML() string {
       </div>
 
       <div class="footer">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px;">
+          <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 32px; width: auto;" />
+          <span class="company-name">Kaunta Analytics</span>
+        </div>
         <p>
-          <strong>Kaunta Analytics</strong> - Built with Go, Fiber, Alpine.js,
-          PostgreSQL, and Leaflet
+          Built with Go, Fiber, Alpine.js, PostgreSQL, and Leaflet
         </p>
         <p>
-          <a
-            href="https://github.com/seuros/kaunta"
-            style="color: var(--accent-color); text-decoration: none"
-            >View on GitHub</a
-          >
+          <a href="https://github.com/seuros/kaunta" class="repo-link">View on GitHub</a>
         </p>
       </div>
     </div>
