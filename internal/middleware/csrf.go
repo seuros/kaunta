@@ -8,6 +8,7 @@ import (
 
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/logging"
+	"go.uber.org/zap"
 )
 
 // TrustedOriginsCache manages cached trusted origins with TTL
@@ -57,7 +58,7 @@ func (c *TrustedOriginsCache) loadTrustedOrigins() error {
 	c.origins = origins
 	c.lastFetch = time.Now()
 
-	logging.L().Info("trusted origins cache refreshed", "count", len(origins))
+	logging.L().Info("trusted origins cache refreshed", zap.Int("count", len(origins)))
 	return nil
 }
 
@@ -70,7 +71,7 @@ func (c *TrustedOriginsCache) GetTrustedOrigins() ([]string, error) {
 		defer c.mu.RUnlock()
 
 		if len(c.origins) > 0 {
-			logging.L().Warn("using stale trusted origins cache", "error", err)
+			logging.L().Warn("using stale trusted origins cache", zap.Error(err))
 			return c.origins, nil
 		}
 		return nil, err
@@ -100,7 +101,7 @@ func (c *TrustedOriginsCache) ForceRefresh() error {
 func RefreshTrustedOrigins() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		if err := originsCache.ForceRefresh(); err != nil {
-			logging.L().Warn("failed to refresh trusted origins cache", "error", err)
+			logging.L().Warn("failed to refresh trusted origins cache", zap.Error(err))
 		}
 		return c.Next()
 	}
@@ -110,7 +111,7 @@ func RefreshTrustedOrigins() fiber.Handler {
 func InitTrustedOriginsCache() error {
 	logging.L().Info("initializing trusted origins cache")
 	if err := originsCache.ForceRefresh(); err != nil {
-		logging.L().Warn("failed to initialize trusted origins cache", "error", err)
+		logging.L().Warn("failed to initialize trusted origins cache", zap.Error(err))
 		// Don't fail startup if no trusted origins exist yet
 		return nil
 	}

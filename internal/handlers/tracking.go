@@ -16,6 +16,7 @@ import (
 	"github.com/seuros/kaunta/internal/geoip"
 	"github.com/seuros/kaunta/internal/logging"
 	"github.com/seuros/kaunta/internal/realtime"
+	"go.uber.org/zap"
 )
 
 const MaxURLSize = 2000 // Max URL length (Plausible standard)
@@ -107,16 +108,18 @@ func HandleTracking(c fiber.Ctx) error {
 	).Scan(&originAllowed)
 
 	if err != nil {
-		logging.L().Warn("origin validation error", "website_id", websiteID, "error", err)
+		logging.L().Warn("origin validation error", zap.String("website_id", websiteID.String()), zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Origin validation failed",
 		})
 	}
 
 	if !originAllowed {
-		logging.L().Warn("origin blocked", "origin", origin, "website_id", websiteID)
+		logging.L().Warn("origin blocked", zap.String("origin", origin), zap.String("website_id", websiteID.String()))
 		return c.Status(403).JSON(fiber.Map{
-			"error": "Origin not allowed",
+			"error":  "Origin not allowed",
+			"origin": origin,
+			"hint":   "Add this domain to the allowed list using: kaunta website add-domain",
 		})
 	}
 
@@ -148,7 +151,7 @@ func HandleTracking(c fiber.Ctx) error {
 
 	if err != nil {
 		// Log error but don't block traffic on bot detection failure
-		logging.L().Warn("bot detection error", "ip", ip, "error", err)
+		logging.L().Warn("bot detection error", zap.String("ip", ip), zap.Error(err))
 		// Default to not a bot if detection fails
 		isBotVal := false
 		isBot = &isBotVal
@@ -198,9 +201,9 @@ func HandleTracking(c fiber.Ctx) error {
 
 	if err != nil {
 		logging.L().Error("session creation error",
-			"website_id", websiteID,
-			"session_id", sessionID,
-			"error", err)
+			zap.String("website_id", websiteID.String()),
+			zap.String("session_id", sessionID.String()),
+			zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to create session: " + err.Error(),
 		})
@@ -376,11 +379,11 @@ func saveEvent(websiteID, sessionID, visitID uuid.UUID, createdAt time.Time,
 	`
 
 	logging.L().Debug("inserting event",
-		"event_type", eventType,
-		"event_id", eventID,
-		"website_id", websiteID,
-		"session_id", sessionID,
-		"visit_id", visitID,
+		zap.Int("event_type", eventType),
+		zap.String("event_id", eventID.String()),
+		zap.String("website_id", websiteID.String()),
+		zap.String("session_id", sessionID.String()),
+		zap.String("visit_id", visitID.String()),
 	)
 
 	_, err := database.DB.Exec(query,
@@ -392,7 +395,7 @@ func saveEvent(websiteID, sessionID, visitID uuid.UUID, createdAt time.Time,
 	)
 
 	if err != nil {
-		logging.L().Error("failed to insert event", "error", err)
+		logging.L().Error("failed to insert event", zap.Error(err))
 	}
 
 	return err

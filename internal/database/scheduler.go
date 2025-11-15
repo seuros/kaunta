@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/seuros/kaunta/internal/logging"
+	"go.uber.org/zap"
 )
 
 var (
@@ -79,11 +80,11 @@ func (ps *PartitionScheduler) createFuturePartitions() {
 
 		_, err := DB.Exec(query)
 		if err != nil {
-			logging.L().Warn("failed to create partition", "partition", partitionName, "error", err)
+			logging.L().Warn("failed to create partition", zap.String("partition", partitionName), zap.Error(err))
 			continue
 		}
 
-		logging.L().Info("created partition", "partition", partitionName)
+		logging.L().Info("created partition", zap.String("partition", partitionName))
 	}
 }
 
@@ -106,7 +107,7 @@ func (ps *PartitionScheduler) schedulePartitionCleanup() {
 func (ps *PartitionScheduler) cleanupOldPartitions() {
 	cutoffDate := nowFunc().AddDate(0, 0, -retentionPeriodDays)
 
-	logging.L().Info("cleaning up old partitions", "cutoff", cutoffDate.Format("2006-01-02"))
+	logging.L().Info("cleaning up old partitions", zap.String("cutoff", cutoffDate.Format("2006-01-02")))
 
 	// Find old partitions
 	rows, err := DB.Query(`
@@ -119,12 +120,12 @@ func (ps *PartitionScheduler) cleanupOldPartitions() {
 	`, fmt.Sprintf("website_event_%s", cutoffDate.Format("2006_01_02")))
 
 	if err != nil {
-		logging.L().Warn("failed to query old partitions", "error", err)
+		logging.L().Warn("failed to query old partitions", zap.Error(err))
 		return
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			logging.L().Warn("failed to close partition rows", "error", err)
+			logging.L().Warn("failed to close partition rows", zap.Error(err))
 		}
 	}()
 
@@ -139,16 +140,16 @@ func (ps *PartitionScheduler) cleanupOldPartitions() {
 		query := fmt.Sprintf("DROP TABLE IF EXISTS %s", tableName)
 		_, err := DB.Exec(query)
 		if err != nil {
-			logging.L().Warn("failed to drop partition", "partition", tableName, "error", err)
+			logging.L().Warn("failed to drop partition", zap.String("partition", tableName), zap.Error(err))
 			continue
 		}
 
-		logging.L().Info("dropped old partition", "partition", tableName)
+		logging.L().Info("dropped old partition", zap.String("partition", tableName))
 		droppedCount++
 	}
 
 	if droppedCount > 0 {
-		logging.L().Info("partition cleanup complete", "dropped_count", droppedCount)
+		logging.L().Info("partition cleanup complete", zap.Int("dropped_count", droppedCount))
 	}
 }
 
@@ -211,11 +212,11 @@ func (mvs *MaterializedViewScheduler) refreshView(viewName string) {
 	duration := time.Since(start)
 
 	if err != nil {
-		logging.L().Warn("failed to refresh materialized view", "view", viewName, "error", err)
+		logging.L().Warn("failed to refresh materialized view", zap.String("view", viewName), zap.Error(err))
 		return
 	}
 
-	logging.L().Info("refreshed materialized view", "view", viewName, "duration", duration)
+	logging.L().Info("refreshed materialized view", zap.String("view", viewName), zap.Duration("duration", duration))
 }
 
 // GetMaterializedViewStats returns refresh statistics
@@ -238,7 +239,7 @@ func GetMaterializedViewStats() (map[string]interface{}, error) {
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			logging.L().Warn("failed to close stats rows", "error", err)
+			logging.L().Warn("failed to close stats rows", zap.Error(err))
 		}
 	}()
 

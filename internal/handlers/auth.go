@@ -15,6 +15,7 @@ import (
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/logging"
 	"github.com/seuros/kaunta/internal/middleware"
+	"go.uber.org/zap"
 )
 
 type LoginRequest struct {
@@ -158,7 +159,7 @@ func HandleLogout(c fiber.Ctx) error {
 	if handler != nil {
 		if err := handler.DeleteToken(c); err != nil {
 			// Log but don't fail logout
-			logging.L().Warn("failed to delete CSRF token", "error", err)
+			logging.L().Warn("failed to delete CSRF token", zap.Error(err))
 		}
 	}
 
