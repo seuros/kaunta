@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.21.0](https://github.com/seuros/kaunta/compare/v0.20.0...v0.21.0) (2025-11-15)
+
+
+### Features
+
+* add CSRF token cleanup on logout ([3d1033b](https://github.com/seuros/kaunta/commit/3d1033b980eda867aee9d93e4a154b1575b271ea))
+* auto-allow domain variations on website creation ([02ca235](https://github.com/seuros/kaunta/commit/02ca2356aa9f74b2d8b9fe73a2d8bc73fc9da08b))
+* switch zap logger ([02ca235](https://github.com/seuros/kaunta/commit/02ca2356aa9f74b2d8b9fe73a2d8bc73fc9da08b))
+
+
+### Bug Fixes
+
+* hide self-upgrade flags in dev builds ([468d8ca](https://github.com/seuros/kaunta/commit/468d8caf6b0b3e4cab0ea4ff9935a3fef1f7d11a))
+
 ## [0.20.0](https://github.com/seuros/kaunta/compare/v0.19.0...v0.20.0) (2025-11-14)
 
 
