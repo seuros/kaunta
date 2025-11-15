@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/oschwald/geoip2-golang"
+	"go.uber.org/zap"
 
 	"github.com/seuros/kaunta/internal/logging"
 )
@@ -26,11 +27,11 @@ func Init(dataDir string) error {
 
 	// Download if missing
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		logging.L().Info("geoip database not found; attempting download", "path", dbPath)
+		logging.L().Info("geoip database not found; attempting download", zap.String("path", dbPath))
 		if err := downloadDatabase(dbPath); err != nil {
-			logging.L().Warn("geoip database download failed", "error", err)
+			logging.L().Warn("geoip database download failed", zap.Error(err))
 			logging.L().Warn("geoip lookups will return 'Unknown' until database is installed manually")
-			logging.L().Info("download GeoIP from https://geoip.maxmind.com/ and place file", "path", dbPath)
+			logging.L().Info("download GeoIP from https://geoip.maxmind.com/ and place file", zap.String("path", dbPath))
 			// Don't fail - continue without GeoIP
 			return nil
 		}
@@ -41,7 +42,7 @@ func Init(dataDir string) error {
 	var err error
 	reader, err = geoip2.Open(dbPath)
 	if err != nil {
-		logging.L().Warn("could not load geoip database", "error", err)
+		logging.L().Warn("could not load geoip database", zap.Error(err))
 		logging.L().Warn("geoip lookups will return 'Unknown'")
 		// Don't fail - continue without GeoIP
 		return nil
@@ -64,7 +65,7 @@ func LookupIP(ipStr string) (country, city, region string) {
 
 	record, err := reader.City(ip)
 	if err != nil {
-		logging.L().Warn("geoip lookup error", "ip", ipStr, "error", err)
+		logging.L().Warn("geoip lookup error", zap.String("ip", ipStr), zap.Error(err))
 		return "", "", ""
 	}
 
@@ -102,7 +103,7 @@ func downloadDatabase(dbPath string) error {
 	// Source: https://www.npmjs.com/package/geolite2-city
 	url := "https://cdn.jsdelivr.net/npm/geolite2-city/GeoLite2-City.mmdb.gz"
 
-	logging.L().Info("downloading geoip database", "url", url)
+	logging.L().Info("downloading geoip database", zap.String("url", url))
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -110,7 +111,7 @@ func downloadDatabase(dbPath string) error {
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			logging.L().Warn("failed to close geoip response body", "error", err)
+			logging.L().Warn("failed to close geoip response body", zap.Error(err))
 		}
 	}()
 
@@ -125,7 +126,7 @@ func downloadDatabase(dbPath string) error {
 	}
 	defer func() {
 		if err := gzReader.Close(); err != nil {
-			logging.L().Warn("failed to close geoip gzip reader", "error", err)
+			logging.L().Warn("failed to close geoip gzip reader", zap.Error(err))
 		}
 	}()
 
@@ -136,7 +137,7 @@ func downloadDatabase(dbPath string) error {
 	}
 	defer func() {
 		if err := out.Close(); err != nil {
-			logging.L().Warn("failed to close geoip output file", "error", err)
+			logging.L().Warn("failed to close geoip output file", zap.Error(err))
 		}
 	}()
 

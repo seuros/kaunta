@@ -74,17 +74,19 @@ var websiteCreateCmd = &cobra.Command{
 	Short: "Create a new tracked website",
 	Long: `Create a new website for analytics tracking.
 
+Auto-includes common variations (www, http/https) to prevent tracking errors.
+
 Arguments:
   domain              Domain name for the website (required, max 253 chars)
 
 Options:
   --name              Display name for the website (defaults to domain)
-  --allowed           Comma-separated list of allowed CORS domains
+  --allowed           Additional allowed domains (auto-includes: domain, www.domain, http(s)://*)
 
 Examples:
   kaunta website create example.com
   kaunta website create example.com --name "My Site"
-  kaunta website create example.com --allowed "example.com,www.example.com"`,
+  kaunta website create example.com --allowed "app.example.com,api.example.com"`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runWebsiteCreate(args[0], createName, createAllowed)
@@ -296,6 +298,30 @@ func runWebsiteCreate(domain, name, allowedCSV string) error {
 	defer cancel()
 
 	allowedDomains := ParseAllowedDomains(allowedCSV)
+
+	// Auto-add domain and common variations
+	autoAllowedDomains := []string{
+		domain,
+		"www." + domain,
+		"https://" + domain,
+		"http://" + domain,
+		"https://www." + domain,
+		"http://www." + domain,
+	}
+
+	// Add each auto-allowed domain if not already in list
+	for _, autoDomain := range autoAllowedDomains {
+		found := false
+		for _, d := range allowedDomains {
+			if d == autoDomain {
+				found = true
+				break
+			}
+		}
+		if !found {
+			allowedDomains = append(allowedDomains, autoDomain)
+		}
+	}
 
 	website, err := createWebsiteFunc(ctx, domain, name, allowedDomains)
 	if err != nil {

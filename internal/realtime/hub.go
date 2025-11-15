@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/seuros/kaunta/internal/logging"
+	"go.uber.org/zap"
 )
 
 type Hub struct {
@@ -85,7 +86,7 @@ func (h *Hub) Broadcast(msg []byte) {
 	select {
 	case h.broadcast <- msg:
 	default:
-		logging.L().Warn("dropping realtime payload", "reason", "slow consumers")
+		logging.L().Warn("dropping realtime payload", zap.String("reason", "slow consumers"))
 	}
 }
 

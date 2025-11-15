@@ -233,6 +233,31 @@
         transform: scale(0.98);
       }
 
+      /* Logout button */
+      .btn-logout {
+        padding: 8px 16px;
+        border-radius: 12px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 500;
+        border: 1px solid transparent;
+      }
+
+      .btn-logout:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+        transform: translateY(-1px);
+        border-color: rgba(239, 68, 68, 0.3);
+      }
+
+      .btn-logout:active {
+        transform: scale(0.98);
+      }
+
       /* Stats grid with glassmorphism cards and enhanced progress bars */
       .stats-grid {
         display: grid;
@@ -785,6 +810,22 @@
               Clear Filters
             </button>
           </div>
+          <!-- Logout Button -->
+          <button
+            @click="logout()"
+            class="btn-logout glass transition-standard"
+            title="Logout"
+          >
+            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              ></path>
+            </svg>
+            Logout
+          </button>
         </div>
       </header>
 
@@ -1860,6 +1901,39 @@
             } catch (error) {
               console.error("Failed to update choropleth map:", error);
             }
+          },
+          async logout() {
+            try {
+              const csrfToken = this.getCsrfToken();
+              const response = await fetch("/api/auth/logout", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": csrfToken,
+                },
+                credentials: "include",
+              });
+
+              if (response.ok) {
+                // Clear local storage
+                localStorage.removeItem("kaunta_website");
+                localStorage.removeItem("kaunta_dateRange");
+                // Redirect to login
+                window.location.href = "/login";
+              } else {
+                console.error("Logout failed:", await response.text());
+                alert("Logout failed. Please try again.");
+              }
+            } catch (error) {
+              console.error("Logout error:", error);
+              alert("Network error during logout. Please try again.");
+            }
+          },
+          getCsrfToken() {
+            const value = "; " + document.cookie;
+            const parts = value.split("; kaunta_csrf=");
+            if (parts.length === 2) return parts.pop().split(";").shift();
+            return "";
           },
         };
       }

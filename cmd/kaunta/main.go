@@ -6,6 +6,7 @@ import (
 
 	"github.com/seuros/kaunta/internal/cli"
 	"github.com/seuros/kaunta/internal/logging"
+	"go.uber.org/zap"
 )
 
 //go:embed VERSION
@@ -50,6 +51,6 @@ func run() error {
 
 func main() {
 	if err := run(); err != nil {
-		logging.Fatal("kaunta execution failed", "error", err)
+		logging.Fatal("kaunta execution failed", zap.Error(err))
 	}
 }

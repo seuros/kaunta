@@ -13,13 +13,13 @@ import (
 	"time"
 
 	"github.com/gofiber/contrib/v3/websocket"
+	zapmiddleware "github.com/gofiber/contrib/v3/zap"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/extractors"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/csrf"
 	"github.com/gofiber/fiber/v3/middleware/healthcheck"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
-	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/spf13/cobra"
@@ -31,6 +31,7 @@ import (
 	"github.com/seuros/kaunta/internal/logging"
 	"github.com/seuros/kaunta/internal/middleware"
 	"github.com/seuros/kaunta/internal/realtime"
+	"go.uber.org/zap"
 )
 
 var Version string
@@ -51,7 +52,7 @@ It provides real-time analytics and a clean dashboard interface.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.LoadWithOverrides(databaseURL, port, dataDir)
 		if err != nil {
-			logging.L().Warn("failed to load config overrides", "error", err)
+			logging.L().Warn("failed to load config overrides", zap.Error(err))
 			return nil
 		}
 
@@ -127,6 +128,11 @@ func serveAnalytics(
 	assetsFS interface{},
 	trackerScript, vendorJS, vendorCSS, countriesGeoJSON, dashboardTemplate, indexTemplate []byte,
 ) error {
+	// Ensure logger is flushed on exit
+	defer func() {
+		_ = logging.Sync() // Ignore sync errors on stderr (expected)
+	}()
+
 	// Get database URL
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -136,18 +142,18 @@ func serveAnalytics(
 	// Run migrations
 	logging.L().Info("running database migrations")
 	if err := database.RunMigrations(databaseURL); err != nil {
-		logging.L().Warn("migration warning", "error", err)
+		logging.L().Warn("migration warning", zap.Error(err))
 	} else {
 		logging.L().Info("migrations completed")
 	}
 
 	// Connect to database
 	if err := database.Connect(); err != nil {
-		logging.Fatal("database connection failed", "error", err)
+		logging.Fatal("database connection failed", zap.Error(err))
 	}
 	defer func() {
 		if err := database.Close(); err != nil {
-			logging.L().Warn("error closing database", "error", err)
+			logging.L().Warn("error closing database", zap.Error(err))
 		}
 	}()
 
@@ -157,7 +163,7 @@ func serveAnalytics(
 	realtimeHub := realtime.NewHub()
 	logging.L().Info("starting realtime websocket listener")
 	if err := realtime.StartListener(ctx, databaseURL, realtimeHub); err != nil {
-		logging.L().Error("failed to start realtime listener", "error", err)
+		logging.L().Error("failed to start realtime listener", zap.Error(err))
 	} else {
 		logging.L().Info("realtime websocket listener started successfully")
 	}
@@ -165,7 +171,7 @@ func serveAnalytics(
 	// Sync trusted origins from config to database
 	cfg, err := config.Load()
 	if err != nil {
-		logging.L().Warn("failed to load config for trusted origins", "error", err)
+		logging.L().Warn("failed to load config for trusted origins", zap.Error(err))
 	} else if len(cfg.TrustedOrigins) > 0 {
 		syncTrustedOrigins(cfg.TrustedOrigins)
 	}
@@ -173,7 +179,7 @@ func serveAnalytics(
 	// Initialize trusted origins cache from database
 	logging.L().Info("initializing trusted origins cache")
 	if err := middleware.InitTrustedOriginsCache(); err != nil {
-		logging.L().Warn("failed to initialize trusted origins cache", "error", err)
+		logging.L().Warn("failed to initialize trusted origins cache", zap.Error(err))
 	}
 
 	// Initialize GeoIP database (downloads if missing)
@@ -182,11 +188,11 @@ func serveAnalytics(
 		dataDir = "./data"
 	}
 	if err := geoip.Init(dataDir); err != nil {
-		logging.Fatal("geoip initialization failed", "error", err)
+		logging.Fatal("geoip initialization failed", zap.Error(err))
 	}
 	defer func() {
 		if err := geoip.Close(); err != nil {
-			logging.L().Warn("error closing geoip", "error", err)
+			logging.L().Warn("error closing geoip", zap.Error(err))
 		}
 	}()
 
@@ -199,8 +205,9 @@ func serveAnalytics(
 
 	// Middleware
 	app.Use(recover.New())
-	app.Use(logger.New(logger.Config{
-		Skip: func(c fiber.Ctx) bool {
+	app.Use(zapmiddleware.New(zapmiddleware.Config{
+		Logger: logging.L(),
+		Next: func(c fiber.Ctx) bool {
 			path := c.Path()
 			return path == "/up" || path == "/health" // Skip healthcheck logs
 		},
@@ -233,7 +240,7 @@ func serveAnalytics(
 	// Get initial trusted origins from cache
 	trustedOrigins, err := middleware.GetTrustedOrigins()
 	if err != nil {
-		logging.L().Warn("failed to get trusted origins", "error", err)
+		logging.L().Warn("failed to get trusted origins", zap.Error(err))
 		trustedOrigins = []string{} // Empty list if error
 	}
 
@@ -409,9 +416,9 @@ func serveAnalytics(
 
 	// Start server
 	port := getEnv("PORT", "3000")
-	logging.L().Info("starting kaunta server", "port", port)
+	logging.L().Info("starting kaunta server", zap.String("port", port))
 	if err := app.Listen(":" + port); err != nil {
-		logging.Fatal("fiber server exited", "error", err)
+		logging.Fatal("fiber server exited", zap.Error(err))
 	}
 
 	return nil
@@ -850,7 +857,7 @@ func loginPageHTML() string {
 
 // syncTrustedOrigins syncs trusted origins from config to database
 func syncTrustedOrigins(origins []string) {
-	logging.L().Info("syncing trusted origins from config", "count", len(origins))
+	logging.L().Info("syncing trusted origins from config", zap.Int("count", len(origins)))
 	for _, origin := range origins {
 		// Insert or update trusted origin (upsert)
 		query := `
@@ -862,9 +869,9 @@ func syncTrustedOrigins(origins []string) {
 		`
 		_, err := database.DB.Exec(query, origin)
 		if err != nil {
-			logging.L().Warn("failed to sync trusted origin", "origin", origin, "error", err)
+			logging.L().Warn("failed to sync trusted origin", zap.String("origin", origin), zap.Error(err))
 		} else {
-			logging.L().Info("synced trusted origin", "origin", origin)
+			logging.L().Info("synced trusted origin", zap.String("origin", origin))
 		}
 	}
 	logging.L().Info("finished syncing trusted origins")
