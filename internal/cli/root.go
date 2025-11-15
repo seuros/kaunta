@@ -109,6 +109,9 @@ func Execute(
 
 	RootCmd.Version = version
 
+	// Hide self-upgrade flags in dev builds (after Version is set)
+	hideSelfUpgradeFlagsIfDevBuild()
+
 	return RootCmd.Execute()
 }
 

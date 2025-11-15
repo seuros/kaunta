@@ -38,6 +38,15 @@ func setupSelfUpgrade() {
 	}
 }
 
+// hideSelfUpgradeFlagsIfDevBuild hides self-upgrade flags when running dev builds
+func hideSelfUpgradeFlagsIfDevBuild() {
+	if strings.TrimSpace(Version) == "" {
+		_ = RootCmd.PersistentFlags().MarkHidden("self-upgrade")
+		_ = RootCmd.PersistentFlags().MarkHidden("self-upgrade-check")
+		_ = RootCmd.PersistentFlags().MarkHidden("self-upgrade-yes")
+	}
+}
+
 func handleSelfUpgradeFlags() error {
 	if !selfUpgradeRequested && !selfUpgradeCheckOnly {
 		return nil
