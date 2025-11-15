@@ -31,7 +31,7 @@ func TestHubRegistersAndBroadcasts(t *testing.T) {
 	}
 
 	hub.register <- client
-	waitForCondition(t, time.Second, func() bool { return len(hub.clients) == 1 })
+	waitForCondition(t, time.Second, func() bool { return hub.GetClientCount() == 1 })
 
 	msg := []byte("hello")
 	hub.Broadcast(msg)
@@ -44,7 +44,7 @@ func TestHubRegistersAndBroadcasts(t *testing.T) {
 	}
 
 	hub.unregister <- client
-	waitForCondition(t, time.Second, func() bool { return len(hub.clients) == 0 })
+	waitForCondition(t, time.Second, func() bool { return hub.GetClientCount() == 0 })
 }
 
 func TestHubBroadcastDropsSlowClient(t *testing.T) {
@@ -56,11 +56,11 @@ func TestHubBroadcastDropsSlowClient(t *testing.T) {
 	}
 
 	hub.register <- client
-	waitForCondition(t, time.Second, func() bool { return len(hub.clients) == 1 })
+	waitForCondition(t, time.Second, func() bool { return hub.GetClientCount() == 1 })
 
 	hub.Broadcast([]byte("msg"))
 
-	waitForCondition(t, time.Second, func() bool { return len(hub.clients) == 0 })
+	waitForCondition(t, time.Second, func() bool { return hub.GetClientCount() == 0 })
 
 	select {
 	case _, ok := <-client.send:
@@ -133,18 +133,18 @@ func TestWritePumpSendsMessagesAndPings(t *testing.T) {
 	// Deliver normal message
 	client.send <- []byte("payload")
 
-	waitForCondition(t, time.Second, func() bool { return len(conn.writeMessages) >= 1 })
-	assert.Equal(t, websocket.TextMessage, conn.writeMessages[0].messageType)
-	assert.Equal(t, []byte("payload"), conn.writeMessages[0].payload)
+	waitForCondition(t, time.Second, func() bool { return conn.GetWriteMessageCount() >= 1 })
+	assert.Equal(t, websocket.TextMessage, conn.GetWriteMessage(0).messageType)
+	assert.Equal(t, []byte("payload"), conn.GetWriteMessage(0).payload)
 
 	// Trigger ping via manual ticker
 	manual.ch <- time.Now()
-	waitForCondition(t, time.Second, func() bool { return len(conn.writeMessages) >= 2 })
-	assert.Equal(t, websocket.PingMessage, conn.writeMessages[1].messageType)
+	waitForCondition(t, time.Second, func() bool { return conn.GetWriteMessageCount() >= 2 })
+	assert.Equal(t, websocket.PingMessage, conn.GetWriteMessage(1).messageType)
 
 	// Close send channel to exit
 	close(client.send)
-	waitForCondition(t, time.Second, func() bool { return conn.closeCalls >= 1 })
+	waitForCondition(t, time.Second, func() bool { return conn.GetCloseCalls() >= 1 })
 
 	<-done
 	assert.True(t, manual.stopCalled)

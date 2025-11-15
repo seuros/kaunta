@@ -11,10 +11,11 @@ import (
 )
 
 type Hub struct {
-	register   chan *Client
-	unregister chan *Client
-	broadcast  chan []byte
-	clients    map[*Client]struct{}
+	register    chan *Client
+	unregister  chan *Client
+	broadcast   chan []byte
+	clientCount chan chan int // For thread-safe client count queries
+	clients     map[*Client]struct{}
 }
 
 type wsConn interface {
@@ -48,10 +49,11 @@ var pingTickerFactory = func() pingTicker {
 
 func NewHub() *Hub {
 	h := &Hub{
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		broadcast:  make(chan []byte, 512),
-		clients:    make(map[*Client]struct{}),
+		register:    make(chan *Client),
+		unregister:  make(chan *Client),
+		broadcast:   make(chan []byte, 512),
+		clientCount: make(chan chan int),
+		clients:     make(map[*Client]struct{}),
 	}
 
 	go h.run()
@@ -78,6 +80,8 @@ func (h *Hub) run() {
 					delete(h.clients, client)
 				}
 			}
+		case response := <-h.clientCount:
+			response <- len(h.clients)
 		}
 	}
 }
@@ -88,6 +92,13 @@ func (h *Hub) Broadcast(msg []byte) {
 	default:
 		logging.L().Warn("dropping realtime payload", zap.String("reason", "slow consumers"))
 	}
+}
+
+// GetClientCount returns the number of connected clients in a thread-safe manner
+func (h *Hub) GetClientCount() int {
+	response := make(chan int)
+	h.clientCount <- response
+	return <-response
 }
 
 func (h *Hub) Handler() fiber.Handler {
