@@ -35,6 +35,36 @@ Download the latest release from [GitHub Releases](https://github.com/seuros/kau
 
 ## Installation
 
+### Quick Install (Linux/macOS/FreeBSD)
+
+```bash
+# Install to ~/.local/bin (default)
+curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/install.sh | bash
+
+# Install to /usr/local/bin (system-wide, requires sudo)
+curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/install.sh | bash -s -- --system
+
+# Install specific version
+curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/install.sh | bash -s -- --version v0.21.1
+
+# Custom install location
+curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/install.sh | bash -s -- --prefix /custom/path
+```
+
+The install script supports:
+- Auto-detection of platform (Linux/macOS/FreeBSD) and architecture (amd64/arm64)
+- Automatic latest release download from GitHub
+- Optional sudo for system-wide installation
+- Custom install directories via `--prefix`
+- Version pinning via `--version`
+
+**Environment Variables:**
+- `KAUNTA_INSTALL_PREFIX` - Install directory (e.g., `~/.local/bin`)
+- `KAUNTA_INSTALL_VERSION` - Version to install (e.g., `v0.21.1`)
+- `KAUNTA_INSTALL_ASSUME_SUDO` - One of: `always`, `never`, `prompt` (default)
+
+For Windows, download the `.exe` binary from [GitHub Releases](https://github.com/seuros/kaunta/releases).
+
 ### 1. Configuration
 
 Kaunta requires PostgreSQL 17+. You can configure it using:
