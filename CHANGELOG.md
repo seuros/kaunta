@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.21.1](https://github.com/seuros/kaunta/compare/v0.21.0...v0.21.1) (2025-11-16)
+
+
+### Bug Fixes
+
+* auto-detect HTTPS via reverse proxy headers ([91ccbb4](https://github.com/seuros/kaunta/commit/91ccbb4081fe0ef31542be6ef7f6c2ab148e930b))
+* disable secure cookies in docker-compose for local dev ([dc9ac4e](https://github.com/seuros/kaunta/commit/dc9ac4eeb627949a0ed3c708df178b35631e51a4))
+* resolve race conditions in realtime package ([a66adb2](https://github.com/seuros/kaunta/commit/a66adb2badb11bff5e7daae3841492e1433fb204))
+
 ## [0.21.0](https://github.com/seuros/kaunta/compare/v0.20.0...v0.21.0) (2025-11-15)
 
 
