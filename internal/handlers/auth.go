@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -48,6 +49,16 @@ var (
 	deleteSessionFunc      = deleteSessionInDB
 	fetchUserDetailsFunc   = fetchUserDetailsFromDB
 )
+
+// secureCookiesEnabled determines if cookies should use Secure flag and SameSite=None
+// The config is loaded by CLI and set as env var, so we read from there
+func secureCookiesEnabled() bool {
+	env := os.Getenv("SECURE_COOKIES")
+	if env == "" {
+		return true // Default to secure (safer for production)
+	}
+	return env == "true"
+}
 
 // HandleLogin authenticates user and creates session
 func HandleLogin(c fiber.Ctx) error {
@@ -111,14 +122,19 @@ func HandleLogin(c fiber.Ctx) error {
 	}
 
 	// Set session cookie
-	// Using SameSite=None for cross-domain support with trusted origins
+	secure := secureCookiesEnabled()
+	sameSite := "Lax"
+	if secure {
+		sameSite = "None" // Required for cross-domain CNAME setups
+	}
+
 	c.Cookie(&fiber.Cookie{
 		Name:     "kaunta_session",
 		Value:    token,
 		Expires:  expiresAt,
 		HTTPOnly: true,
-		Secure:   true, // Required for SameSite=None
-		SameSite: "None",
+		Secure:   secure,
+		SameSite: sameSite,
 		Path:     "/",
 	})
 
@@ -171,13 +187,19 @@ func HandleLogout(c fiber.Ctx) error {
 	}
 
 	// Clear session cookie
+	secure := secureCookiesEnabled()
+	sameSite := "Lax"
+	if secure {
+		sameSite = "None"
+	}
+
 	c.Cookie(&fiber.Cookie{
 		Name:     "kaunta_session",
 		Value:    "",
 		Expires:  time.Now().Add(-1 * time.Hour),
 		HTTPOnly: true,
-		Secure:   true, // Required for SameSite=None
-		SameSite: "None",
+		Secure:   secure,
+		SameSite: sameSite,
 		Path:     "/",
 	})
 
