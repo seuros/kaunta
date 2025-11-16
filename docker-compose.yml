@@ -23,6 +23,9 @@ services:
     environment:
       DATABASE_URL: postgresql://kaunta:kaunta@postgres:5432/kaunta?sslmode=disable
       PORT: 3100
+      # Disable secure cookies for local HTTP development
+      # Set to "true" if behind HTTPS reverse proxy
+      SECURE_COOKIES: "false"
       # Comma-separated list of trusted origins for CSRF protection
       # Add your domain(s) here if accessing from external IPs
       # Example: TRUSTED_ORIGINS=localhost,192.168.1.100,analytics.example.com
