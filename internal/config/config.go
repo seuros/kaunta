@@ -49,7 +49,7 @@ func buildConfig(v *viper.Viper, overrideDatabaseURL, overridePort, overrideData
 	cfg := &Config{
 		Port:           "3000",
 		DataDir:        "./data",
-		SecureCookies:  false,
+		SecureCookies:  true, // Default to secure (safe for production/HTTPS proxies)
 		TrustedOrigins: []string{"localhost"},
 	}
 
@@ -90,7 +90,10 @@ func buildConfig(v *viper.Viper, overrideDatabaseURL, overridePort, overrideData
 		}
 	}
 	if !v.IsSet("secure_cookies") {
-		cfg.SecureCookies = os.Getenv("SECURE_COOKIES") == "true"
+		if envSecure := os.Getenv("SECURE_COOKIES"); envSecure != "" {
+			cfg.SecureCookies = envSecure == "true"
+		}
+		// Otherwise keep default (true)
 	}
 
 	// Apply overrides (flags) last

@@ -45,7 +45,7 @@ func TestLoadDefaultsWhenNoConfigSources(t *testing.T) {
 	assert.Equal(t, "", cfg.DatabaseURL)
 	assert.Equal(t, "3000", cfg.Port)
 	assert.Equal(t, "./data", cfg.DataDir)
-	assert.False(t, cfg.SecureCookies)
+	assert.True(t, cfg.SecureCookies) // Default to secure cookies for production safety
 }
 
 func TestLoadUsesEnvironmentVariables(t *testing.T) {

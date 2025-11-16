@@ -495,7 +495,13 @@ func secureCookiesEnabled(cfg *config.Config) bool {
 	if cfg != nil {
 		return cfg.SecureCookies
 	}
-	return os.Getenv("SECURE_COOKIES") == "true"
+	// Default to secure cookies unless explicitly disabled
+	// This makes HTTPS reverse proxy setups work out of the box
+	env := os.Getenv("SECURE_COOKIES")
+	if env == "" {
+		return true // Default to secure (safer for production)
+	}
+	return env == "true"
 }
 
 // loginPageHTML returns a simple login page with injected CSRF token
