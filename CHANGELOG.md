@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.22.0](https://github.com/seuros/kaunta/compare/v0.21.2...v0.22.0) (2025-11-16)
+
+
+### Features
+
+* add automated install script for Unix platforms ([bbf3f10](https://github.com/seuros/kaunta/commit/bbf3f1062bd74b1a110d41d70be2ab5063d5d45e))
+
+
+### Bug Fixes
+
+* use X-Forwarded-For for client IP detection behind reverse proxy ([f87a7ec](https://github.com/seuros/kaunta/commit/f87a7ec958072e62698ea6d28a4a2baf6bf8e422))
+
 ## [0.21.2](https://github.com/seuros/kaunta/compare/v0.21.1...v0.21.2) (2025-11-16)
 
 
