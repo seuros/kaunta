@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.2](https://github.com/seuros/kaunta/compare/v0.21.1...v0.21.2) (2025-11-16)
+
+
+### Bug Fixes
+
+* cookie SameSite policy for HTTPS proxy compatibility ([f77cd92](https://github.com/seuros/kaunta/commit/f77cd92ec5cbc94ead4b17100315f267fff061c8))
+
 ## [0.21.1](https://github.com/seuros/kaunta/compare/v0.21.0...v0.21.1) (2025-11-16)
 
 
