@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/seuros/kaunta/compare/v0.23.0...v0.23.1) (2025-11-17)
+
+
+### Bug Fixes
+
+* skip CSRF for static assets (JS/CSS) to prevent cross-site cookie rejection ([#63](https://github.com/seuros/kaunta/issues/63)) ([eb103a7](https://github.com/seuros/kaunta/commit/eb103a76105da5847c594c9dd8877a35e60ec5ce))
+
 ## [0.23.0](https://github.com/seuros/kaunta/compare/v0.22.2...v0.23.0) (2025-11-17)
 
 
