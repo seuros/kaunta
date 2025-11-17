@@ -274,7 +274,13 @@ func insertSessionInDB(sessionID uuid.UUID, userID uuid.UUID, tokenHash string, 
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
-	_, err := database.DB.Exec(insertQuery, sessionID, userID, tokenHash, expiresAt, userAgent, ipAddress)
+	// Handle empty IP address (e.g., from Docker networking)
+	var ipParam interface{} = ipAddress
+	if ipAddress == "" {
+		ipParam = nil
+	}
+
+	_, err := database.DB.Exec(insertQuery, sessionID, userID, tokenHash, expiresAt, userAgent, ipParam)
 	return err
 }
 
