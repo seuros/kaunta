@@ -33,6 +33,12 @@ var dashboardTemplate []byte
 //go:embed index.html
 var indexTemplate []byte
 
+//go:embed setup.html
+var setupTemplate []byte
+
+//go:embed setup_complete.html
+var setupCompleteTemplate []byte
+
 var executeCLI = cli.Execute
 
 func run() error {
@@ -46,6 +52,8 @@ func run() error {
 		countriesGeoJSON,
 		dashboardTemplate,
 		indexTemplate,
+		setupTemplate,
+		setupCompleteTemplate,
 	)
 }
 
