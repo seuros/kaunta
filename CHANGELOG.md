@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.2](https://github.com/seuros/kaunta/compare/v0.22.1...v0.22.2) (2025-11-17)
+
+
+### Bug Fixes
+
+* self-upgrade runs before database validation ([e94c2eb](https://github.com/seuros/kaunta/commit/e94c2eb0afa32694292963669915e8c289be69e2))
+
 ## [0.22.1](https://github.com/seuros/kaunta/compare/v0.22.0...v0.22.1) (2025-11-17)
 
 
