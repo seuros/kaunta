@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.1](https://github.com/seuros/kaunta/compare/v0.22.0...v0.22.1) (2025-11-17)
+
+
+### Bug Fixes
+
+* update js to remove defensive code ([9ee1172](https://github.com/seuros/kaunta/commit/9ee11721c5ccabf7b07294c3760951096e476afd))
+
 ## [0.22.0](https://github.com/seuros/kaunta/compare/v0.21.2...v0.22.0) (2025-11-16)
 
 
