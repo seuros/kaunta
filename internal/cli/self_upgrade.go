@@ -28,13 +28,19 @@ func setupSelfUpgrade() {
 
 	existingPreRun := RootCmd.PersistentPreRunE
 	RootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		// Handle self-upgrade FIRST, before any config/database initialization
+		if err := handleSelfUpgradeFlags(); err != nil {
+			return err
+		}
+
+		// Only run existing pre-run if we didn't exit from self-upgrade
 		if existingPreRun != nil {
 			if err := existingPreRun(cmd, args); err != nil {
 				return err
 			}
 		}
 
-		return handleSelfUpgradeFlags()
+		return nil
 	}
 }
 
@@ -48,6 +54,7 @@ func hideSelfUpgradeFlagsIfDevBuild() {
 }
 
 func handleSelfUpgradeFlags() error {
+	// Self-upgrade is flag-only (no config) to avoid accidental auto-upgrades
 	if !selfUpgradeRequested && !selfUpgradeCheckOnly {
 		return nil
 	}
