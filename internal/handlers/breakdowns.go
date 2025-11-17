@@ -170,7 +170,7 @@ func HandleMapData(c fiber.Ctx) error {
 		data = append(data, MapDataPoint{
 			Country:     countryCode,
 			CountryName: getCountryName(countryCode),
-			Code:        getAlpha3Code(countryCode),
+			Code:        getTopoJSONCode(countryCode),
 			Visitors:    int(visitors),
 			Percentage:  percentage,
 		})

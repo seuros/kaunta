@@ -718,9 +718,8 @@
             x-show="websites.length > 0"
             class="glass transition-standard focus-accent"
           >
-            <option value="">Select Website...</option>
             <template x-for="site in websites" :key="site.id">
-              <option :value="site.id" x-text="site.name || site.domain"></option>
+              <option :value="site.id" x-text="site.name || site.domain" :selected="site.id === selectedWebsite"></option>
             </template>
           </select>
           <div class="date-range-buttons glass">
@@ -1016,10 +1015,10 @@
               </svg>
               Regions
             </button>
-            <button
+            <a
+              href="/map"
               class="tab transition-standard"
-              :class="{ 'active': activeTab === 'map' }"
-              @click="activeTab = 'map'; $nextTick(() => loadMapData())"
+              style="text-decoration: none;"
             >
               <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1027,16 +1026,16 @@
                 ></path>
               </svg>
               Map
-            </button>
+            </a>
           </div>
-          <template x-if="activeTab !== 'map' && breakdownLoading">
+          <template x-if="breakdownLoading">
             <div class="loading">
               <div class="spinner"></div>
               <div>Loading data...</div>
             </div>
           </template>
           <template
-            x-if="activeTab !== 'map' && !breakdownLoading && breakdownData && breakdownData.length > 0"
+            x-if="!breakdownLoading && breakdownData && breakdownData.length > 0"
           >
             <table>
               <thead>
@@ -1064,36 +1063,12 @@
             </table>
           </template>
           <template
-            x-if="activeTab !== 'map' && !breakdownLoading && (!breakdownData || breakdownData.length === 0)"
+            x-if="!breakdownLoading && (!breakdownData || breakdownData.length === 0)"
           >
             <div class="empty-state">
               <div class="empty-state-icon">📊</div>
               <div class="empty-state-title">No data yet</div>
               <div class="empty-state-text">Start tracking to see breakdown data</div>
-            </div>
-          </template>
-          <template x-if="activeTab === 'map'">
-            <div>
-              <!-- Loading indicator for map -->
-              <template x-if="mapLoading && !mapInitialized">
-                <div class="loading">
-                  <div class="spinner"></div>
-                  <div>Loading map data...</div>
-                </div>
-              </template>
-              <!-- Map container -->
-              <div
-                style="
-                  height: 600px;
-                  border-radius: 8px;
-                  overflow: hidden;
-                  background: var(--bg-secondary);
-                  margin-top: 24px;
-                  position: relative;
-                "
-              >
-                <div id="choropleth-map" style="width: 100%; height: 100%"></div>
-              </div>
             </div>
           </template>
         </div>
@@ -1188,9 +1163,6 @@
             devices: [],
             pages: [],
           },
-          mapLoading: false,
-          mapData: null,
-          mapInitialized: false,
           async init() {
             // Load filters from URL parameters
             const urlParams = new URLSearchParams(window.location.search);
@@ -1274,7 +1246,6 @@
               // Wait for DOM update before chart
               await this.$nextTick();
               await this.loadChart();
-              await this.loadMapData();
 
               this.refreshInterval = setInterval(() => this.loadStats(), 5000);
               this.connectRealtime(true);
@@ -1359,7 +1330,6 @@
 
             await this.$nextTick();
             await this.loadChart();
-            await this.loadMapData();
           },
           async loadStats() {
             if (!this.selectedWebsite) return;
@@ -1504,7 +1474,7 @@
             }
           },
           async loadBreakdown() {
-            if (!this.selectedWebsite || this.activeTab === "map") {
+            if (!this.selectedWebsite) {
               return;
             }
             this.breakdownLoading = true;
@@ -1579,7 +1549,6 @@
 
             await this.$nextTick();
             await this.loadChart();
-            await this.loadMapData();
           },
           clearFilters() {
             this.filters = {
@@ -1630,278 +1599,6 @@
               }
             });
             return sorted;
-          },
-          async loadMapData() {
-            if (!this.selectedWebsite || this.activeTab !== "map") return;
-            this.mapLoading = true;
-            try {
-              const days = this.dateRange === "1" ? 1 : this.dateRange === "7" ? 7 : 30;
-              const params = new URLSearchParams({ days });
-              if (this.filters.country) params.append("country", this.filters.country);
-              if (this.filters.browser) params.append("browser", this.filters.browser);
-              if (this.filters.device) params.append("device", this.filters.device);
-              if (this.filters.page) params.append("page", this.filters.page);
-              const response = await fetch(`/api/dashboard/map/${this.selectedWebsite}?${params}`);
-              if (response.ok) {
-                this.mapData = await response.json();
-                const containerExists = document.getElementById("choropleth-map");
-                if (!containerExists) {
-                  console.warn("Choropleth map container not found yet; will retry once rendered.");
-                  return;
-                }
-                if (!this.mapInitialized) {
-                  await this.initializeChoropleth();
-                } else {
-                  this.updateChoropleth();
-                }
-              } else {
-                console.error("Failed to load map data");
-              }
-            } catch (error) {
-              console.error("Map data error:", error);
-            } finally {
-              this.mapLoading = false;
-            }
-          },
-          getColorForValue(value, maxValue) {
-            if (!value || value === 0) return "#e5e5e5";
-            const intensity = value / maxValue;
-            if (intensity < 0.2) return "#deebf7";
-            if (intensity < 0.4) return "#9ecae1";
-            if (intensity < 0.6) return "#6baed6";
-            if (intensity < 0.8) return "#3182bd";
-            return "#08519c";
-          },
-          formatTooltipText(countryName, visitors, percentage) {
-            return `
-                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                            <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px; color: #1a1a1a;">${countryName}</div>
-                            <div style="font-size: 13px; color: #666666;">
-                                ${visitors.toLocaleString()} visitors (${percentage.toFixed(1)}%)
-                            </div>
-                        </div>
-                    `;
-          },
-          handleCountryClick(countryName) {
-            this.filters.country = countryName;
-            this.applyFilter();
-            this.activeTab = "countries";
-            this.loadBreakdown();
-          },
-          async initializeChoropleth() {
-            try {
-              const container = document.getElementById("choropleth-map");
-              if (!container) {
-                console.error("Choropleth map container not found");
-                return;
-              }
-              const map = L.map("choropleth-map", {
-                zoomControl: true,
-                attributionControl: true,
-                scrollWheelZoom: true,
-                doubleClickZoom: true,
-                touchZoom: true,
-              }).setView([20, 0], 2);
-              L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                attribution:
-                  '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                maxZoom: 18,
-                minZoom: 1,
-              }).addTo(map);
-              const response = await fetch("/assets/data/countries-110m.json");
-              if (!response.ok) {
-                throw new Error(`Failed to load TopoJSON: ${response.statusText}`);
-              }
-              const world = await response.json();
-              const features = topojson.feature(world, world.objects.countries).features;
-              const dataMap = new Map();
-              let maxValue = 0;
-              if (this.mapData && this.mapData.data && Array.isArray(this.mapData.data)) {
-                maxValue = Math.max(...this.mapData.data.map((d) => d.visitors || 0));
-                this.mapData.data.forEach((d) => {
-                  dataMap.set(d.country_name, {
-                    visitors: d.visitors || 0,
-                    percentage: d.percentage || 0,
-                    name: d.country_name,
-                    code: d.code,
-                  });
-                  if (d.code) {
-                    dataMap.set(d.code, {
-                      visitors: d.visitors || 0,
-                      percentage: d.percentage || 0,
-                      name: d.country_name,
-                      code: d.code,
-                    });
-                  }
-                });
-              }
-              const getStyle = (feature) => {
-                const countryName = feature.properties.name;
-                const countryId = feature.id;
-                const countryData = dataMap.get(countryName) || dataMap.get(countryId);
-                const fillColor = countryData
-                  ? this.getColorForValue(countryData.visitors, maxValue)
-                  : "#e5e5e5";
-                return {
-                  fillColor: fillColor,
-                  weight: 0.5,
-                  opacity: 0.8,
-                  color: "#999",
-                  fillOpacity: 0.7,
-                };
-              };
-              const onEachFeature = (feature, layer) => {
-                const countryName = feature.properties.name;
-                const countryId = feature.id;
-                const countryData = dataMap.get(countryName) || dataMap.get(countryId);
-                const tooltipContent = countryData
-                  ? this.formatTooltipText(
-                      countryData.name,
-                      countryData.visitors,
-                      countryData.percentage,
-                    )
-                  : `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                                     <div style="font-weight: 500; font-size: 14px; color: #1a1a1a;">${
-                                       countryName || "Unknown"
-                                     }</div>
-                                     <div style="font-size: 13px; color: #666666;">No visitors</div>
-                                   </div>`;
-                layer.bindTooltip(tooltipContent, {
-                  sticky: true,
-                  opacity: 0.95,
-                  className: "leaflet-custom-tooltip",
-                });
-                layer.on("mouseover", function (e) {
-                  const layer = e.target;
-                  layer.setStyle({
-                    weight: 2,
-                    color: "#333",
-                    fillOpacity: 0.85,
-                  });
-                  if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-                    layer.bringToFront();
-                  }
-                });
-                layer.on("mouseout", function (e) {
-                  const layer = e.target;
-                  layer.setStyle({
-                    weight: 0.5,
-                    color: "#999",
-                    fillOpacity: 0.7,
-                  });
-                });
-                if (countryData) {
-                  layer.on("click", () => {
-                    this.handleCountryClick(countryData.name);
-                  });
-                  layer.on("mouseover", function () {
-                    container.style.cursor = "pointer";
-                  });
-                  layer.on("mouseout", function () {
-                    container.style.cursor = "";
-                  });
-                }
-              };
-              const geoJsonLayer = L.geoJSON(features, {
-                style: getStyle,
-                onEachFeature: onEachFeature,
-              }).addTo(map);
-              this.mapInstance = map;
-              this.geoJsonLayer = geoJsonLayer;
-              if (!document.getElementById("leaflet-custom-tooltip-style")) {
-                const style = document.createElement("style");
-                style.id = "leaflet-custom-tooltip-style";
-                style.textContent = `
-                                .leaflet-custom-tooltip {
-                                    background: rgba(255, 255, 255, 0.95);
-                                    border: 1px solid #e5e7eb;
-                                    border-radius: 8px;
-                                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                                    padding: 12px;
-                                }
-                                .leaflet-custom-tooltip::before {
-                                    border-top-color: rgba(255, 255, 255, 0.95);
-                                }
-                            `;
-                document.head.appendChild(style);
-              }
-              this.mapInitialized = true;
-            } catch (error) {
-              console.error("Failed to initialize choropleth map:", error);
-              const container = document.getElementById("choropleth-map");
-              if (container) {
-                container.innerHTML = `
-                                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999999;">
-                                    <div style="text-align: center;">
-                                        <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">🗺️</div>
-                                        <div style="font-size: 16px; font-weight: 500; color: #1f2937; margin-bottom: 8px;">Map Loading Error</div>
-                                        <div style="font-size: 14px;">Failed to load map data. Please try again.</div>
-                                    </div>
-                                </div>
-                            `;
-              }
-            }
-          },
-          updateChoropleth() {
-            try {
-              if (!this.mapInstance || !this.geoJsonLayer) {
-                console.warn("Map not initialized, cannot update");
-                return;
-              }
-              const dataMap = new Map();
-              let maxValue = 0;
-              if (this.mapData && this.mapData.data && Array.isArray(this.mapData.data)) {
-                maxValue = Math.max(...this.mapData.data.map((d) => d.visitors || 0));
-                this.mapData.data.forEach((d) => {
-                  dataMap.set(d.country_name, {
-                    visitors: d.visitors || 0,
-                    percentage: d.percentage || 0,
-                    name: d.country_name,
-                    code: d.code,
-                  });
-                  if (d.code) {
-                    dataMap.set(d.code, {
-                      visitors: d.visitors || 0,
-                      percentage: d.percentage || 0,
-                      name: d.country_name,
-                      code: d.code,
-                    });
-                  }
-                });
-              }
-              this.geoJsonLayer.eachLayer((layer) => {
-                const feature = layer.feature;
-                const countryName = feature.properties.name;
-                const countryId = feature.id;
-                const countryData = dataMap.get(countryName) || dataMap.get(countryId);
-                const fillColor = countryData
-                  ? this.getColorForValue(countryData.visitors, maxValue)
-                  : "#e5e5e5";
-                layer.setStyle({
-                  fillColor: fillColor,
-                  weight: 0.5,
-                  opacity: 0.8,
-                  color: "#999",
-                  fillOpacity: 0.7,
-                });
-                const tooltipContent = countryData
-                  ? this.formatTooltipText(
-                      countryData.name,
-                      countryData.visitors,
-                      countryData.percentage,
-                    )
-                  : `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                                     <div style="font-weight: 500; font-size: 14px; color: #1a1a1a;">${
-                                       countryName || "Unknown"
-                                     }</div>
-                                     <div style="font-size: 13px; color: #666666;">No visitors</div>
-                                   </div>`;
-                layer.setTooltipContent(tooltipContent);
-              });
-              console.log("Choropleth map updated successfully");
-            } catch (error) {
-              console.error("Failed to update choropleth map:", error);
-            }
           },
           async logout() {
             try {

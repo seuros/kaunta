@@ -27,6 +27,7 @@ Example:
 			VendorCSS,
 			CountriesGeoJSON,
 			DashboardTemplate,
+			MapTemplate,
 			IndexTemplate,
 		)
 	},

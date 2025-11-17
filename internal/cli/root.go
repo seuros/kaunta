@@ -80,6 +80,7 @@ It provides real-time analytics and a clean dashboard interface.`,
 				VendorCSS,
 				CountriesGeoJSON,
 				DashboardTemplate,
+				MapTemplate,
 				IndexTemplate,
 			)
 		}
@@ -96,6 +97,7 @@ func Execute(
 	vendorCSS,
 	countriesGeoJSON,
 	dashboardTemplate,
+	mapTemplate,
 	indexTemplate []byte,
 ) error {
 	Version = version
@@ -105,6 +107,7 @@ func Execute(
 	VendorCSS = vendorCSS
 	CountriesGeoJSON = countriesGeoJSON
 	DashboardTemplate = dashboardTemplate
+	MapTemplate = mapTemplate
 	IndexTemplate = indexTemplate
 
 	RootCmd.Version = version
@@ -123,13 +126,14 @@ var (
 	VendorCSS         []byte
 	CountriesGeoJSON  []byte
 	DashboardTemplate []byte
+	MapTemplate       []byte
 	IndexTemplate     []byte
 )
 
 // serveAnalytics runs the Kaunta server
 func serveAnalytics(
 	assetsFS interface{},
-	trackerScript, vendorJS, vendorCSS, countriesGeoJSON, dashboardTemplate, indexTemplate []byte,
+	trackerScript, vendorJS, vendorCSS, countriesGeoJSON, dashboardTemplate, mapTemplate, indexTemplate []byte,
 ) error {
 	// Ensure logger is flushed on exit
 	defer func() {
@@ -392,6 +396,15 @@ func serveAnalytics(
 		c.Set("Content-Type", "text/html; charset=utf-8")
 		// Replace Go template variables in embedded HTML
 		html := strings.ReplaceAll(string(dashboardTemplate), "{{.Title}}", "Kaunta Dashboard")
+		html = strings.ReplaceAll(html, "{{.Version}}", Version)
+		return c.SendString(html)
+	})
+
+	// Map UI (protected)
+	app.Get("/map", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
+		c.Set("Content-Type", "text/html; charset=utf-8")
+		// Replace Go template variables in embedded HTML
+		html := strings.ReplaceAll(string(mapTemplate), "{{.Title}}", "Kaunta Map")
 		html = strings.ReplaceAll(html, "{{.Version}}", Version)
 		return c.SendString(html)
 	})

@@ -22,6 +22,7 @@ func TestRunPassesEmbeddedAssetsToCLI(t *testing.T) {
 		gotVendorCSS []byte,
 		gotGeoJSON []byte,
 		gotDashboard []byte,
+		gotMap []byte,
 		gotIndex []byte,
 	) error {
 		called = true
@@ -32,6 +33,7 @@ func TestRunPassesEmbeddedAssetsToCLI(t *testing.T) {
 		assert.Equal(t, vendorCSS, gotVendorCSS)
 		assert.Equal(t, countriesGeoJSON, gotGeoJSON)
 		assert.Equal(t, dashboardTemplate, gotDashboard)
+		assert.Equal(t, mapTemplate, gotMap)
 		assert.Equal(t, indexTemplate, gotIndex)
 		return nil
 	}
@@ -52,6 +54,7 @@ func TestRunPropagatesExecuteError(t *testing.T) {
 		vendorCSSBytes []byte,
 		geoJSON []byte,
 		dashboard []byte,
+		mapTemplate []byte,
 		index []byte,
 	) error {
 		return errors.New("boom")
