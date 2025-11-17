@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.23.0](https://github.com/seuros/kaunta/compare/v0.22.2...v0.23.0) (2025-11-17)
+
+
+### Features
+
+* Use XDG paths. ([#60](https://github.com/seuros/kaunta/issues/60)) ([5cfe214](https://github.com/seuros/kaunta/commit/5cfe214336ee6ae5ad1680eaa2b64e6dd997a8a5))
+
+
+### Bug Fixes
+
+* Alpine.js duplicate key errors and filter data extraction ([cf622b4](https://github.com/seuros/kaunta/commit/cf622b40d5b717b11a75c98195b3405ad840f966))
+* handle empty IP address in session creation ([4ff74f9](https://github.com/seuros/kaunta/commit/4ff74f9f1ccad75873ebc83756fd1fe9481ada20))
+
 ## [0.22.2](https://github.com/seuros/kaunta/compare/v0.22.1...v0.22.2) (2025-11-17)
 
 
