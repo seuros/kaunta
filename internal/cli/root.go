@@ -96,7 +96,9 @@ func Execute(
 	vendorCSS,
 	countriesGeoJSON,
 	dashboardTemplate,
-	indexTemplate []byte,
+	indexTemplate,
+	setupTemplate,
+	setupCompleteTemplate []byte,
 ) error {
 	Version = version
 	AssetsFS = assetsFS
@@ -106,6 +108,8 @@ func Execute(
 	CountriesGeoJSON = countriesGeoJSON
 	DashboardTemplate = dashboardTemplate
 	IndexTemplate = indexTemplate
+	SetupTemplate = setupTemplate
+	SetupCompleteTemplate = setupCompleteTemplate
 
 	RootCmd.Version = version
 
@@ -117,13 +121,15 @@ func Execute(
 
 // Embedded assets passed from main
 var (
-	AssetsFS          interface{} // embed.FS
-	TrackerScript     []byte
-	VendorJS          []byte
-	VendorCSS         []byte
-	CountriesGeoJSON  []byte
-	DashboardTemplate []byte
-	IndexTemplate     []byte
+	AssetsFS              interface{} // embed.FS
+	TrackerScript         []byte
+	VendorJS              []byte
+	VendorCSS             []byte
+	CountriesGeoJSON      []byte
+	DashboardTemplate     []byte
+	IndexTemplate         []byte
+	SetupTemplate         []byte
+	SetupCompleteTemplate []byte
 )
 
 // serveAnalytics runs the Kaunta server
@@ -135,6 +141,21 @@ func serveAnalytics(
 	defer func() {
 		_ = logging.Sync() // Ignore sync errors on stderr (expected)
 	}()
+
+	// Check setup status
+	setupStatus, err := config.CheckSetupStatus()
+	if err != nil {
+		logging.L().Error("failed to check setup status", zap.Error(err))
+	}
+
+	if setupStatus != nil && setupStatus.NeedsSetup {
+		// Run setup wizard
+		logging.L().Info("setup required", zap.String("reason", setupStatus.Reason))
+		return runSetupServer()
+	}
+
+	// Normal server startup - setup is complete
+	logging.L().Info("setup complete, starting normal server")
 
 	// Get database URL
 	databaseURL := os.Getenv("DATABASE_URL")
@@ -898,4 +919,53 @@ func init() {
 
 	// Set version output
 	RootCmd.Version = Version
+}
+
+// runSetupServer runs a minimal server for the setup wizard
+func runSetupServer() error {
+	logging.L().Info("starting setup wizard server")
+
+	// Create minimal Fiber app for setup
+	app := fiber.New(createFiberConfig("Kaunta Setup"))
+
+	// Middleware
+	app.Use(recover.New())
+	app.Use(zapmiddleware.New(zapmiddleware.Config{
+		Logger: logging.L(),
+	}))
+
+	// Setup routes
+	app.Get("/setup", handlers.ShowSetup(SetupTemplate))
+	app.Post("/setup", handlers.SubmitSetup())
+	app.Post("/setup/test-db", handlers.TestDatabase())
+	app.Get("/setup/complete", func(c fiber.Ctx) error {
+		return c.Type("html").Send(SetupCompleteTemplate)
+	})
+
+	// Redirect root to setup
+	app.Get("/", func(c fiber.Ctx) error {
+		return c.Redirect().To("/setup")
+	})
+
+	// Static assets (for favicon)
+	app.Get("/assets/favicon.ico", func(c fiber.Ctx) error {
+		data, err := fs.ReadFile(AssetsFS.(embed.FS), "assets/favicon.ico")
+		if err != nil {
+			return c.Status(404).SendString("Not found")
+		}
+		c.Set("Content-Type", "image/x-icon")
+		return c.Send(data)
+	})
+
+	// Get port from config or environment
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	// Start server
+	addr := fmt.Sprintf(":%s", port)
+	logging.L().Info("setup wizard available", zap.String("url", fmt.Sprintf("http://localhost:%s/setup", port)))
+
+	return app.Listen(addr)
 }
