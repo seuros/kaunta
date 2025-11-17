@@ -269,9 +269,20 @@ func serveAnalytics(
 		IdleTimeout:    7 * 24 * time.Hour,
 		Session:        nil,               // Use cookie-based tokens, not session
 		TrustedOrigins: trustedOriginURLs, // Loaded from database, transformed to URLs
-		// Skip CSRF protection for tracking endpoint (public API)
+		// Skip CSRF protection for public endpoints and static assets
 		Next: func(c fiber.Ctx) bool {
-			return c.Path() == "/api/send"
+			// Skip for tracking API endpoint
+			if c.Path() == "/api/send" {
+				return true
+			}
+			// Skip for GET requests to static assets (JS, CSS)
+			if c.Method() == "GET" {
+				path := c.Path()
+				if strings.HasSuffix(path, ".js") || strings.HasSuffix(path, ".css") {
+					return true
+				}
+			}
+			return false
 		},
 	}))
 
