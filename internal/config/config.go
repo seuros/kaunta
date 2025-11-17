@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	"github.com/adrg/xdg"
 )
 
 // Config holds application configuration
@@ -39,9 +40,7 @@ func newBaseViper() *viper.Viper {
 	v.SetConfigName("kaunta")
 	v.SetConfigType("toml")
 	v.AddConfigPath(".")
-	if home, err := os.UserHomeDir(); err == nil {
-		v.AddConfigPath(filepath.Join(home, ".kaunta"))
-	}
+	v.AddConfigPath(filepath.Join(xdg.ConfigHome, "kaunta"))
 	return v
 }
 
