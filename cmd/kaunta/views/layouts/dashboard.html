@@ -170,6 +170,10 @@
         }
       }
     </style>
+    {{if .SelfWebsiteID}}
+    <!-- Self-tracking for dogfooding -->
+    <script async src="/k.js" data-website-id="{{.SelfWebsiteID}}"></script>
+    {{end}}
   </head>
   <body>
     <div class="container" x-data="dashboard()" x-init="init()" x-cloak>
@@ -190,7 +194,6 @@
             x-show="websites.length > 0"
             class="input-sm glass transition-standard focus-accent"
           >
-            <option value="">Select Website...</option>
             <template x-for="site in websites" :key="site.id">
               <option :value="site.id" x-text="site.name || site.domain"></option>
             </template>

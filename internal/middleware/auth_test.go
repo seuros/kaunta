@@ -43,8 +43,8 @@ func newTestAppWithRedirect(handler fiber.Handler) *fiber.App {
 
 func TestHashTokenDeterministic(t *testing.T) {
 	token := "test-token"
-	expected := hashToken(token)
-	assert.Equal(t, expected, hashToken(token))
+	expected := HashToken(token)
+	assert.Equal(t, expected, HashToken(token))
 	assert.NotEmpty(t, expected)
 }
 
@@ -73,7 +73,7 @@ func TestAuthMissingTokenReturnsUnauthorized(t *testing.T) {
 func TestAuthInvalidSessionFromDB(t *testing.T) {
 	token := "invalid-token"
 	stubSessionValidator(t, func(tokenHash string) (*UserContext, error) {
-		assert.Equal(t, hashToken(token), tokenHash)
+		assert.Equal(t, HashToken(token), tokenHash)
 		return nil, sql.ErrNoRows
 	})
 
@@ -122,7 +122,7 @@ func TestAuthSuccessStoresUserContext(t *testing.T) {
 	}
 
 	stubSessionValidator(t, func(tokenHash string) (*UserContext, error) {
-		assert.Equal(t, hashToken("good-token"), tokenHash)
+		assert.Equal(t, HashToken("good-token"), tokenHash)
 		return expectedUser, nil
 	})
 
@@ -147,7 +147,7 @@ func TestAuthSuccessStoresUserContext(t *testing.T) {
 
 func TestAuthUsesAuthorizationHeader(t *testing.T) {
 	stubSessionValidator(t, func(tokenHash string) (*UserContext, error) {
-		assert.Equal(t, hashToken("bearer-token"), tokenHash)
+		assert.Equal(t, HashToken("bearer-token"), tokenHash)
 		return &UserContext{
 			UserID:    uuid.New(),
 			Username:  "api-user",

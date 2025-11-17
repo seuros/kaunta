@@ -33,6 +33,12 @@ Pre-built binaries are available for:
 
 Download the latest release from [GitHub Releases](https://github.com/seuros/kaunta/releases). The `--self-upgrade` command works on all platforms to update to the latest version.
 
+### NAS Devices
+
+Kaunta runs on NAS devices via Docker:
+- **Synology** - [Installation Guide](https://mariushosting.com/how-to-install-kaunta-on-your-synology-nas/)
+- **QNAP**, **TrueNAS**, **Unraid** - Use the standard Docker image
+
 ## Installation
 
 ### Quick Install (Linux/macOS/FreeBSD)

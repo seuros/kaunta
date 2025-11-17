@@ -97,6 +97,8 @@ func Execute(
 	vendorCSS,
 	countriesGeoJSON []byte,
 	viewsFS interface{},
+	setupTemplate,
+	setupCompleteTemplate []byte,
 ) error {
 	Version = version
 	AssetsFS = assetsFS
@@ -105,6 +107,8 @@ func Execute(
 	VendorCSS = vendorCSS
 	CountriesGeoJSON = countriesGeoJSON
 	ViewsFS = viewsFS
+	SetupTemplate = setupTemplate
+	SetupCompleteTemplate = setupCompleteTemplate
 
 	RootCmd.Version = version
 
@@ -114,14 +118,19 @@ func Execute(
 	return RootCmd.Execute()
 }
 
+// ErrSetupComplete signals that setup wizard completed successfully
+var ErrSetupComplete = fmt.Errorf("setup complete")
+
 // Embedded assets passed from main
 var (
-	AssetsFS         interface{} // embed.FS
-	TrackerScript    []byte
-	VendorJS         []byte
-	VendorCSS        []byte
-	CountriesGeoJSON []byte
-	ViewsFS          interface{} // embed.FS for template views
+	AssetsFS              interface{} // embed.FS
+	TrackerScript         []byte
+	VendorJS              []byte
+	VendorCSS             []byte
+	CountriesGeoJSON      []byte
+	ViewsFS               interface{} // embed.FS for template views
+	SetupTemplate         []byte
+	SetupCompleteTemplate []byte
 )
 
 // serveAnalytics runs the Kaunta server
@@ -134,6 +143,29 @@ func serveAnalytics(
 	defer func() {
 		_ = logging.Sync() // Ignore sync errors on stderr (expected)
 	}()
+
+	// Check setup status (loop to allow restart after setup)
+	for {
+		setupStatus, err := config.CheckSetupStatus()
+		if err != nil {
+			logging.L().Error("failed to check setup status", zap.Error(err))
+		}
+
+		if setupStatus != nil && setupStatus.NeedsSetup {
+			// Run setup wizard
+			logging.L().Info("setup required", zap.String("reason", setupStatus.Reason))
+			if err := runSetupServer(); err != nil && err != ErrSetupComplete {
+				return err
+			}
+			// Setup completed, reload config and restart
+			logging.L().Info("setup completed, restarting server")
+			continue
+		}
+		break
+	}
+
+	// Normal server startup - setup is complete
+	logging.L().Info("starting normal server")
 
 	// Get database URL
 	databaseURL := os.Getenv("DATABASE_URL")
@@ -177,6 +209,9 @@ func serveAnalytics(
 	} else if len(cfg.TrustedOrigins) > 0 {
 		syncTrustedOrigins(cfg.TrustedOrigins)
 	}
+
+	// Ensure self website exists for dogfooding (creates if missing for existing installations)
+	ensureSelfWebsite()
 
 	// Initialize trusted origins cache from database
 	logging.L().Info("initializing trusted origins cache")
@@ -414,16 +449,18 @@ func serveAnalytics(
 	// Dashboard UI (protected)
 	app.Get("/dashboard", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
 		return c.Render("views/dashboard/home", fiber.Map{
-			"Title":   "Dashboard",
-			"Version": Version,
+			"Title":         "Dashboard",
+			"Version":       Version,
+			"SelfWebsiteID": config.SelfWebsiteID,
 		}, "views/layouts/dashboard")
 	})
 
 	// Map UI (protected)
 	app.Get("/dashboard/map", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
 		return c.Render("views/dashboard/map", fiber.Map{
-			"Title":   "Map",
-			"Version": Version,
+			"Title":         "Map",
+			"Version":       Version,
+			"SelfWebsiteID": config.SelfWebsiteID,
 		})
 	})
 
@@ -906,6 +943,68 @@ func syncTrustedOrigins(origins []string) {
 	logging.L().Info("finished syncing trusted origins")
 }
 
+// ensureSelfWebsite creates or migrates the self-tracking website
+// This handles existing installations that upgrade to a version with dogfooding support
+func ensureSelfWebsite() {
+	// Check if self website with correct UUID already exists
+	var existsWithCorrectID bool
+	err := database.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM website WHERE website_id = $1)`, config.SelfWebsiteID).Scan(&existsWithCorrectID)
+	if err != nil {
+		logging.L().Warn("failed to check for self website", zap.Error(err))
+		return
+	}
+
+	if existsWithCorrectID {
+		logging.L().Debug("self website already exists with correct ID")
+		return
+	}
+
+	// Check if there's an existing self website with a different UUID (from older setup)
+	var oldID string
+	err = database.DB.QueryRow(`SELECT website_id FROM website WHERE domain = 'self' LIMIT 1`).Scan(&oldID)
+	if err == nil && oldID != "" {
+		// Migrate existing self website to use the standard nil UUID
+		// Must update related tables first due to foreign key constraints
+		tx, err := database.DB.Begin()
+		if err != nil {
+			logging.L().Warn("failed to start transaction for self website migration", zap.Error(err))
+			return
+		}
+		defer func() { _ = tx.Rollback() }()
+
+		// Update related sessions
+		_, _ = tx.Exec(`UPDATE session SET website_id = $1 WHERE website_id = $2`, config.SelfWebsiteID, oldID)
+		// Update related events
+		_, _ = tx.Exec(`UPDATE website_event SET website_id = $1 WHERE website_id = $2`, config.SelfWebsiteID, oldID)
+		// Update the website itself
+		_, err = tx.Exec(`UPDATE website SET website_id = $1, updated_at = NOW() WHERE domain = 'self'`, config.SelfWebsiteID)
+		if err != nil {
+			logging.L().Warn("failed to migrate self website to nil UUID", zap.Error(err))
+			return
+		}
+
+		if err = tx.Commit(); err != nil {
+			logging.L().Warn("failed to commit self website migration", zap.Error(err))
+		} else {
+			logging.L().Info("migrated self website to standard UUID", zap.String("old_id", oldID), zap.String("new_id", config.SelfWebsiteID))
+		}
+		return
+	}
+
+	// Create new self website with default allowed domains
+	allowedDomains := `["localhost", "http://localhost", "https://localhost"]`
+	_, err = database.DB.Exec(`
+		INSERT INTO website (website_id, domain, name, allowed_domains, created_at, updated_at)
+		VALUES ($1, 'self', 'Kaunta Dashboard', $2::jsonb, NOW(), NOW())
+		ON CONFLICT (website_id) DO NOTHING
+	`, config.SelfWebsiteID, allowedDomains)
+	if err != nil {
+		logging.L().Warn("failed to create self website", zap.Error(err))
+	} else {
+		logging.L().Info("created self website for dogfooding", zap.String("website_id", config.SelfWebsiteID))
+	}
+}
+
 func init() {
 	// Global flags available to all commands
 	RootCmd.PersistentFlags().StringVar(&databaseURL, "database-url", "", "PostgreSQL connection URL (overrides config file and env)")
@@ -922,4 +1021,86 @@ func init() {
 
 	// Set version output
 	RootCmd.Version = Version
+}
+
+// runSetupServer runs a minimal server for the setup wizard
+func runSetupServer() error {
+	logging.L().Info("starting setup wizard server")
+
+	// Channel to signal setup completion
+	setupDone := make(chan struct{})
+
+	// Create minimal Fiber app for setup
+	app := fiber.New(createFiberConfig("Kaunta Setup", nil))
+
+	// Middleware
+	app.Use(recover.New())
+	app.Use(zapmiddleware.New(zapmiddleware.Config{
+		Logger: logging.L(),
+	}))
+
+	// Rate limiter for setup endpoints (5 requests per minute per IP)
+	setupLimiter := limiter.New(limiter.Config{
+		Max:        5,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c fiber.Ctx) string {
+			return c.IP()
+		},
+	})
+
+	// Setup routes
+	app.Get("/setup", handlers.ShowSetup(SetupTemplate))
+	app.Post("/setup", setupLimiter, handlers.SubmitSetup(func() {
+		// Signal setup completion after response is sent
+		go func() {
+			time.Sleep(500 * time.Millisecond) // Allow response to be sent
+			close(setupDone)
+		}()
+	}))
+	app.Post("/setup/test-db", setupLimiter, handlers.TestDatabase())
+	app.Get("/setup/complete", func(c fiber.Ctx) error {
+		return c.Type("html").Send(SetupCompleteTemplate)
+	})
+
+	// Redirect root to setup
+	app.Get("/", func(c fiber.Ctx) error {
+		return c.Redirect().To("/setup")
+	})
+
+	// Static assets (for favicon)
+	app.Get("/assets/favicon.ico", func(c fiber.Ctx) error {
+		data, err := fs.ReadFile(AssetsFS.(embed.FS), "assets/favicon.ico")
+		if err != nil {
+			return c.Status(404).SendString("Not found")
+		}
+		c.Set("Content-Type", "image/x-icon")
+		return c.Send(data)
+	})
+
+	// Get port from config or environment
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	// Start server in goroutine
+	addr := fmt.Sprintf(":%s", port)
+	logging.L().Info("setup wizard available", zap.String("url", fmt.Sprintf("http://localhost:%s/setup", port)))
+
+	go func() {
+		if err := app.Listen(addr); err != nil {
+			logging.L().Debug("setup server stopped", zap.Error(err))
+		}
+	}()
+
+	// Wait for setup completion
+	<-setupDone
+	logging.L().Info("setup completed, shutting down setup server")
+
+	// Graceful shutdown
+	if err := app.ShutdownWithTimeout(5 * time.Second); err != nil {
+		logging.L().Warn("error shutting down setup server", zap.Error(err))
+	}
+
+	return ErrSetupComplete
 }

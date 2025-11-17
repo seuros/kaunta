@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Setup - Kaunta</title>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f8f9fa;
+        --bg-accent: #e6f0ff;
+        --text-primary: #1a1a1a;
+        --text-secondary: #4b5e7a;
+        --border-color: #d6e2ff;
+        --accent-color: #3b82f6;
+        --accent-dark: #1e3a8a;
+        --success-color: #10b981;
+        --error-color: #ef4444;
+        --gradient-primary: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        line-height: 1.6;
+      }
+
+      .setup-container {
+        background: var(--bg-primary);
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        width: 100%;
+        max-width: 600px;
+        padding: 40px;
+      }
+
+      .logo {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 10px;
+      }
+
+      .subtitle {
+        color: var(--text-secondary);
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .form-section {
+        margin-bottom: 30px;
+      }
+
+      .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--bg-accent);
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+      }
+
+      label {
+        display: block;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+      }
+
+      input,
+      select {
+        width: 100%;
+        padding: 12px 15px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+        background: var(--bg-primary);
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      input.error {
+        border-color: var(--error-color);
+      }
+
+      .help-text {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 5px;
+      }
+
+      .button {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .button-primary {
+        background: var(--accent-color);
+        color: white;
+      }
+
+      .button-primary:hover {
+        background: var(--accent-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      }
+
+      .button-secondary {
+        background: var(--bg-accent);
+        color: var(--accent-color);
+      }
+
+      .button-secondary:hover {
+        background: #d0e0ff;
+      }
+
+      .button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .form-actions {
+        display: flex;
+        gap: 15px;
+        margin-top: 30px;
+        padding-top: 30px;
+        border-top: 1px solid var(--border-color);
+        justify-content: space-between;
+      }
+
+      .alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+
+      .alert-success {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+      }
+
+      .alert-error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+      }
+
+      .alert-info {
+        background: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #93c5fd;
+      }
+
+      .spinner {
+        border: 2px solid var(--bg-accent);
+        border-top: 2px solid var(--accent-color);
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .password-strength {
+        height: 4px;
+        background: var(--bg-accent);
+        border-radius: 2px;
+        margin-top: 8px;
+        overflow: hidden;
+      }
+
+      .password-strength-bar {
+        height: 100%;
+        transition: width 0.3s ease, background-color 0.3s ease;
+      }
+
+      .strength-weak {
+        width: 33%;
+        background: var(--error-color);
+      }
+
+      .strength-medium {
+        width: 66%;
+        background: #f59e0b;
+      }
+
+      .strength-strong {
+        width: 100%;
+        background: var(--success-color);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="setup-container" x-data="setupWizard()">
+      <div class="logo">
+        <h1>Kaunta</h1>
+        <p class="subtitle">Initial Setup</p>
+      </div>
+
+      <!-- Status Messages -->
+      <div x-show="message" x-transition class="alert" :class="messageType === 'error' ? 'alert-error' : (messageType === 'success' ? 'alert-success' : 'alert-info')" x-text="message"></div>
+
+      <form @submit.prevent="submitSetup">
+        <!-- Database Configuration -->
+        <div class="form-section">
+          <h2 class="section-title">Database Configuration</h2>
+          <p class="help-text" style="margin-bottom: 20px;">
+            Kaunta requires <strong>PostgreSQL 17+</strong> (uses advanced features like bot detection functions, CTEs, and window functions)
+          </p>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="db_host">Host *</label>
+              <input type="text" id="db_host" name="db_host" x-model="form.db_host" required />
+            </div>
+            <div class="form-group">
+              <label for="db_port">Port *</label>
+              <input type="text" id="db_port" name="db_port" x-model="form.db_port" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="db_name">Database Name *</label>
+            <input type="text" id="db_name" name="db_name" x-model="form.db_name" required />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="db_user">Username *</label>
+              <input type="text" id="db_user" name="db_user" x-model="form.db_user" required />
+            </div>
+            <div class="form-group">
+              <label for="db_password">Password</label>
+              <input type="password" id="db_password" name="db_password" x-model="form.db_password" />
+              <p class="help-text">Leave empty if not required</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="db_ssl_mode">SSL Mode</label>
+            <select id="db_ssl_mode" name="db_ssl_mode" x-model="form.db_ssl_mode">
+              <option value="disable">Disable</option>
+              <option value="require">Require</option>
+              <option value="verify-ca">Verify CA</option>
+              <option value="verify-full">Verify Full</option>
+            </select>
+          </div>
+
+          <button type="button" @click="testDatabase" class="button button-secondary" :disabled="testing">
+            <span x-show="!testing">Test Database Connection</span>
+            <span x-show="testing" class="spinner"></span>
+          </button>
+        </div>
+
+        <!-- Server Configuration -->
+        <div class="form-section">
+          <h2 class="section-title">Server Configuration</h2>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="server_port">Server Port</label>
+              <input type="text" id="server_port" name="server_port" x-model="form.server_port" />
+              <p class="help-text">Default: 3000</p>
+            </div>
+            <div class="form-group">
+              <label for="data_dir">Data Directory</label>
+              <input type="text" id="data_dir" name="data_dir" x-model="form.data_dir" />
+              <p class="help-text">For GeoIP database</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin User -->
+        <div class="form-section">
+          <h2 class="section-title">Administrator Account</h2>
+
+          <div class="form-group">
+            <label for="admin_username">Username *</label>
+            <input
+              type="text"
+              id="admin_username"
+              name="admin_username"
+              x-model="form.admin_username"
+              @input="validateUsername"
+              required
+              minlength="3"
+              maxlength="30"
+              pattern="[a-zA-Z0-9_]+"
+            />
+            <p class="help-text">3-30 characters, letters, numbers, and underscores only</p>
+          </div>
+
+          <div class="form-group">
+            <label for="admin_name">Full Name</label>
+            <input
+              type="text"
+              id="admin_name"
+              name="admin_name"
+              x-model="form.admin_name"
+              placeholder="Optional"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="admin_password">Password *</label>
+            <input
+              type="password"
+              id="admin_password"
+              name="admin_password"
+              x-model="form.admin_password"
+              @input="checkPasswordStrength"
+              required
+              minlength="8"
+            />
+            <div class="password-strength" x-show="form.admin_password">
+              <div class="password-strength-bar" :class="passwordStrengthClass"></div>
+            </div>
+            <p class="help-text">Minimum 8 characters</p>
+          </div>
+
+          <div class="form-group">
+            <label for="admin_password_confirm">Confirm Password *</label>
+            <input
+              type="password"
+              id="admin_password_confirm"
+              name="admin_password_confirm"
+              x-model="form.admin_password_confirm"
+              required
+              minlength="8"
+            />
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <div>
+            <p class="help-text">* Required fields</p>
+          </div>
+          <button type="submit" class="button button-primary" :disabled="submitting">
+            <span x-show="!submitting">Complete Setup</span>
+            <span x-show="submitting" class="spinner"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <script>
+      function setupWizard() {
+        return {
+          form: {
+            db_host: 'localhost',
+            db_port: '5432',
+            db_name: '',
+            db_user: 'postgres',
+            db_password: '',
+            db_ssl_mode: 'disable',
+            server_port: '3000',
+            data_dir: './data',
+            admin_username: '',
+            admin_name: '',
+            admin_password: '',
+            admin_password_confirm: ''
+          },
+          message: '',
+          messageType: 'info',
+          testing: false,
+          submitting: false,
+          passwordStrength: 0,
+          passwordStrengthClass: '',
+
+          validateUsername() {
+            const username = this.form.admin_username;
+            const valid = /^[a-zA-Z0-9_]+$/.test(username);
+            const input = document.getElementById('admin_username');
+
+            if (username && !valid) {
+              input.classList.add('error');
+            } else {
+              input.classList.remove('error');
+            }
+          },
+
+          checkPasswordStrength() {
+            const password = this.form.admin_password;
+            let strength = 0;
+
+            if (password.length >= 8) strength++;
+            if (password.length >= 12) strength++;
+            if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^A-Za-z0-9]/.test(password)) strength++;
+
+            this.passwordStrength = strength;
+
+            if (strength <= 2) {
+              this.passwordStrengthClass = 'strength-weak';
+            } else if (strength <= 3) {
+              this.passwordStrengthClass = 'strength-medium';
+            } else {
+              this.passwordStrengthClass = 'strength-strong';
+            }
+          },
+
+          async testDatabase() {
+            this.testing = true;
+            this.message = '';
+
+            try {
+              const response = await fetch('/setup/test-db', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(this.form)
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                this.message = 'Database connection successful!';
+                this.messageType = 'success';
+              } else {
+                this.message = data.error || 'Database connection failed';
+                this.messageType = 'error';
+              }
+            } catch (error) {
+              this.message = 'Network error: ' + error.message;
+              this.messageType = 'error';
+            } finally {
+              this.testing = false;
+            }
+          },
+
+          async waitForServerAndRedirect() {
+            // Wait for server to restart (poll /health endpoint)
+            const maxAttempts = 30;
+            const delay = 1000; // 1 second between attempts
+
+            for (let i = 0; i < maxAttempts; i++) {
+              this.message = `Server restarting... (${i + 1}/${maxAttempts})`;
+
+              // Wait before checking
+              await new Promise(resolve => setTimeout(resolve, delay));
+
+              try {
+                const response = await fetch('/health', { method: 'GET' });
+                if (response.ok) {
+                  this.message = 'Server ready! Redirecting to dashboard...';
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                  window.location.href = '/dashboard';
+                  return;
+                }
+              } catch (e) {
+                // Server not ready yet, continue polling
+              }
+            }
+
+            // Timeout - tell user to manually refresh
+            this.message = 'Server restart taking longer than expected. Please refresh the page.';
+            this.messageType = 'info';
+          },
+
+          async submitSetup() {
+            // Validate passwords match
+            if (this.form.admin_password !== this.form.admin_password_confirm) {
+              this.message = 'Passwords do not match';
+              this.messageType = 'error';
+              return;
+            }
+
+            // Validate username format
+            if (!/^[a-zA-Z0-9_]+$/.test(this.form.admin_username)) {
+              this.message = 'Username can only contain letters, numbers, and underscores';
+              this.messageType = 'error';
+              return;
+            }
+
+            this.submitting = true;
+            this.message = '';
+
+            try {
+              const response = await fetch('/setup', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(this.form)
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                this.message = 'Setup completed! Server is restarting...';
+                this.messageType = 'success';
+
+                // Wait for server to restart and redirect to dashboard
+                await this.waitForServerAndRedirect();
+              } else {
+                this.message = data.error || 'Setup failed';
+                this.messageType = 'error';
+              }
+            } catch (error) {
+              this.message = 'Network error: ' + error.message;
+              this.messageType = 'error';
+            } finally {
+              this.submitting = false;
+            }
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
