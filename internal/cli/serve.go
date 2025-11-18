@@ -26,7 +26,6 @@ Example:
 			VendorJS,
 			VendorCSS,
 			CountriesGeoJSON,
-			DashboardTemplate,
 			ViewsFS,
 		)
 	},

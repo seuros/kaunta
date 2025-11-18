@@ -81,7 +81,6 @@ It provides real-time analytics and a clean dashboard interface.`,
 				VendorJS,
 				VendorCSS,
 				CountriesGeoJSON,
-				DashboardTemplate,
 				ViewsFS,
 			)
 		}
@@ -96,8 +95,7 @@ func Execute(
 	trackerScript,
 	vendorJS,
 	vendorCSS,
-	countriesGeoJSON,
-	dashboardTemplate []byte,
+	countriesGeoJSON []byte,
 	viewsFS interface{},
 ) error {
 	Version = version
@@ -106,7 +104,6 @@ func Execute(
 	VendorJS = vendorJS
 	VendorCSS = vendorCSS
 	CountriesGeoJSON = countriesGeoJSON
-	DashboardTemplate = dashboardTemplate
 	ViewsFS = viewsFS
 
 	RootCmd.Version = version
@@ -119,19 +116,18 @@ func Execute(
 
 // Embedded assets passed from main
 var (
-	AssetsFS          interface{} // embed.FS
-	TrackerScript     []byte
-	VendorJS          []byte
-	VendorCSS         []byte
-	CountriesGeoJSON  []byte
-	DashboardTemplate []byte
-	ViewsFS           interface{} // embed.FS for template views
+	AssetsFS         interface{} // embed.FS
+	TrackerScript    []byte
+	VendorJS         []byte
+	VendorCSS        []byte
+	CountriesGeoJSON []byte
+	ViewsFS          interface{} // embed.FS for template views
 )
 
 // serveAnalytics runs the Kaunta server
 func serveAnalytics(
 	assetsFS interface{},
-	trackerScript, vendorJS, vendorCSS, countriesGeoJSON, dashboardTemplate []byte,
+	trackerScript, vendorJS, vendorCSS, countriesGeoJSON []byte,
 	viewsFS interface{},
 ) error {
 	// Ensure logger is flushed on exit
@@ -421,6 +417,14 @@ func serveAnalytics(
 			"Title":   "Dashboard",
 			"Version": Version,
 		}, "views/layouts/dashboard")
+	})
+
+	// Map UI (protected)
+	app.Get("/map", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
+		return c.Render("views/dashboard/map", fiber.Map{
+			"Title":   "Map",
+			"Version": Version,
+		})
 	})
 
 	// Protected API endpoints

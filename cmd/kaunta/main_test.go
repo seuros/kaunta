@@ -21,7 +21,6 @@ func TestRunPassesEmbeddedAssetsToCLI(t *testing.T) {
 		gotVendorJS []byte,
 		gotVendorCSS []byte,
 		gotGeoJSON []byte,
-		gotDashboard []byte,
 		gotViewsFS interface{},
 	) error {
 		called = true
@@ -31,7 +30,6 @@ func TestRunPassesEmbeddedAssetsToCLI(t *testing.T) {
 		assert.Equal(t, vendorJS, gotVendorJS)
 		assert.Equal(t, vendorCSS, gotVendorCSS)
 		assert.Equal(t, countriesGeoJSON, gotGeoJSON)
-		assert.Equal(t, dashboardTemplate, gotDashboard)
 		assert.NotNil(t, gotViewsFS)
 		return nil
 	}
@@ -51,7 +49,6 @@ func TestRunPropagatesExecuteError(t *testing.T) {
 		vendorJSBytes []byte,
 		vendorCSSBytes []byte,
 		geoJSON []byte,
-		dashboard []byte,
 		viewsFS interface{},
 	) error {
 		return errors.New("boom")

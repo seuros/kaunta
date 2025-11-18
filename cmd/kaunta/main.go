@@ -27,9 +27,6 @@ var vendorCSS []byte
 //go:embed assets/data/countries-110m.json
 var countriesGeoJSON []byte
 
-//go:embed dashboard.html
-var dashboardTemplate []byte
-
 //go:embed views
 var viewsFS embed.FS
 
@@ -44,7 +41,6 @@ func run() error {
 		vendorJS,
 		vendorCSS,
 		countriesGeoJSON,
-		dashboardTemplate,
 		viewsFS,
 	)
 }

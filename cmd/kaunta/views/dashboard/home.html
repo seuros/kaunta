@@ -186,10 +186,10 @@
               </svg>
               Regions
             </button>
-            <button
+            <a
+              href="/map"
               class="tab transition-standard"
-              :class="{ 'active': activeTab === 'map' }"
-              @click="activeTab = 'map'; $nextTick(() => loadMapData())"
+              style="text-decoration: none;"
             >
               <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
                 <path
@@ -197,16 +197,16 @@
                 ></path>
               </svg>
               Map
-            </button>
+            </a>
           </div>
-          <template x-if="activeTab !== 'map' && breakdownLoading">
+          <template x-if="breakdownLoading">
             <div class="loading">
               <div class="spinner"></div>
               <div>Loading data...</div>
             </div>
           </template>
           <template
-            x-if="activeTab !== 'map' && !breakdownLoading && breakdownData && breakdownData.length > 0"
+            x-if="!breakdownLoading && breakdownData && breakdownData.length > 0"
           >
             <table>
               <thead>
@@ -234,36 +234,12 @@
             </table>
           </template>
           <template
-            x-if="activeTab !== 'map' && !breakdownLoading && (!breakdownData || breakdownData.length === 0)"
+            x-if="!breakdownLoading && (!breakdownData || breakdownData.length === 0)"
           >
             <div class="empty-state">
               <div class="empty-state-icon">📊</div>
               <div class="empty-state-title">No data yet</div>
               <div class="empty-state-text">Start tracking to see breakdown data</div>
-            </div>
-          </template>
-          <template x-if="activeTab === 'map'">
-            <div>
-              <!-- Loading indicator for map -->
-              <template x-if="mapLoading && !mapInitialized">
-                <div class="loading">
-                  <div class="spinner"></div>
-                  <div>Loading map data...</div>
-                </div>
-              </template>
-              <!-- Map container -->
-              <div
-                style="
-                  height: 600px;
-                  border-radius: 8px;
-                  overflow: hidden;
-                  background: var(--bg-secondary);
-                  margin-top: 24px;
-                  position: relative;
-                "
-              >
-                <div id="choropleth-map" style="width: 100%; height: 100%"></div>
-              </div>
             </div>
           </template>
         </div>
