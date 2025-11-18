@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.24.0](https://github.com/seuros/kaunta/compare/v0.23.1...v0.24.0) (2025-11-18)
+
+
+### Features
+
+* create dedicated map page with TopoJSON integration ([b6689e4](https://github.com/seuros/kaunta/commit/b6689e43dafbcbffe4269ea67114009450e074a2))
+* create dedicated map page with TopoJSON integration ([979afa7](https://github.com/seuros/kaunta/commit/979afa7f762729838fe67eb33af9d666e201bd8a))
+* implement Fiber template engine with layout system ([d1bb681](https://github.com/seuros/kaunta/commit/d1bb68153022bc4a042fc43067d3eea9c8154ba1))
+
 ## [0.23.1](https://github.com/seuros/kaunta/compare/v0.23.0...v0.23.1) (2025-11-17)
 
 
