@@ -420,7 +420,7 @@ func serveAnalytics(
 	})
 
 	// Map UI (protected)
-	app.Get("/map", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
+	app.Get("/dashboard/map", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
 		return c.Render("views/dashboard/map", fiber.Map{
 			"Title":   "Map",
 			"Version": Version,

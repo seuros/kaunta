@@ -727,8 +727,11 @@
           mapData: null,
           mapInstance: null,
           geoJsonLayer: null,
+          initialized: false,
 
           async init() {
+            if (this.initialized) return;
+            this.initialized = true;
             // Load filters from URL parameters
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get("country")) this.filters.country = urlParams.get("country");
@@ -779,7 +782,6 @@
           async switchWebsite() {
             if (this.selectedWebsite) {
               localStorage.setItem("kaunta_website", this.selectedWebsite);
-              this.cleanupMap();
               await this.loadAvailableFilters();
               await this.loadMapData();
             }
@@ -872,6 +874,7 @@
           async loadMapData() {
             if (!this.selectedWebsite) return;
             this.mapLoading = true;
+            this.cleanupMap(); // Always cleanup before loading new data
             try {
               const days = this.dateRange === "1" ? 1 : this.dateRange === "7" ? 7 : 30;
               const params = new URLSearchParams({ days });
@@ -882,12 +885,8 @@
               const response = await fetch(`/api/dashboard/map/${this.selectedWebsite}?${params}`);
               if (response.ok) {
                 this.mapData = await response.json();
-                const containerExists = document.getElementById("choropleth-map");
-                if (!containerExists) {
-                  console.warn("Choropleth map container not found yet; will retry once rendered.");
-                  return;
-                }
-                await this.initializeChoropleth();
+                // Wait for DOM and then initialize with retry
+                await this.waitForContainerAndInitialize();
               } else {
                 console.error("Failed to load map data");
               }
@@ -896,6 +895,18 @@
             } finally {
               this.mapLoading = false;
             }
+          },
+
+          async waitForContainerAndInitialize(retries = 3) {
+            for (let i = 0; i < retries; i++) {
+              const container = document.getElementById("choropleth-map");
+              if (container) {
+                await this.initializeChoropleth();
+                return;
+              }
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            console.warn("Map container not found after retries");
           },
 
           fixAntimeridianRing(ring) {

@@ -65,42 +65,6 @@
     border-color: var(--accent-color);
   }
 
-  .home-footer {
-    margin-top: 48px;
-    padding: 24px;
-    background: var(--bg-glass);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    width: 100%;
-    max-width: 800px;
-  }
-
-  .home-footer p {
-    color: var(--text-tertiary);
-    font-size: 14px;
-    text-align: center;
-    margin-bottom: 8px;
-  }
-
-  .home-footer .company-name {
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    font-weight: 600;
-  }
-
-  .home-footer .repo-link {
-    color: var(--accent-color);
-    text-decoration: none;
-    font-weight: 500;
-  }
-
-  .home-footer .repo-link:hover {
-    color: var(--accent-dark);
-    text-decoration: underline;
-  }
 
   /* Responsive */
   @media (max-width: 768px) {
@@ -126,10 +90,10 @@
 </style>
 
 <div class="hero">
-  <div style="display: flex; justify-content: center; margin-bottom: 24px;">
-    <img src="/assets/kaunta.svg" alt="Kaunta Analytics" style="height: 88px; width: auto;" />
+  <div style="display: flex; justify-content: center; margin-bottom: 24px">
+    <img src="/assets/kaunta.svg" alt="Kaunta Analytics" style="height: 88px; width: auto" />
   </div>
-  <h1 style="text-align: center; margin: 0 auto 16px auto;">Welcome to Kaunta</h1>
+  <h1 style="text-align: center; margin: 0 auto 16px auto">Welcome to Kaunta</h1>
   <p class="subtitle">Analytics without bloat</p>
 </div>
 
@@ -139,25 +103,9 @@
       <span>📈</span>
       View Dashboard
     </a>
-    <a
-      href="https://github.com/seuros/kaunta"
-      class="btn btn-secondary"
-    >
+    <a href="https://github.com/seuros/kaunta" class="btn btn-secondary">
       <span>📖</span>
       View on GitHub
     </a>
   </div>
-</div>
-
-<div class="home-footer">
-  <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px;">
-    <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 32px; width: auto;" />
-    <span class="company-name">Kaunta Analytics</span>
-  </div>
-  <p>
-    Built with Go, Fiber, Alpine.js, PostgreSQL, and Leaflet
-  </p>
-  <p>
-    <a href="https://github.com/seuros/kaunta" class="repo-link">View on GitHub</a>
-  </p>
 </div>
