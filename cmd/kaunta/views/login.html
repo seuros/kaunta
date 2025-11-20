@@ -1,24 +1,9 @@
 <style>
+  /* Login page specific styles */
   .login-card {
     max-width: 400px;
     width: 100%;
     margin-bottom: 48px;
-  }
-
-  .hero {
-    margin-bottom: 32px;
-  }
-
-  .hero h1 {
-    font-size: 48px;
-    font-weight: 500;
-    margin-bottom: 16px;
-  }
-
-  .hero .subtitle {
-    font-size: 20px;
-    color: var(--text-secondary);
-    font-weight: 400;
   }
 
   .login-form h2 {
@@ -29,99 +14,11 @@
     text-align: center;
   }
 
-  .form-group {
-    margin-bottom: 20px;
-    text-align: left;
-  }
-
-  label {
-    display: block;
-    margin-bottom: 8px;
-    color: var(--text-secondary);
-    font-weight: 500;
-    font-size: 14px;
-  }
-
-  input {
-    width: 100%;
-    padding: 12px 16px;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    font-size: 14px;
-    color: var(--text-primary);
-    background: var(--bg-glass);
-    backdrop-filter: blur(10px);
-    transition: all 0.2s ease;
-  }
-
-  input:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
-    background: rgba(230, 240, 255, 0.95);
-  }
-
   .btn {
     width: 100%;
-    padding: 12px 24px;
-    border-radius: 12px;
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
   }
 
-  .btn-primary {
-    background: var(--accent-color);
-    color: white;
-    border: 1px solid var(--accent-color);
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: var(--accent-dark);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
-  }
-
-  .btn-primary:disabled {
-    background: var(--text-tertiary);
-    border-color: var(--text-tertiary);
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
-
-  .error {
-    background: rgba(239, 68, 68, 0.1);
-    color: #dc2626;
-    padding: 12px 16px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    display: none;
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    font-size: 14px;
-  }
-
-  .error.show {
-    display: block;
-  }
-
-  /* Responsive */
   @media (max-width: 768px) {
-    .hero h1 {
-      font-size: 36px;
-    }
-
-    .hero .subtitle {
-      font-size: 18px;
-    }
-
     .login-card {
       padding: 24px;
     }
@@ -129,24 +26,30 @@
 </style>
 
 <div class="hero">
-  <div style="display: flex; justify-content: center; margin-bottom: 24px;">
-    <img src="/assets/kaunta.svg" alt="Kaunta Analytics" style="height: 88px; width: auto;" />
+  <div style="display: flex; justify-content: center; margin-bottom: 24px">
+    <img src="/assets/kaunta.svg" alt="Kaunta Analytics" style="height: 88px; width: auto" />
   </div>
   <h1>Kaunta</h1>
   <p class="subtitle">Analytics without bloat</p>
 </div>
 
-<div class="login-card glass card">
+<div class="login-card glass card card-lg">
   <h2>Login to Dashboard</h2>
   <div id="error" class="error"></div>
   <form id="loginForm">
     <div class="form-group">
       <label for="username">Username</label>
-      <input type="text" id="username" name="username" required autocomplete="username">
+      <input type="text" id="username" name="username" required autocomplete="username" />
     </div>
     <div class="form-group">
       <label for="password">Password</label>
-      <input type="password" id="password" name="password" required autocomplete="current-password">
+      <input
+        type="password"
+        id="password"
+        name="password"
+        required
+        autocomplete="current-password"
+      />
     </div>
     <button type="submit" id="submitBtn" class="btn btn-primary">
       <span>🔐</span>
@@ -156,54 +59,54 @@
 </div>
 
 <script>
-  const form = document.getElementById('loginForm');
-  const errorDiv = document.getElementById('error');
-  const submitBtn = document.getElementById('submitBtn');
+  const form = document.getElementById("loginForm");
+  const errorDiv = document.getElementById("error");
+  const submitBtn = document.getElementById("submitBtn");
 
   // Read CSRF token from cookie
   function getCsrfToken() {
-    const value = '; ' + document.cookie;
-    const parts = value.split('; kaunta_csrf=');
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return '';
+    const value = "; " + document.cookie;
+    const parts = value.split("; kaunta_csrf=");
+    if (parts.length === 2) return parts.pop().split(";").shift();
+    return "";
   }
   const csrfToken = getCsrfToken();
 
-  form.addEventListener('submit', async (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
 
-    errorDiv.classList.remove('show');
+    errorDiv.classList.remove("show");
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>⏳</span> Logging in...';
+    submitBtn.innerHTML = "<span>⏳</span> Logging in...";
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken,
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
         },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify({ username, password }),
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        window.location.href = '/dashboard';
+        window.location.href = "/dashboard";
       } else {
-        errorDiv.textContent = data.error || 'Login failed';
-        errorDiv.classList.add('show');
+        errorDiv.textContent = data.error || "Login failed";
+        errorDiv.classList.add("show");
       }
     } catch (error) {
-      errorDiv.textContent = 'Network error. Please try again.';
-      errorDiv.classList.add('show');
+      errorDiv.textContent = "Network error. Please try again.";
+      errorDiv.classList.add("show");
     } finally {
       submitBtn.disabled = false;
-      submitBtn.innerHTML = '<span>🔐</span> Login';
+      submitBtn.innerHTML = "<span>🔐</span> Login";
     }
   });
 </script>

@@ -1,277 +1,260 @@
-
-      <!-- Dashboard App -->
-      <div x-show="!websitesLoading && !websitesError && selectedWebsite && websites.length > 0">
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-          <div class="stat-card glass card">
-            <div class="stat-header">
-              <div class="stat-icon green glass icon-xl">
-                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                  <path
-                    fill-rule="evenodd"
-                    d="M8.338 5.59a1 1 0 01.946.62l1.285 3.855h4.062l1.285-3.855a1 1 0 01.946-.62c2.167.642 3.75 2.864 3.75 5.41 0 2.546-1.583 4.768-3.75 5.41a1 1 0 01-.946-.62l-1.285-3.855h-4.062l-1.285 3.855a1 1 0 01-.946.62c-2.167-.642-3.75-2.864-3.75-5.41 0-2.546 1.583-4.768 3.75-5.41zM12 8a4 4 0 100 8 4 4 0 000-8z"
-                    clip-rule="evenodd"
-                  ></path>
-                </svg>
-              </div>
-              <div class="stat-label">Current Visitors</div>
-            </div>
-            <div class="stat-value live">
-              <span class="pulse"></span><span x-text="stats.current_visitors"></span>
-            </div>
-            <div class="progress-container">
-              <div
-                class="progress-bar"
-                :style="{ width: Math.min(stats.current_visitors * 5, 100) + '%' }"
-              ></div>
-            </div>
-          </div>
-          <div class="stat-card glass card">
-            <div class="stat-header">
-              <div class="stat-icon blue glass icon-xl">
-                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                  <path
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  ></path>
-                </svg>
-              </div>
-              <div class="stat-label">Pageviews</div>
-            </div>
-            <div class="stat-value" x-text="stats.today_pageviews"></div>
-            <div class="progress-container">
-              <div
-                class="progress-bar"
-                :style="{ width: Math.min(stats.today_pageviews / 100, 100) + '%' }"
-              ></div>
-            </div>
-          </div>
-          <div class="stat-card glass card">
-            <div class="stat-header">
-              <div class="stat-icon purple glass icon-xl">
-                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                  <path
-                    fill-rule="evenodd"
-                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                    clip-rule="evenodd"
-                  ></path>
-                </svg>
-              </div>
-              <div class="stat-label">Visitors</div>
-            </div>
-            <div class="stat-value" x-text="stats.today_visitors"></div>
-            <div class="progress-container">
-              <div
-                class="progress-bar"
-                :style="{ width: Math.min(stats.today_visitors / 100, 100) + '%' }"
-              ></div>
-            </div>
-          </div>
-          <div class="stat-card glass card">
-            <div class="stat-header">
-              <div class="stat-icon orange glass icon-xl">
-                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                  <path
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  ></path>
-                </svg>
-              </div>
-              <div class="stat-label">Bounce Rate</div>
-            </div>
-            <div class="stat-value" x-text="stats.today_bounce_rate"></div>
-            <div class="progress-container">
-              <div
-                class="progress-bar"
-                :style="{ width: stats.today_bounce_rate.replace('%', '') }"
-              ></div>
-            </div>
-          </div>
+<!-- Dashboard App -->
+<div x-show="!websitesLoading && !websitesError && selectedWebsite && websites.length > 0">
+  <!-- Stats Grid -->
+  <div class="stats-grid">
+    <div class="stat-card glass card">
+      <div class="stat-header">
+        <div class="stat-icon green glass icon-xl">
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            <path
+              fill-rule="evenodd"
+              d="M8.338 5.59a1 1 0 01.946.62l1.285 3.855h4.062l1.285-3.855a1 1 0 01.946-.62c2.167.642 3.75 2.864 3.75 5.41 0 2.546-1.583 4.768-3.75 5.41a1 1 0 01-.946-.62l-1.285-3.855h-4.062l-1.285 3.855a1 1 0 01-.946.62c-2.167-.642-3.75-2.864-3.75-5.41 0-2.546 1.583-4.768 3.75-5.41zM12 8a4 4 0 100 8 4 4 0 000-8z"
+              clip-rule="evenodd"
+            ></path>
+          </svg>
         </div>
-        <!-- Pageviews Chart -->
-        <div class="section glass card" x-intersect.once="loadChartAndSetupIntervals()">
-          <div class="section-header">
-            <h2>
-              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-              </svg>
-              Pageviews Over Time
-            </h2>
-          </div>
-          <div style="position: relative; height: 300px">
-            <canvas id="pageviewsChart"></canvas>
-          </div>
-        </div>
-        <!-- Breakdowns with Tabs -->
-        <div class="section glass card">
-          <div class="tabs">
-            <button
-              class="tab transition-standard"
-              :class="{ 'active': activeTab === 'pages' }"
-              @click="activeTab = 'pages'; await loadBreakdown()"
-            >
-              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                <path
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                ></path>
-              </svg>
-              Pages
-            </button>
-            <button
-              class="tab transition-standard"
-              :class="{ 'active': activeTab === 'referrers' }"
-              @click="activeTab = 'referrers'; await loadBreakdown()"
-            >
-              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                <path
-                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.658 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                ></path>
-              </svg>
-              Referrers
-            </button>
-            <button
-              class="tab transition-standard"
-              :class="{ 'active': activeTab === 'browsers' }"
-              @click="activeTab = 'browsers'; await loadBreakdown()"
-            >
-              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V5z"></path>
-              </svg>
-              Browsers
-            </button>
-            <button
-              class="tab transition-standard"
-              :class="{ 'active': activeTab === 'devices' }"
-              @click="activeTab = 'devices'; await loadBreakdown()"
-            >
-              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                <path
-                  d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-                ></path>
-              </svg>
-              Devices
-            </button>
-            <button
-              class="tab transition-standard"
-              :class="{ 'active': activeTab === 'countries' }"
-              @click="activeTab = 'countries'; await loadBreakdown()"
-            >
-              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                <path
-                  fill-rule="evenodd"
-                  d="M5.05 4.05a7 7 0 119.9 9.9L12 18.9l-7.95-7.95zm1.414 1.415a5 5 0 117.07 7.07L12 16.57l-5.536-5.536z"
-                  clip-rule="evenodd"
-                ></path>
-              </svg>
-              Countries
-            </button>
-            <button
-              class="tab transition-standard"
-              :class="{ 'active': activeTab === 'cities' }"
-              @click="activeTab = 'cities'; await loadBreakdown()"
-            >
-              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
-              </svg>
-              Cities
-            </button>
-            <button
-              class="tab transition-standard"
-              :class="{ 'active': activeTab === 'regions' }"
-              @click="activeTab = 'regions'; await loadBreakdown()"
-            >
-              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                <path
-                  d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM9 12a3 3 0 11-6 0 3 3 0 016 0zM9 18a3 3 0 11-6 0 3 3 0 016 0zM15 6a3 3 0 11-6 0 3 3 0 016 0zM15 12a3 3 0 11-6 0 3 3 0 016 0zM15 18a3 3 0 11-6 0 3 3 0 016 0z"
-                ></path>
-              </svg>
-              Regions
-            </button>
-            <a
-              href="/dashboard/map"
-              class="tab transition-standard"
-              style="text-decoration: none;"
-            >
-              <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-                <path
-                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7.5l6.553-3.776A1 1 0 0117 5.618v10.764a1 1 0 01-1.447.894L9 16.5l-6.553 3.776z"
-                ></path>
-              </svg>
-              Map
-            </a>
-          </div>
-          <template x-if="breakdownLoading">
-            <div class="loading">
-              <div class="spinner"></div>
-              <div>Loading data...</div>
-            </div>
-          </template>
-          <template
-            x-if="!breakdownLoading && breakdownData && breakdownData.length > 0"
-          >
-            <table>
-              <thead>
-                <tr>
-                  <th
-                    x-text="activeTab === 'pages' ? 'Page Path' : activeTab === 'referrers' ? 'Referrer' : activeTab === 'browsers' ? 'Browser' : activeTab === 'devices' ? 'Device' : activeTab === 'countries' ? 'Country' : activeTab === 'cities' ? 'City' : 'Region'"
-                  ></th>
-                  <th style="text-align: right">Count</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template
-                  x-for="(item, index) in breakdownData"
-                  :key="index"
-                >
-                  <tr>
-                    <td x-text="item.name"></td>
-                    <td
-                      style="text-align: right; font-weight: 500; color: var(--accent-color)"
-                      x-text="item.count.toLocaleString()"
-                    ></td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
-          </template>
-          <template
-            x-if="!breakdownLoading && (!breakdownData || breakdownData.length === 0)"
-          >
-            <div class="empty-state">
-              <div class="empty-state-icon">📊</div>
-              <div class="empty-state-title">No data yet</div>
-              <div class="empty-state-text">Start tracking to see breakdown data</div>
-            </div>
-          </template>
-        </div>
+        <div class="stat-label">Current Visitors</div>
       </div>
-      <!-- No Website Selected -->
-      <div
-        x-show="!websitesLoading && !websitesError && !selectedWebsite && websites.length > 0"
-        class="empty-state"
-        style="margin-top: 100px"
+      <div class="stat-value live">
+        <span class="pulse"></span><span x-text="stats.current_visitors"></span>
+      </div>
+      <div class="progress-container">
+        <div
+          class="progress-bar"
+          :style="{ width: Math.min(stats.current_visitors * 5, 100) + '%' }"
+        ></div>
+      </div>
+    </div>
+    <div class="stat-card glass card">
+      <div class="stat-header">
+        <div class="stat-icon blue glass icon-xl">
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            ></path>
+          </svg>
+        </div>
+        <div class="stat-label">Pageviews</div>
+      </div>
+      <div class="stat-value" x-text="stats.today_pageviews"></div>
+      <div class="progress-container">
+        <div
+          class="progress-bar"
+          :style="{ width: Math.min(stats.today_pageviews / 100, 100) + '%' }"
+        ></div>
+      </div>
+    </div>
+    <div class="stat-card glass card">
+      <div class="stat-header">
+        <div class="stat-icon purple glass icon-xl">
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              fill-rule="evenodd"
+              d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+              clip-rule="evenodd"
+            ></path>
+          </svg>
+        </div>
+        <div class="stat-label">Visitors</div>
+      </div>
+      <div class="stat-value" x-text="stats.today_visitors"></div>
+      <div class="progress-container">
+        <div
+          class="progress-bar"
+          :style="{ width: Math.min(stats.today_visitors / 100, 100) + '%' }"
+        ></div>
+      </div>
+    </div>
+    <div class="stat-card glass card">
+      <div class="stat-header">
+        <div class="stat-icon orange glass icon-xl">
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            ></path>
+          </svg>
+        </div>
+        <div class="stat-label">Bounce Rate</div>
+      </div>
+      <div class="stat-value" x-text="stats.today_bounce_rate"></div>
+      <div class="progress-container">
+        <div
+          class="progress-bar"
+          :style="{ width: stats.today_bounce_rate.replace('%', '') }"
+        ></div>
+      </div>
+    </div>
+  </div>
+  <!-- Pageviews Chart -->
+  <div class="section glass card" x-intersect.once="loadChartAndSetupIntervals()">
+    <div class="section-header">
+      <h2>
+        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+        </svg>
+        Pageviews Over Time
+      </h2>
+    </div>
+    <div style="position: relative; height: 300px">
+      <canvas id="pageviewsChart"></canvas>
+    </div>
+  </div>
+  <!-- Breakdowns with Tabs -->
+  <div class="section glass card">
+    <div class="tabs">
+      <button
+        class="tab transition-standard"
+        :class="{ 'active': activeTab === 'pages' }"
+        @click="activeTab = 'pages'; await loadBreakdown()"
       >
-        <div class="empty-state-icon">🌐</div>
-        <div class="empty-state-title">Select a Website</div>
-        <div class="empty-state-text">
-          Choose a website from the dropdown above to view analytics
-        </div>
-      </div>
-      <!-- No Websites at All -->
-      <div
-        x-show="!websitesLoading && !websitesError && websites.length === 0"
-        class="empty-state"
-        style="margin-top: 100px"
+        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          ></path>
+        </svg>
+        Pages
+      </button>
+      <button
+        class="tab transition-standard"
+        :class="{ 'active': activeTab === 'referrers' }"
+        @click="activeTab = 'referrers'; await loadBreakdown()"
       >
-        <div class="empty-state-icon">🛰️</div>
-        <div class="empty-state-title">No websites found</div>
-        <div class="empty-state-text">Add a website in Kaunta to get started.</div>
+        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path
+            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.658 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+          ></path>
+        </svg>
+        Referrers
+      </button>
+      <button
+        class="tab transition-standard"
+        :class="{ 'active': activeTab === 'browsers' }"
+        @click="activeTab = 'browsers'; await loadBreakdown()"
+      >
+        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V5z"></path>
+        </svg>
+        Browsers
+      </button>
+      <button
+        class="tab transition-standard"
+        :class="{ 'active': activeTab === 'devices' }"
+        @click="activeTab = 'devices'; await loadBreakdown()"
+      >
+        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path
+            d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+          ></path>
+        </svg>
+        Devices
+      </button>
+      <button
+        class="tab transition-standard"
+        :class="{ 'active': activeTab === 'countries' }"
+        @click="activeTab = 'countries'; await loadBreakdown()"
+      >
+        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path
+            fill-rule="evenodd"
+            d="M5.05 4.05a7 7 0 119.9 9.9L12 18.9l-7.95-7.95zm1.414 1.415a5 5 0 117.07 7.07L12 16.57l-5.536-5.536z"
+            clip-rule="evenodd"
+          ></path>
+        </svg>
+        Countries
+      </button>
+      <button
+        class="tab transition-standard"
+        :class="{ 'active': activeTab === 'cities' }"
+        @click="activeTab = 'cities'; await loadBreakdown()"
+      >
+        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
+        </svg>
+        Cities
+      </button>
+      <button
+        class="tab transition-standard"
+        :class="{ 'active': activeTab === 'regions' }"
+        @click="activeTab = 'regions'; await loadBreakdown()"
+      >
+        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path
+            d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM9 12a3 3 0 11-6 0 3 3 0 016 0zM9 18a3 3 0 11-6 0 3 3 0 016 0zM15 6a3 3 0 11-6 0 3 3 0 016 0zM15 12a3 3 0 11-6 0 3 3 0 016 0zM15 18a3 3 0 11-6 0 3 3 0 016 0z"
+          ></path>
+        </svg>
+        Regions
+      </button>
+      <a href="/dashboard/map" class="tab transition-standard" style="text-decoration: none">
+        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path
+            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7.5l6.553-3.776A1 1 0 0117 5.618v10.764a1 1 0 01-1.447.894L9 16.5l-6.553 3.776z"
+          ></path>
+        </svg>
+        Map
+      </a>
+    </div>
+    <template x-if="breakdownLoading">
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>Loading data...</div>
       </div>
-      <!-- Websites Load Error -->
-      <div x-show="!websitesLoading && websitesError" class="empty-state" style="margin-top: 100px">
-        <div class="empty-state-icon">⚠️</div>
-        <div class="empty-state-title">Unable to load websites</div>
-        <div class="empty-state-text">
-          Check the server logs for /api/websites errors and try again.
-        </div>
+    </template>
+    <template x-if="!breakdownLoading && breakdownData && breakdownData.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th
+              x-text="activeTab === 'pages' ? 'Page Path' : activeTab === 'referrers' ? 'Referrer' : activeTab === 'browsers' ? 'Browser' : activeTab === 'devices' ? 'Device' : activeTab === 'countries' ? 'Country' : activeTab === 'cities' ? 'City' : 'Region'"
+            ></th>
+            <th style="text-align: right">Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="(item, index) in breakdownData" :key="index">
+            <tr>
+              <td x-text="item.name"></td>
+              <td
+                style="text-align: right; font-weight: 500; color: var(--accent-color)"
+                x-text="item.count.toLocaleString()"
+              ></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </template>
+    <template x-if="!breakdownLoading && (!breakdownData || breakdownData.length === 0)">
+      <div class="empty-state">
+        <div class="empty-state-icon">📊</div>
+        <div class="empty-state-title">No data yet</div>
+        <div class="empty-state-text">Start tracking to see breakdown data</div>
       </div>
-
+    </template>
+  </div>
+</div>
+<!-- No Website Selected -->
+<div
+  x-show="!websitesLoading && !websitesError && !selectedWebsite && websites.length > 0"
+  class="empty-state"
+  style="margin-top: 100px"
+>
+  <div class="empty-state-icon">🌐</div>
+  <div class="empty-state-title">Select a Website</div>
+  <div class="empty-state-text">Choose a website from the dropdown above to view analytics</div>
+</div>
+<!-- No Websites at All -->
+<div
+  x-show="!websitesLoading && !websitesError && websites.length === 0"
+  class="empty-state"
+  style="margin-top: 100px"
+>
+  <div class="empty-state-icon">🛰️</div>
+  <div class="empty-state-title">No websites found</div>
+  <div class="empty-state-text">Add a website in Kaunta to get started.</div>
+</div>
+<!-- Websites Load Error -->
+<div x-show="!websitesLoading && websitesError" class="empty-state" style="margin-top: 100px">
+  <div class="empty-state-icon">⚠️</div>
+  <div class="empty-state-title">Unable to load websites</div>
+  <div class="empty-state-text">Check the server logs for /api/websites errors and try again.</div>
+</div>
