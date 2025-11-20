@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/seuros/kaunta/compare/v0.24.0...v0.24.1) (2025-11-20)
+
+
+### Bug Fixes
+
+* improve map initialization with proper cleanup and retry logic ([#68](https://github.com/seuros/kaunta/issues/68)) ([96a8c36](https://github.com/seuros/kaunta/commit/96a8c36e9aa63accee4cbd085183e52be8ccda9a))
+
 ## [0.24.0](https://github.com/seuros/kaunta/compare/v0.23.1...v0.24.0) (2025-11-18)
 
 
