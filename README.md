@@ -122,7 +122,15 @@ Kaunta only listens for plain HTTP traffic (no built-in TLS). For HTTPS you shou
 - Set `secure_cookies = true` in `kaunta.toml` (or `SECURE_COOKIES=true`) when your proxy serves HTTPS so CSRF/session cookies are marked `Secure`
 - See `docs/examples/nginx.md` for a sample nginx config and `docs/examples/systemd.md` to run Kaunta as a systemd service
 
-### 3. Add Tracker Script
+### 3. Create a Website
+
+```bash
+kaunta website create example.com
+```
+
+This generates the website ID needed for tracking.
+
+### 4. Add Tracker Script
 
 Add this to your website (works like Google Analytics):
 
