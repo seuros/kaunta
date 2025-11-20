@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.2](https://github.com/seuros/kaunta/compare/v0.24.1...v0.24.2) (2025-11-20)
+
+
+### Bug Fixes
+
+* create global CSS file and optimize styles ([#71](https://github.com/seuros/kaunta/issues/71)) ([c60b1e8](https://github.com/seuros/kaunta/commit/c60b1e8d71c30c683ec6dc860c2977f2c1a2944d))
+
 ## [0.24.1](https://github.com/seuros/kaunta/compare/v0.24.0...v0.24.1) (2025-11-20)
 
 
