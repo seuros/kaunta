@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Setup Complete - Kaunta</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg-primary: #ffffff;
+        --text-primary: #1a1a1a;
+        --text-secondary: #4b5e7a;
+        --accent-color: #3b82f6;
+        --accent-dark: #1e3a8a;
+        --success-color: #10b981;
+        --gradient-primary: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        line-height: 1.6;
+      }
+
+      .container {
+        background: var(--bg-primary);
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        width: 100%;
+        max-width: 500px;
+        padding: 40px;
+        text-align: center;
+      }
+
+      .success-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 30px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        animation: scaleIn 0.5s ease-out;
+      }
+
+      .success-icon::before {
+        content: '✓';
+        color: white;
+        font-size: 40px;
+        font-weight: bold;
+      }
+
+      @keyframes scaleIn {
+        0% {
+          transform: scale(0);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(1.1);
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      h1 {
+        font-size: 2rem;
+        color: var(--text-primary);
+        margin-bottom: 15px;
+      }
+
+      p {
+        color: var(--text-secondary);
+        margin-bottom: 20px;
+      }
+
+      .info-box {
+        background: #f0f4f8;
+        border-radius: 12px;
+        padding: 20px;
+        margin: 30px 0;
+        text-align: left;
+      }
+
+      .info-box h3 {
+        color: var(--text-primary);
+        margin-bottom: 15px;
+        font-size: 1.1rem;
+      }
+
+      .info-item {
+        margin: 10px 0;
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+      }
+
+      .info-item strong {
+        color: var(--text-primary);
+      }
+
+      .code-block {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        margin: 10px 0;
+        word-break: break-all;
+      }
+
+      .button {
+        display: inline-block;
+        padding: 14px 32px;
+        background: var(--accent-color);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 1.05rem;
+        transition: all 0.2s ease;
+        margin-top: 20px;
+      }
+
+      .button:hover {
+        background: var(--accent-dark);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+      }
+
+      .note {
+        background: #fef3c7;
+        border: 1px solid #fcd34d;
+        color: #92400e;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        font-size: 0.95rem;
+      }
+
+      .step-list {
+        text-align: left;
+        margin: 20px 0;
+      }
+
+      .step-list li {
+        margin: 10px 0;
+        color: var(--text-secondary);
+        list-style-position: inside;
+      }
+
+      .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(59, 130, 246, 0.3);
+        border-top-color: var(--accent-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-left: 10px;
+        vertical-align: middle;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="success-icon"></div>
+
+      <h1>Setup Complete!</h1>
+      <p>Kaunta has been successfully configured and is ready to use.</p>
+
+      <div class="info-box">
+        <h3>Next Steps:</h3>
+        <ol class="step-list">
+          <li>The server will need to be restarted to apply the new configuration</li>
+          <li>You have been automatically logged in as the admin user</li>
+          <li>Visit the dashboard to add your first website</li>
+          <li>Install the tracking script on your website</li>
+        </ol>
+      </div>
+
+      <div class="info-box">
+        <h3>Configuration Saved:</h3>
+        <div class="info-item">
+          <strong>Config File:</strong> ./kaunta.toml
+        </div>
+        <div class="info-item">
+          <strong>Data Directory:</strong> ./data
+        </div>
+        <div class="info-item">
+          <strong>Server Port:</strong> 3000
+        </div>
+      </div>
+
+      <div class="note">
+        <strong>Important:</strong> Please restart the Kaunta server to apply the new configuration.
+        After restarting, visit <code>http://localhost:3000/dashboard</code> to access the dashboard.
+      </div>
+
+      <p style="margin-top: 30px; font-size: 0.9rem; color: var(--text-secondary);">
+        Run <code>./kaunta</code> or restart your service to begin using Kaunta.
+      </p>
+    </div>
+  </body>
+</html>

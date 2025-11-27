@@ -12,9 +12,11 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
+	"github.com/seuros/kaunta/internal/config"
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/geoip"
 	"github.com/seuros/kaunta/internal/logging"
+	"github.com/seuros/kaunta/internal/middleware"
 	"github.com/seuros/kaunta/internal/realtime"
 	"go.uber.org/zap"
 )
@@ -93,6 +95,29 @@ func HandleTracking(c fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{
 			"error": "Website not found",
 		})
+	}
+
+	// Self website (dogfooding) requires authenticated session to prevent abuse
+	// Since the UUID is well-known, we verify the request comes from a logged-in user
+	if websiteID.String() == config.SelfWebsiteID {
+		sessionToken := c.Cookies("kaunta_session")
+		if sessionToken == "" {
+			return c.Status(403).JSON(fiber.Map{
+				"error": "Self-tracking requires authentication",
+			})
+		}
+		// Verify session is valid
+		tokenHash := middleware.HashToken(sessionToken)
+		var sessionValid bool
+		err := database.DB.QueryRow(
+			"SELECT EXISTS(SELECT 1 FROM user_sessions WHERE token_hash = $1 AND expires_at > NOW())",
+			tokenHash,
+		).Scan(&sessionValid)
+		if err != nil || !sessionValid {
+			return c.Status(403).JSON(fiber.Map{
+				"error": "Invalid session for self-tracking",
+			})
+		}
 	}
 
 	// Origin validation (CORS security)

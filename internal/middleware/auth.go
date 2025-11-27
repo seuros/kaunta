@@ -40,7 +40,7 @@ func Auth(c fiber.Ctx) error {
 	}
 
 	// Validate session using PostgreSQL function
-	userCtx, err := sessionValidator(hashToken(token))
+	userCtx, err := sessionValidator(HashToken(token))
 
 	if err == sql.ErrNoRows {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -77,7 +77,7 @@ func AuthWithRedirect(c fiber.Ctx) error {
 	}
 
 	// Validate session using PostgreSQL function
-	userCtx, err := sessionValidator(hashToken(token))
+	userCtx, err := sessionValidator(HashToken(token))
 
 	if err == sql.ErrNoRows {
 		return c.Redirect().To("/login")
@@ -101,8 +101,8 @@ func GetUser(c fiber.Ctx) *UserContext {
 	return nil
 }
 
-// hashToken creates SHA256 hash of token for database lookup
-func hashToken(token string) string {
+// HashToken creates SHA256 hash of token for database lookup
+func HashToken(token string) string {
 	hash := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(hash[:])
 }

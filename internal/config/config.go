@@ -8,6 +8,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+// SelfWebsiteID is the hardcoded UUID for the self-tracking website (dogfooding)
+// Using nil UUID makes it deterministic and easily identifiable across all installations
+const SelfWebsiteID = "00000000-0000-0000-0000-000000000000"
+
 // Config holds application configuration
 type Config struct {
 	DatabaseURL    string
@@ -15,6 +19,7 @@ type Config struct {
 	DataDir        string
 	SecureCookies  bool
 	TrustedOrigins []string
+	InstallLock    bool // Whether installation is locked (setup completed)
 }
 
 // Load loads configuration from multiple sources with priority:
@@ -61,6 +66,7 @@ func buildConfig(v *viper.Viper, overrideDatabaseURL, overridePort, overrideData
 		DataDir:        "./data",
 		SecureCookies:  true, // Default to secure (safe for production/HTTPS proxies)
 		TrustedOrigins: []string{"localhost"},
+		InstallLock:    false,
 	}
 
 	// Apply config file values
@@ -78,6 +84,9 @@ func buildConfig(v *viper.Viper, overrideDatabaseURL, overridePort, overrideData
 	}
 	if v.IsSet("secure_cookies") {
 		cfg.SecureCookies = v.GetBool("secure_cookies")
+	}
+	if v.IsSet("security.install_lock") {
+		cfg.InstallLock = v.GetBool("security.install_lock")
 	}
 
 	// Environment fallback (only if not configured)

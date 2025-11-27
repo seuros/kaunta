@@ -232,26 +232,6 @@
     </template>
   </div>
 </div>
-<!-- No Website Selected -->
-<div
-  x-show="!websitesLoading && !websitesError && !selectedWebsite && websites.length > 0"
-  class="empty-state"
-  style="margin-top: 100px"
->
-  <div class="empty-state-icon">🌐</div>
-  <div class="empty-state-title">Select a Website</div>
-  <div class="empty-state-text">Choose a website from the dropdown above to view analytics</div>
-</div>
-<!-- No Websites at All -->
-<div
-  x-show="!websitesLoading && !websitesError && websites.length === 0"
-  class="empty-state"
-  style="margin-top: 100px"
->
-  <div class="empty-state-icon">🛰️</div>
-  <div class="empty-state-title">No websites found</div>
-  <div class="empty-state-text">Add a website in Kaunta to get started.</div>
-</div>
 <!-- Websites Load Error -->
 <div x-show="!websitesLoading && websitesError" class="empty-state" style="margin-top: 100px">
   <div class="empty-state-icon">⚠️</div>

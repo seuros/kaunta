@@ -12,6 +12,10 @@
     <title>{{.Title}} - Kaunta</title>
     <link rel="stylesheet" href="/assets/vendor/vendor.css?v={{.Version}}" />
     <link rel="stylesheet" href="/assets/global.css" />
+    {{if .SelfWebsiteID}}
+    <!-- Self-tracking for dogfooding -->
+    <script async src="/k.js" data-website-id="{{.SelfWebsiteID}}"></script>
+    {{end}}
   </head>
   <body>
     <div class="container" x-data="mapDashboard()" x-init="init()" x-cloak>
