@@ -1,12 +1,27 @@
 package handlers
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"slices"
+	"strings"
 
-// PaginationParams holds pagination query parameters
+	"github.com/gofiber/fiber/v3"
+)
+
+// SortDirection represents sort order
+type SortDirection string
+
+const (
+	SortAsc  SortDirection = "asc"
+	SortDesc SortDirection = "desc"
+)
+
+// PaginationParams holds pagination and sorting query parameters
 type PaginationParams struct {
-	Page   int `json:"page"` // 1-indexed page number (default: 1)
-	Per    int `json:"per"`  // Items per page (default: 10, max: 100)
-	Offset int `json:"-"`    // Calculated offset for SQL (not exposed in JSON)
+	Page      int           `json:"page"`       // 1-indexed page number (default: 1)
+	Per       int           `json:"per"`        // Items per page (default: 10, max: 100)
+	Offset    int           `json:"-"`          // Calculated offset for SQL (not exposed in JSON)
+	SortBy    string        `json:"sort_by"`    // Column to sort by (default: "count")
+	SortOrder SortDirection `json:"sort_order"` // Sort direction: "asc" or "desc" (default: "desc")
 }
 
 // PaginationMeta contains pagination metadata
@@ -24,17 +39,49 @@ type PaginatedResponse struct {
 	Pagination PaginationMeta `json:"pagination"`
 }
 
+// ValidSortColumns defines allowed sort columns per endpoint type
+var ValidSortColumns = map[string][]string{
+	"breakdown": {"count", "name"},
+	"pages":     {"views", "path", "unique_visitors", "avg_engagement_time"},
+	"map":       {"visitors", "country", "percentage"},
+}
+
 // ParsePaginationParams extracts and validates pagination from request
 func ParsePaginationParams(c fiber.Ctx) PaginationParams {
 	page := max(fiber.Query[int](c, "page", 1), 1)
 	per := min(max(fiber.Query[int](c, "per", 10), 1), 100)
 	offset := (page - 1) * per
 
-	return PaginationParams{
-		Page:   page,
-		Per:    per,
-		Offset: offset,
+	// Parse sort parameters
+	sortBy := strings.ToLower(c.Query("sort_by", "count"))
+	sortOrder := SortDirection(strings.ToLower(c.Query("sort_order", "desc")))
+
+	// Validate sort order
+	if sortOrder != SortAsc && sortOrder != SortDesc {
+		sortOrder = SortDesc
 	}
+
+	return PaginationParams{
+		Page:      page,
+		Per:       per,
+		Offset:    offset,
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
+	}
+}
+
+// ParsePaginationParamsWithValidation extracts pagination with column validation
+func ParsePaginationParamsWithValidation(c fiber.Ctx, endpointType string) PaginationParams {
+	params := ParsePaginationParams(c)
+
+	// Validate sort column against allowed list
+	validColumns, ok := ValidSortColumns[endpointType]
+	if ok && !slices.Contains(validColumns, params.SortBy) {
+		// Default to first valid column if invalid
+		params.SortBy = validColumns[0]
+	}
+
+	return params
 }
 
 // BuildPaginationMeta creates pagination metadata from query results

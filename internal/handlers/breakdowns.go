@@ -15,8 +15,8 @@ func handleBreakdown(c fiber.Ctx, dimension string) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid website ID"})
 	}
 
-	// Parse pagination parameters
-	pagination := ParsePaginationParams(c)
+	// Parse pagination parameters with validation for breakdown endpoints
+	pagination := ParsePaginationParamsWithValidation(c, "breakdown")
 
 	// Extract query parameters
 	country := c.Query("country")
@@ -39,8 +39,8 @@ func handleBreakdown(c fiber.Ctx, dimension string) error {
 		pageParam = page
 	}
 
-	// Call get_breakdown() function with appropriate dimension and pagination
-	query := `SELECT * FROM get_breakdown($1, $2, 1, $3, $4, $5, $6, $7, $8)`
+	// Call get_breakdown() function with appropriate dimension, pagination, and sorting
+	query := `SELECT * FROM get_breakdown($1, $2, 1, $3, $4, $5, $6, $7, $8, $9, $10)`
 	rows, err := database.DB.Query(
 		query,
 		websiteID,
@@ -51,6 +51,8 @@ func handleBreakdown(c fiber.Ctx, dimension string) error {
 		browserParam,
 		deviceParam,
 		pageParam,
+		pagination.SortBy,
+		string(pagination.SortOrder),
 	)
 
 	if err != nil {

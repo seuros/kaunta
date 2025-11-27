@@ -205,9 +205,21 @@
         <thead>
           <tr>
             <th
-              x-text="activeTab === 'pages' ? 'Page Path' : activeTab === 'referrers' ? 'Referrer' : activeTab === 'browsers' ? 'Browser' : activeTab === 'devices' ? 'Device' : activeTab === 'countries' ? 'Country' : activeTab === 'cities' ? 'City' : 'Region'"
-            ></th>
-            <th style="text-align: right">Count</th>
+              @click="sortBy('name')"
+              style="cursor: pointer; user-select: none;"
+              class="sortable-header"
+            >
+              <span x-text="activeTab === 'pages' ? 'Page Path' : activeTab === 'referrers' ? 'Referrer' : activeTab === 'browsers' ? 'Browser' : activeTab === 'devices' ? 'Device' : activeTab === 'countries' ? 'Country' : activeTab === 'cities' ? 'City' : 'Region'"></span>
+              <span x-show="sortColumn === 'name'" x-text="sortDirection === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
+            </th>
+            <th
+              @click="sortBy('count')"
+              style="text-align: right; cursor: pointer; user-select: none;"
+              class="sortable-header"
+            >
+              <span>Count</span>
+              <span x-show="sortColumn === 'count'" x-text="sortDirection === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
+            </th>
           </tr>
         </thead>
         <tbody>

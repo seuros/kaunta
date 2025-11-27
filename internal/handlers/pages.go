@@ -17,8 +17,8 @@ func HandleTopPages(c fiber.Ctx) error {
 		})
 	}
 
-	// Parse pagination parameters
-	pagination := ParsePaginationParams(c)
+	// Parse pagination parameters with validation for pages endpoints
+	pagination := ParsePaginationParamsWithValidation(c, "pages")
 
 	// Extract filter parameters
 	country := c.Query("country")
@@ -37,9 +37,9 @@ func HandleTopPages(c fiber.Ctx) error {
 		deviceParam = device
 	}
 
-	// Call get_top_pages() function with pagination
+	// Call get_top_pages() function with pagination and sorting
 	// Function returns: (path, views, unique_visitors, avg_engagement_time, total_count)
-	query := `SELECT * FROM get_top_pages($1, 1, $2, $3, $4, $5, $6)`
+	query := `SELECT * FROM get_top_pages($1, 1, $2, $3, $4, $5, $6, $7, $8)`
 	rows, err := database.DB.Query(
 		query,
 		websiteID,
@@ -48,6 +48,8 @@ func HandleTopPages(c fiber.Ctx) error {
 		countryParam,
 		browserParam,
 		deviceParam,
+		pagination.SortBy,
+		string(pagination.SortOrder),
 	)
 
 	if err != nil {
