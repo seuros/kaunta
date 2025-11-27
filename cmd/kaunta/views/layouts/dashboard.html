@@ -159,6 +159,15 @@
         }
       }
 
+      /* Sortable table headers */
+      .sortable-header {
+        transition: background-color 0.15s ease;
+      }
+
+      .sortable-header:hover {
+        background-color: rgba(59, 130, 246, 0.08);
+      }
+
       /* Responsive */
       @media (max-width: 768px) {
         .stats-grid {
@@ -343,7 +352,7 @@
           },
           pages: [],
           loading: true,
-          sortColumn: "views",
+          sortColumn: "count",
           sortDirection: "desc",
           refreshInterval: null,
           realtimeSocket: null,
@@ -690,9 +699,17 @@
 
             try {
               const endpoint = this.activeTab;
-              const filterParams = this.buildFilterParams("?");
+              // Build URL with filters and sorting
+              const params = new URLSearchParams();
+              if (this.filters.country) params.set("country", this.filters.country);
+              if (this.filters.browser) params.set("browser", this.filters.browser);
+              if (this.filters.device) params.set("device", this.filters.device);
+              if (this.filters.page) params.set("page", this.filters.page);
+              params.set("sort_by", this.sortColumn);
+              params.set("sort_order", this.sortDirection);
+              const queryString = params.toString();
               const response = await fetch(
-                `/api/dashboard/${endpoint}/${this.selectedWebsite}${filterParams}`,
+                `/api/dashboard/${endpoint}/${this.selectedWebsite}?${queryString}`,
               );
               if (response.ok) {
                 const result = await response.json();
@@ -786,27 +803,15 @@
               this.filters.page
             );
           },
-          sortBy(column) {
+          async sortBy(column) {
             if (this.sortColumn === column) {
               this.sortDirection = this.sortDirection === "asc" ? "desc" : "asc";
             } else {
               this.sortColumn = column;
               this.sortDirection = "desc";
             }
-          },
-          get sortedPages() {
-            const sorted = [...this.pages].sort((a, b) => {
-              const aVal = a[this.sortColumn];
-              const bVal = b[this.sortColumn];
-              if (typeof aVal === "string") {
-                return this.sortDirection === "asc"
-                  ? aVal.localeCompare(bVal)
-                  : bVal.localeCompare(aVal);
-              } else {
-                return this.sortDirection === "asc" ? aVal - bVal : bVal - aVal;
-              }
-            });
-            return sorted;
+            // Reload data with new sort order
+            await this.loadBreakdown();
           },
           async loadMapData() {
             if (!this.selectedWebsite || this.activeTab !== "map") return;
