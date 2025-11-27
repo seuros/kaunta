@@ -185,6 +185,26 @@
         </svg>
         Regions
       </button>
+      <button
+        class="tab transition-standard"
+        :class="{ 'active': activeTab === 'entry-pages' }"
+        @click="activeTab = 'entry-pages'; await loadBreakdown()"
+      >
+        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+        </svg>
+        Entry
+      </button>
+      <button
+        class="tab transition-standard"
+        :class="{ 'active': activeTab === 'exit-pages' }"
+        @click="activeTab = 'exit-pages'; await loadBreakdown()"
+      >
+        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+        </svg>
+        Exit
+      </button>
       <a href="/dashboard/campaigns" class="tab transition-standard" style="text-decoration: none">
         <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
           <path
@@ -217,7 +237,7 @@
               style="cursor: pointer; user-select: none;"
               class="sortable-header"
             >
-              <span x-text="activeTab === 'pages' ? 'Page Path' : activeTab === 'referrers' ? 'Referrer' : activeTab === 'browsers' ? 'Browser' : activeTab === 'devices' ? 'Device' : activeTab === 'countries' ? 'Country' : activeTab === 'cities' ? 'City' : 'Region'"></span>
+              <span x-text="activeTab === 'pages' ? 'Page Path' : activeTab === 'referrers' ? 'Referrer' : activeTab === 'browsers' ? 'Browser' : activeTab === 'devices' ? 'Device' : activeTab === 'countries' ? 'Country' : activeTab === 'cities' ? 'City' : activeTab === 'regions' ? 'Region' : activeTab === 'entry-pages' ? 'Entry Page' : activeTab === 'exit-pages' ? 'Exit Page' : 'Name'"></span>
               <span x-show="sortColumn === 'name'" x-text="sortDirection === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
             </th>
             <th

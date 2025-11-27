@@ -335,6 +335,12 @@
 
     // Silent fail - no console spam unless debug
     try {
+      // Determine credentials mode:
+      // - 'same-origin' for same-origin requests (enables self-tracking with auth)
+      // - 'omit' for cross-origin requests (privacy-first, no cookies)
+      var isSameOrigin = endpoint.indexOf(origin) === 0;
+      var credentialsMode = isSameOrigin ? 'same-origin' : 'omit';
+
       // Use sendBeacon for better reliability when page is hidden/unloading
       if (navigator.sendBeacon && document.visibilityState === 'hidden') {
         navigator.sendBeacon(endpoint, body);
@@ -344,7 +350,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: body,
           keepalive: true,
-          credentials: 'omit'
+          credentials: credentialsMode
         }).catch(function(err) {
           if (debug) logDebug('Fetch error', err);
         });

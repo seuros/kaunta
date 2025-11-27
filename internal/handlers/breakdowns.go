@@ -135,6 +135,20 @@ func HandleUTMContent(c fiber.Ctx) error {
 	return handleBreakdown(c, "utm_content")
 }
 
+// ============================================================================
+// ENTRY/EXIT PAGE HANDLERS
+// ============================================================================
+
+// HandleEntryPages returns entry pages breakdown (landing pages)
+func HandleEntryPages(c fiber.Ctx) error {
+	return handleBreakdown(c, "entry_page")
+}
+
+// HandleExitPages returns exit pages breakdown (last page before leaving)
+func HandleExitPages(c fiber.Ctx) error {
+	return handleBreakdown(c, "exit_page")
+}
+
 // HandleMapData returns visitor data aggregated by country for choropleth maps
 // Uses PostgreSQL function get_map_data() for optimized aggregation with percentage calculation
 func HandleMapData(c fiber.Ctx) error {
