@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+
+    <!-- Private dashboard - not for indexing -->
+    <meta name="robots" content="noindex, nofollow" />
+
+    <title>{{.Title}} - Kaunta</title>
+    <link rel="stylesheet" href="/assets/vendor/vendor.css?v={{.Version}}" />
+    <link rel="stylesheet" href="/assets/global.css" />
+    {{if .SelfWebsiteID}}
+    <!-- Self-tracking for dogfooding -->
+    <script async src="/k.js" data-website-id="{{.SelfWebsiteID}}"></script>
+    {{end}}
+  </head>
+  <body>
+    <div class="container" x-data="campaignsDashboard()" x-init="init()" x-cloak>
+      <header class="glass card">
+        <div class="header-left">
+          <div style="display: flex; align-items: center; gap: 12px">
+            <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 48px; width: auto" />
+            <div style="line-height: 1.2">
+              <h1 style="margin: 0; margin-bottom: 2px">Kaunta (カウンタ)</h1>
+              <div class="subtitle">Campaign Analytics</div>
+            </div>
+          </div>
+        </div>
+        <div class="header-controls">
+          <a
+            href="/dashboard"
+            class="btn btn-sm btn-ghost glass transition-standard"
+            title="Back to Dashboard"
+          >
+            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              ></path>
+            </svg>
+            Dashboard
+          </a>
+          <div
+            x-show="selectedWebsite"
+            class="glass transition-standard"
+            style="
+              padding: 10px 16px;
+              border-radius: 12px;
+              font-size: 14px;
+              color: var(--text-primary);
+            "
+          >
+            <template x-for="site in websites" :key="site.id">
+              <span x-show="site.id === selectedWebsite" x-text="site.name || site.domain"></span>
+            </template>
+          </div>
+          <!-- Logout Button -->
+          <button
+            @click="logout()"
+            class="btn btn-sm btn-danger glass transition-standard"
+            title="Logout"
+          >
+            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              ></path>
+            </svg>
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <!-- Campaign Data Section -->
+      <div x-show="!websitesLoading && !websitesError && selectedWebsite && websites.length > 0">
+        <!-- UTM Dimensions Grid - 2 columns on large screens -->
+        <div class="utm-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+
+          <!-- UTM Source -->
+          <div class="section glass card">
+            <div class="section-header">
+              <h2>
+                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
+                </svg>
+                Source
+              </h2>
+            </div>
+            <template x-if="loading.source">
+              <div class="loading">
+                <div class="spinner"></div>
+                <div>Loading...</div>
+              </div>
+            </template>
+            <template x-if="!loading.source && data.source && data.source.length > 0">
+              <table>
+                <thead>
+                  <tr>
+                    <th @click="sortBy('source', 'name')" style="cursor: pointer; user-select: none;" class="sortable-header">
+                      <span>Source</span>
+                      <span x-show="sort.source.column === 'name'" x-text="sort.source.direction === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
+                    </th>
+                    <th @click="sortBy('source', 'count')" style="text-align: right; cursor: pointer; user-select: none;" class="sortable-header">
+                      <span>Count</span>
+                      <span x-show="sort.source.column === 'count'" x-text="sort.source.direction === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(item, index) in data.source" :key="index">
+                    <tr>
+                      <td x-text="item.name"></td>
+                      <td style="text-align: right; font-weight: 500; color: var(--accent-color)" x-text="item.count.toLocaleString()"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </template>
+            <template x-if="!loading.source && (!data.source || data.source.length === 0)">
+              <div class="empty-state-mini">
+                <div>📊</div>
+                <div>No UTM source data yet</div>
+              </div>
+            </template>
+          </div>
+
+          <!-- UTM Medium -->
+          <div class="section glass card">
+            <div class="section-header">
+              <h2>
+                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path>
+                </svg>
+                Medium
+              </h2>
+            </div>
+            <template x-if="loading.medium">
+              <div class="loading">
+                <div class="spinner"></div>
+                <div>Loading...</div>
+              </div>
+            </template>
+            <template x-if="!loading.medium && data.medium && data.medium.length > 0">
+              <table>
+                <thead>
+                  <tr>
+                    <th @click="sortBy('medium', 'name')" style="cursor: pointer; user-select: none;" class="sortable-header">
+                      <span>Medium</span>
+                      <span x-show="sort.medium.column === 'name'" x-text="sort.medium.direction === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
+                    </th>
+                    <th @click="sortBy('medium', 'count')" style="text-align: right; cursor: pointer; user-select: none;" class="sortable-header">
+                      <span>Count</span>
+                      <span x-show="sort.medium.column === 'count'" x-text="sort.medium.direction === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(item, index) in data.medium" :key="index">
+                    <tr>
+                      <td x-text="item.name"></td>
+                      <td style="text-align: right; font-weight: 500; color: var(--accent-color)" x-text="item.count.toLocaleString()"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </template>
+            <template x-if="!loading.medium && (!data.medium || data.medium.length === 0)">
+              <div class="empty-state-mini">
+                <div>📊</div>
+                <div>No UTM medium data yet</div>
+              </div>
+            </template>
+          </div>
+
+          <!-- UTM Campaign -->
+          <div class="section glass card">
+            <div class="section-header">
+              <h2>
+                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path>
+                </svg>
+                Campaign
+              </h2>
+            </div>
+            <template x-if="loading.campaign">
+              <div class="loading">
+                <div class="spinner"></div>
+                <div>Loading...</div>
+              </div>
+            </template>
+            <template x-if="!loading.campaign && data.campaign && data.campaign.length > 0">
+              <table>
+                <thead>
+                  <tr>
+                    <th @click="sortBy('campaign', 'name')" style="cursor: pointer; user-select: none;" class="sortable-header">
+                      <span>Campaign</span>
+                      <span x-show="sort.campaign.column === 'name'" x-text="sort.campaign.direction === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
+                    </th>
+                    <th @click="sortBy('campaign', 'count')" style="text-align: right; cursor: pointer; user-select: none;" class="sortable-header">
+                      <span>Count</span>
+                      <span x-show="sort.campaign.column === 'count'" x-text="sort.campaign.direction === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(item, index) in data.campaign" :key="index">
+                    <tr>
+                      <td x-text="item.name"></td>
+                      <td style="text-align: right; font-weight: 500; color: var(--accent-color)" x-text="item.count.toLocaleString()"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </template>
+            <template x-if="!loading.campaign && (!data.campaign || data.campaign.length === 0)">
+              <div class="empty-state-mini">
+                <div>📊</div>
+                <div>No UTM campaign data yet</div>
+              </div>
+            </template>
+          </div>
+
+          <!-- UTM Term -->
+          <div class="section glass card">
+            <div class="section-header">
+              <h2>
+                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                </svg>
+                Term
+              </h2>
+            </div>
+            <template x-if="loading.term">
+              <div class="loading">
+                <div class="spinner"></div>
+                <div>Loading...</div>
+              </div>
+            </template>
+            <template x-if="!loading.term && data.term && data.term.length > 0">
+              <table>
+                <thead>
+                  <tr>
+                    <th @click="sortBy('term', 'name')" style="cursor: pointer; user-select: none;" class="sortable-header">
+                      <span>Term</span>
+                      <span x-show="sort.term.column === 'name'" x-text="sort.term.direction === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
+                    </th>
+                    <th @click="sortBy('term', 'count')" style="text-align: right; cursor: pointer; user-select: none;" class="sortable-header">
+                      <span>Count</span>
+                      <span x-show="sort.term.column === 'count'" x-text="sort.term.direction === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(item, index) in data.term" :key="index">
+                    <tr>
+                      <td x-text="item.name"></td>
+                      <td style="text-align: right; font-weight: 500; color: var(--accent-color)" x-text="item.count.toLocaleString()"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </template>
+            <template x-if="!loading.term && (!data.term || data.term.length === 0)">
+              <div class="empty-state-mini">
+                <div>📊</div>
+                <div>No UTM term data yet</div>
+              </div>
+            </template>
+          </div>
+
+          <!-- UTM Content -->
+          <div class="section glass card">
+            <div class="section-header">
+              <h2>
+                <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+                </svg>
+                Content
+              </h2>
+            </div>
+            <template x-if="loading.content">
+              <div class="loading">
+                <div class="spinner"></div>
+                <div>Loading...</div>
+              </div>
+            </template>
+            <template x-if="!loading.content && data.content && data.content.length > 0">
+              <table>
+                <thead>
+                  <tr>
+                    <th @click="sortBy('content', 'name')" style="cursor: pointer; user-select: none;" class="sortable-header">
+                      <span>Content</span>
+                      <span x-show="sort.content.column === 'name'" x-text="sort.content.direction === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
+                    </th>
+                    <th @click="sortBy('content', 'count')" style="text-align: right; cursor: pointer; user-select: none;" class="sortable-header">
+                      <span>Count</span>
+                      <span x-show="sort.content.column === 'count'" x-text="sort.content.direction === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(item, index) in data.content" :key="index">
+                    <tr>
+                      <td x-text="item.name"></td>
+                      <td style="text-align: right; font-weight: 500; color: var(--accent-color)" x-text="item.count.toLocaleString()"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </template>
+            <template x-if="!loading.content && (!data.content || data.content.length === 0)">
+              <div class="empty-state-mini">
+                <div>📊</div>
+                <div>No UTM content data yet</div>
+              </div>
+            </template>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- No Website Selected -->
+      <div
+        x-show="!websitesLoading && !websitesError && !selectedWebsite && websites.length > 0"
+        class="empty-state"
+        style="margin-top: 100px"
+      >
+        <div class="empty-state-icon">📊</div>
+        <div class="empty-state-title">Select a Website</div>
+        <div class="empty-state-text">
+          Choose a website from the dropdown above to view campaign data
+        </div>
+      </div>
+
+      <!-- No Websites at All -->
+      <div
+        x-show="!websitesLoading && !websitesError && websites.length === 0"
+        class="empty-state"
+        style="margin-top: 100px"
+      >
+        <div class="empty-state-icon">🛰️</div>
+        <div class="empty-state-title">No websites found</div>
+        <div class="empty-state-text">Add a website in Kaunta to get started.</div>
+      </div>
+
+      <!-- Websites Load Error -->
+      <div x-show="!websitesLoading && websitesError" class="empty-state" style="margin-top: 100px">
+        <div class="empty-state-icon">⚠️</div>
+        <div class="empty-state-title">Unable to load websites</div>
+        <div class="empty-state-text">
+          Check the server logs for /api/websites errors and try again.
+        </div>
+      </div>
+
+      <footer class="glass card">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+          "
+        >
+          <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 32px; width: auto" />
+          <span class="company-name">Kaunta Analytics</span>
+        </div>
+        <p>Built with Go, Fiber, Alpine.js, PostgreSQL, and Leaflet</p>
+        <p>
+          <a href="https://github.com/seuros/kaunta" class="repo-link">View on GitHub</a>
+          · <strong>v{{.Version}}</strong>
+        </p>
+      </footer>
+    </div>
+    <script defer src="/assets/vendor/vendor.js?v={{.Version}}"></script>
+    <style>
+      .empty-state-mini {
+        text-align: center;
+        padding: 32px 16px;
+        color: var(--text-tertiary);
+      }
+      .empty-state-mini > div:first-child {
+        font-size: 32px;
+        margin-bottom: 8px;
+        opacity: 0.5;
+      }
+      .empty-state-mini > div:last-child {
+        font-size: 14px;
+      }
+      .sortable-header:hover {
+        background: var(--bg-accent);
+      }
+    </style>
+    <script>
+      function campaignsDashboard() {
+        return {
+          websites: [],
+          websitesLoading: true,
+          websitesError: false,
+          selectedWebsite: localStorage.getItem("kaunta_website") || "",
+          initialized: false,
+          data: {
+            source: [],
+            medium: [],
+            campaign: [],
+            term: [],
+            content: [],
+          },
+          loading: {
+            source: false,
+            medium: false,
+            campaign: false,
+            term: false,
+            content: false,
+          },
+          sort: {
+            source: { column: 'count', direction: 'desc' },
+            medium: { column: 'count', direction: 'desc' },
+            campaign: { column: 'count', direction: 'desc' },
+            term: { column: 'count', direction: 'desc' },
+            content: { column: 'count', direction: 'desc' },
+          },
+
+          async init() {
+            if (this.initialized) return;
+            this.initialized = true;
+            await this.loadWebsites();
+          },
+
+          async loadWebsites() {
+            this.websitesLoading = true;
+            this.websitesError = false;
+            try {
+              const response = await fetch("/api/websites");
+              if (!response.ok) {
+                this.websitesError = true;
+                return;
+              }
+              const response_data = await response.json();
+              const sites = response_data.data || response_data;
+              this.websites = Array.isArray(sites) ? sites : [];
+              const hasStoredSelection =
+                this.selectedWebsite &&
+                this.websites.some((site) => site.id === this.selectedWebsite);
+              if (!hasStoredSelection && this.selectedWebsite) {
+                this.selectedWebsite = "";
+                localStorage.removeItem("kaunta_website");
+              }
+              if (!this.selectedWebsite && this.websites.length > 0) {
+                this.selectedWebsite = this.websites[0].id;
+                localStorage.setItem("kaunta_website", this.selectedWebsite);
+              }
+
+              // Load UTM data after website is determined
+              if (this.selectedWebsite) {
+                await this.loadAllUTMData();
+              }
+            } catch (error) {
+              console.error("Failed to load websites:", error);
+              this.websitesError = true;
+            } finally {
+              this.websitesLoading = false;
+            }
+          },
+
+          async loadAllUTMData() {
+            // Load all UTM dimensions in parallel
+            await Promise.all([
+              this.loadUTMData('source'),
+              this.loadUTMData('medium'),
+              this.loadUTMData('campaign'),
+              this.loadUTMData('term'),
+              this.loadUTMData('content'),
+            ]);
+          },
+
+          async loadUTMData(dimension) {
+            if (!this.selectedWebsite) return;
+            this.loading[dimension] = true;
+            try {
+              const sortState = this.sort[dimension];
+              const params = new URLSearchParams({
+                sort_by: sortState.column,
+                sort_order: sortState.direction,
+              });
+              const response = await fetch(
+                `/api/dashboard/utm-${dimension}/${this.selectedWebsite}?${params}`
+              );
+              if (response.ok) {
+                const result = await response.json();
+                this.data[dimension] = result.data || [];
+              }
+            } catch (error) {
+              console.error(`Failed to load UTM ${dimension}:`, error);
+            } finally {
+              this.loading[dimension] = false;
+            }
+          },
+
+          async sortBy(dimension, column) {
+            const sortState = this.sort[dimension];
+            if (sortState.column === column) {
+              sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+              sortState.column = column;
+              sortState.direction = 'desc';
+            }
+            await this.loadUTMData(dimension);
+          },
+
+          async logout() {
+            try {
+              const csrfToken = this.getCsrfToken();
+              const response = await fetch("/api/auth/logout", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": csrfToken,
+                },
+                credentials: "include",
+              });
+
+              if (response.ok) {
+                localStorage.removeItem("kaunta_website");
+                localStorage.removeItem("kaunta_dateRange");
+                window.location.href = "/login";
+              } else {
+                console.error("Logout failed:", await response.text());
+                alert("Logout failed. Please try again.");
+              }
+            } catch (error) {
+              console.error("Logout error:", error);
+              alert("Network error during logout. Please try again.");
+            }
+          },
+
+          getCsrfToken() {
+            const value = "; " + document.cookie;
+            const parts = value.split("; kaunta_csrf=");
+            if (parts.length === 2) return parts.pop().split(";").shift();
+            return "";
+          },
+        };
+      }
+    </script>
+  </body>
+</html>

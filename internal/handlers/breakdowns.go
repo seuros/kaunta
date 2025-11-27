@@ -106,6 +106,35 @@ func HandleTopRegions(c fiber.Ctx) error {
 	return handleBreakdown(c, "region")
 }
 
+// ============================================================================
+// UTM CAMPAIGN PARAMETER HANDLERS
+// ============================================================================
+
+// HandleUTMSource returns UTM source breakdown
+func HandleUTMSource(c fiber.Ctx) error {
+	return handleBreakdown(c, "utm_source")
+}
+
+// HandleUTMMedium returns UTM medium breakdown
+func HandleUTMMedium(c fiber.Ctx) error {
+	return handleBreakdown(c, "utm_medium")
+}
+
+// HandleUTMCampaign returns UTM campaign breakdown
+func HandleUTMCampaign(c fiber.Ctx) error {
+	return handleBreakdown(c, "utm_campaign")
+}
+
+// HandleUTMTerm returns UTM term breakdown
+func HandleUTMTerm(c fiber.Ctx) error {
+	return handleBreakdown(c, "utm_term")
+}
+
+// HandleUTMContent returns UTM content breakdown
+func HandleUTMContent(c fiber.Ctx) error {
+	return handleBreakdown(c, "utm_content")
+}
+
 // HandleMapData returns visitor data aggregated by country for choropleth maps
 // Uses PostgreSQL function get_map_data() for optimized aggregation with percentage calculation
 func HandleMapData(c fiber.Ctx) error {

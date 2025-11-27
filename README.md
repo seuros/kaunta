@@ -396,7 +396,34 @@ Visit `http://your-server:3000/dashboard` to see:
 - **Referrers** - Where your visitors come from
 - **Browsers/Devices** - What devices people use
 - **Locations** - Map showing visitor countries and cities
+- **Campaigns** - UTM campaign parameter analytics
 - **Real-time** - Live visitor activity (updates every few seconds)
+
+## UTM Campaign Tracking
+
+Kaunta automatically tracks UTM campaign parameters from your URLs. When visitors arrive via links with UTM parameters, Kaunta captures and stores:
+
+- `utm_source` - Traffic source (e.g., google, newsletter)
+- `utm_medium` - Marketing medium (e.g., cpc, email, social)
+- `utm_campaign` - Campaign name (e.g., spring_sale, product_launch)
+- `utm_term` - Paid search keywords
+- `utm_content` - A/B test or ad variant identifier
+
+### How It Works
+
+1. **Automatic extraction** - The tracker script extracts UTM parameters from the URL
+2. **Session persistence** - UTM values are stored in sessionStorage and persist across page navigation
+3. **Dashboard view** - Visit `/dashboard/campaigns` to see breakdowns by each UTM dimension
+
+### Example URLs
+
+```
+https://yoursite.com?utm_source=google&utm_medium=cpc&utm_campaign=spring_sale
+https://yoursite.com?utm_source=newsletter&utm_medium=email&utm_campaign=weekly_digest
+https://yoursite.com?utm_source=twitter&utm_medium=social&utm_campaign=product_launch
+```
+
+No additional configuration needed - just use standard UTM parameters in your marketing links.
 
 ## Umami Compatible
 
