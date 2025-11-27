@@ -464,6 +464,15 @@ func serveAnalytics(
 		})
 	})
 
+	// Campaigns UI (protected)
+	app.Get("/dashboard/campaigns", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
+		return c.Render("views/dashboard/campaigns", fiber.Map{
+			"Title":         "Campaigns",
+			"Version":       Version,
+			"SelfWebsiteID": config.SelfWebsiteID,
+		})
+	})
+
 	// Protected API endpoints
 	app.Post("/api/auth/logout", middleware.Auth, handlers.HandleLogout)
 	app.Get("/api/auth/me", middleware.Auth, handlers.HandleMe)
@@ -480,6 +489,13 @@ func serveAnalytics(
 	app.Get("/api/dashboard/cities/:website_id", middleware.Auth, handlers.HandleTopCities)
 	app.Get("/api/dashboard/regions/:website_id", middleware.Auth, handlers.HandleTopRegions)
 	app.Get("/api/dashboard/map/:website_id", middleware.Auth, handlers.HandleMapData)
+
+	// UTM Campaign Parameter endpoints (protected)
+	app.Get("/api/dashboard/utm-source/:website_id", middleware.Auth, handlers.HandleUTMSource)
+	app.Get("/api/dashboard/utm-medium/:website_id", middleware.Auth, handlers.HandleUTMMedium)
+	app.Get("/api/dashboard/utm-campaign/:website_id", middleware.Auth, handlers.HandleUTMCampaign)
+	app.Get("/api/dashboard/utm-term/:website_id", middleware.Auth, handlers.HandleUTMTerm)
+	app.Get("/api/dashboard/utm-content/:website_id", middleware.Auth, handlers.HandleUTMContent)
 
 	// Start server
 	port := getEnv("PORT", "3000")

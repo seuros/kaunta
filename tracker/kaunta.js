@@ -73,6 +73,56 @@
   var screen = width + 'x' + height;
   var { hostname, origin } = location;
 
+  // ============================================================================
+  // UTM PARAMETER TRACKING
+  // Extract UTM params from URL and persist in sessionStorage for the session
+  // ============================================================================
+
+  var UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
+  var UTM_STORAGE_KEY = 'kaunta_utm';
+
+  function getUtmParams() {
+    // Try to get from sessionStorage first (persists across page navigation)
+    var stored = null;
+    try {
+      var storedStr = sessionStorage.getItem(UTM_STORAGE_KEY);
+      if (storedStr) {
+        stored = JSON.parse(storedStr);
+      }
+    } catch (e) {
+      // sessionStorage not available or parse error
+    }
+
+    // Check current URL for UTM params
+    var searchParams = new URLSearchParams(location.search);
+    var currentUtm = {};
+    var hasNewUtm = false;
+
+    UTM_PARAMS.forEach(function(param) {
+      var value = searchParams.get(param);
+      if (value) {
+        currentUtm[param] = value;
+        hasNewUtm = true;
+      }
+    });
+
+    // If we have new UTM params in URL, use those and store them
+    if (hasNewUtm) {
+      try {
+        sessionStorage.setItem(UTM_STORAGE_KEY, JSON.stringify(currentUtm));
+      } catch (e) {
+        // sessionStorage not available
+      }
+      return currentUtm;
+    }
+
+    // Otherwise return stored UTM params (from landing page)
+    return stored || {};
+  }
+
+  // Get UTM params once at init (will be refreshed on navigation if URL changes)
+  var utmParams = getUtmParams();
+
   // Static payload fields that don't change per event
   var staticPayload = Object.freeze({
     website: websiteId,
@@ -257,6 +307,13 @@
       payload.engagement_time = engagementTimeMs;
     }
 
+    // Include UTM parameters if present
+    if (utmParams.utm_source) payload.utm_source = utmParams.utm_source;
+    if (utmParams.utm_medium) payload.utm_medium = utmParams.utm_medium;
+    if (utmParams.utm_campaign) payload.utm_campaign = utmParams.utm_campaign;
+    if (utmParams.utm_term) payload.utm_term = utmParams.utm_term;
+    if (utmParams.utm_content) payload.utm_content = utmParams.utm_content;
+
     return payload;
   }
 
@@ -344,6 +401,9 @@
     lastPath = newPath;
     currentRef = currentPageUrl;
     currentPageUrl = newUrl;
+
+    // Refresh UTM params in case new URL has different UTM values
+    utmParams = getUtmParams();
 
     if (currentPageUrl !== currentRef) {
       // Debounce to prevent duplicate pageviews on rapid navigation

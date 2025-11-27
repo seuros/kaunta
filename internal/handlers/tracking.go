@@ -65,6 +65,13 @@ type PayloadData struct {
 	ScrollDepth    *int                   `json:"scroll_depth,omitempty"`    // 0-100 percentage
 	EngagementTime *int                   `json:"engagement_time,omitempty"` // milliseconds
 	Props          map[string]interface{} `json:"props,omitempty"`           // custom properties
+
+	// UTM Campaign Parameters
+	UTMSource   *string `json:"utm_source,omitempty"`   // e.g., google, newsletter
+	UTMMedium   *string `json:"utm_medium,omitempty"`   // e.g., cpc, email
+	UTMCampaign *string `json:"utm_campaign,omitempty"` // e.g., spring_sale
+	UTMTerm     *string `json:"utm_term,omitempty"`     // paid search keywords
+	UTMContent  *string `json:"utm_content,omitempty"`  // ad variant identifier
 }
 
 // HandleTracking is the /api/send endpoint - compatible with Umami
@@ -386,20 +393,22 @@ func saveEvent(websiteID, sessionID, visitID uuid.UUID, createdAt time.Time,
 		}
 	}
 
-	// Enhanced schema: includes Phase 2 fields
+	// Enhanced schema: includes Phase 2 fields + UTM tracking
 	query := `
 		INSERT INTO website_event (
 			event_id, website_id, session_id, visit_id, created_at,
 			page_title, hostname, url_path, url_query,
 			referrer_path, referrer_query, referrer_domain,
 			event_name, tag, event_type,
-			scroll_depth, engagement_time, props
+			scroll_depth, engagement_time, props,
+			utm_source, utm_medium, utm_campaign, utm_term, utm_content
 		) VALUES (
 			$1, $2, $3, $4, $5,
 			$6, $7, $8, $9,
 			$10, $11, $12,
 			$13, $14, $15,
-			$16, $17, $18
+			$16, $17, $18,
+			$19, $20, $21, $22, $23
 		)
 	`
 
@@ -417,6 +426,7 @@ func saveEvent(websiteID, sessionID, visitID uuid.UUID, createdAt time.Time,
 		referrerPath, referrerQuery, referrerDomain,
 		payload.Name, payload.Tag, eventType,
 		scrollDepth, engagementTime, propsJSON,
+		payload.UTMSource, payload.UTMMedium, payload.UTMCampaign, payload.UTMTerm, payload.UTMContent,
 	)
 
 	if err != nil {
