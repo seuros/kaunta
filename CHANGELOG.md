@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.0](https://github.com/seuros/kaunta/compare/v0.25.0...v0.26.0) (2025-11-27)
+
+
+### Features
+
+* add doctor CLI command for health checks ([#80](https://github.com/seuros/kaunta/issues/80)) ([03ea0ef](https://github.com/seuros/kaunta/commit/03ea0efaab3540b2c7e0e22beccc3c1d60ca7ed3))
+* add website management dashboard UI ([#78](https://github.com/seuros/kaunta/issues/78)) ([1201025](https://github.com/seuros/kaunta/commit/12010257f3982834cc90b357c1c0a28626226563))
+
 ## [0.25.0](https://github.com/seuros/kaunta/compare/v0.24.2...v0.25.0) (2025-11-27)
 
 
