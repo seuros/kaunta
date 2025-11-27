@@ -497,6 +497,10 @@ func serveAnalytics(
 	app.Get("/api/dashboard/utm-term/:website_id", middleware.Auth, handlers.HandleUTMTerm)
 	app.Get("/api/dashboard/utm-content/:website_id", middleware.Auth, handlers.HandleUTMContent)
 
+	// Entry/Exit Page endpoints (protected)
+	app.Get("/api/dashboard/entry-pages/:website_id", middleware.Auth, handlers.HandleEntryPages)
+	app.Get("/api/dashboard/exit-pages/:website_id", middleware.Auth, handlers.HandleExitPages)
+
 	// Start server
 	port := getEnv("PORT", "3000")
 	logging.L().Info("starting kaunta server", zap.String("port", port))

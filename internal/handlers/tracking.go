@@ -225,11 +225,20 @@ func HandleTracking(c fiber.Ctx) error {
 	sessionSalt := hashDate(createdAt, "month")
 	sessionID := generateUUID(websiteID.String(), ip, userAgent, sessionSalt)
 
-	// Create or update session
+	// Parse URL path for entry/exit page tracking
+	var urlPath *string
+	if payload.Payload.URL != nil {
+		if u, err := url.Parse(*payload.Payload.URL); err == nil {
+			path := u.Path
+			urlPath = &path
+		}
+	}
+
+	// Create or update session (also tracks entry/exit pages)
 	distinctID := payload.Payload.ID
 	err = upsertSession(sessionID, websiteID, browser, os, device,
 		payload.Payload.Screen, payload.Payload.Language,
-		country, region, city, distinctID)
+		country, region, city, distinctID, urlPath)
 
 	if err != nil {
 		logging.L().Error("session creation error",
@@ -296,17 +305,19 @@ func HandleTracking(c fiber.Ctx) error {
 	})
 }
 
-// upsertSession creates or updates a session (INSERT ON CONFLICT DO NOTHING)
-func upsertSession(sessionID, websiteID uuid.UUID, browser, os, device, screen, language, country, region, city *string, distinctID *string) error {
+// upsertSession creates or updates a session
+// On INSERT: sets entry_page and exit_page to the first page visited
+// On UPDATE: only updates exit_page (entry_page remains the original landing page)
+func upsertSession(sessionID, websiteID uuid.UUID, browser, os, device, screen, language, country, region, city *string, distinctID *string, urlPath *string) error {
 	query := `
 		INSERT INTO session (
 			session_id, website_id, browser, os, device, screen, language,
-			country, region, city, created_at, distinct_id
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11)
-		ON CONFLICT (session_id) DO NOTHING
+			country, region, city, created_at, distinct_id, entry_page, exit_page
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11, $12, $12)
+		ON CONFLICT (session_id) DO UPDATE SET exit_page = EXCLUDED.entry_page
 	`
 	_, err := database.DB.Exec(query, sessionID, websiteID, browser, os, device,
-		screen, language, country, region, city, distinctID)
+		screen, language, country, region, city, distinctID, urlPath)
 	return err
 }
 

@@ -614,6 +614,11 @@
                   return;
                 }
 
+                // Skip chart creation if no data to prevent Chart.js fill errors
+                if (labels.length === 0) {
+                  return;
+                }
+
                 this.chart = new Chart(ctx, {
                   type: "line",
                   data: {
