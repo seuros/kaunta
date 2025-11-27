@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+
+    <!-- Private dashboard - not for indexing -->
+    <meta name="robots" content="noindex, nofollow" />
+
+    <title>{{.Title}} - Kaunta</title>
+    <link rel="stylesheet" href="/assets/vendor/vendor.css?v={{.Version}}" />
+    <link rel="stylesheet" href="/assets/global.css" />
+    {{if .SelfWebsiteID}}
+    <!-- Self-tracking for dogfooding -->
+    <script async src="/k.js" data-website-id="{{.SelfWebsiteID}}"></script>
+    {{end}}
+  </head>
+  <body>
+    <div class="container" x-data="websitesDashboard()" x-init="init()" x-cloak>
+      <header class="glass card">
+        <div class="header-left">
+          <div style="display: flex; align-items: center; gap: 12px">
+            <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 48px; width: auto" />
+            <div style="line-height: 1.2">
+              <h1 style="margin: 0; margin-bottom: 2px">Kaunta (カウンタ)</h1>
+              <div class="subtitle">Website Management</div>
+            </div>
+          </div>
+        </div>
+        <div class="header-controls">
+          <a
+            href="/dashboard"
+            class="btn btn-sm btn-ghost glass transition-standard"
+            title="Back to Dashboard"
+          >
+            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              ></path>
+            </svg>
+            Dashboard
+          </a>
+          <button
+            @click="showCreateModal = true"
+            class="btn btn-sm btn-primary glass transition-standard"
+            title="Add Website"
+          >
+            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Add Website
+          </button>
+          <!-- Logout Button -->
+          <button
+            @click="logout()"
+            class="btn btn-sm btn-danger glass transition-standard"
+            title="Logout"
+          >
+            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              ></path>
+            </svg>
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <!-- Loading State -->
+      <div x-show="loading" class="loading" style="margin-top: 100px">
+        <div class="spinner"></div>
+        <div>Loading websites...</div>
+      </div>
+
+      <!-- Websites Grid -->
+      <div x-show="!loading && !error && websites.length > 0" class="websites-grid">
+        <template x-for="website in websites" :key="website.id">
+          <div class="section glass card website-card">
+            <div class="website-header">
+              <div>
+                <h3 x-text="website.name || website.domain" class="website-name"></h3>
+                <span class="website-domain" x-text="website.domain"></span>
+              </div>
+              <div class="website-actions">
+                <button
+                  @click="copyTrackingCode(website)"
+                  class="btn btn-xs btn-ghost"
+                  title="Copy Tracking Code"
+                >
+                  <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                  </svg>
+                  <span x-text="copiedId === website.id ? 'Copied!' : 'Copy Code'"></span>
+                </button>
+              </div>
+            </div>
+
+            <div class="website-info">
+              <div class="info-row">
+                <span class="info-label">Website ID:</span>
+                <code class="info-value" x-text="website.id"></code>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Created:</span>
+                <span class="info-value" x-text="formatDate(website.created_at)"></span>
+              </div>
+            </div>
+
+            <div class="domains-section">
+              <div class="domains-header">
+                <span class="domains-label">Allowed Domains</span>
+                <span class="domains-count" x-text="website.allowed_domains?.length || 0"></span>
+              </div>
+              <div class="domains-list" x-show="expandedWebsite === website.id">
+                <template x-for="(domain, index) in website.allowed_domains" :key="index">
+                  <div class="domain-item">
+                    <span x-text="domain"></span>
+                    <button
+                      @click="removeDomain(website, domain)"
+                      class="btn-icon-danger"
+                      title="Remove domain"
+                      :disabled="website.allowed_domains.length <= 1"
+                    >
+                      <svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </template>
+                <div class="add-domain-form" x-show="addingDomainTo === website.id">
+                  <input
+                    type="text"
+                    x-model="newDomain"
+                    placeholder="example.com"
+                    @keyup.enter="addDomain(website)"
+                    @keyup.escape="addingDomainTo = null; newDomain = ''"
+                    class="input-sm"
+                  />
+                  <button @click="addDomain(website)" class="btn btn-xs btn-primary">Add</button>
+                  <button @click="addingDomainTo = null; newDomain = ''" class="btn btn-xs btn-ghost">Cancel</button>
+                </div>
+                <button
+                  x-show="addingDomainTo !== website.id"
+                  @click="addingDomainTo = website.id"
+                  class="btn btn-xs btn-ghost add-domain-btn"
+                >
+                  <svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                  </svg>
+                  Add Domain
+                </button>
+              </div>
+              <button
+                @click="expandedWebsite = expandedWebsite === website.id ? null : website.id"
+                class="btn btn-xs btn-ghost expand-btn"
+              >
+                <span x-text="expandedWebsite === website.id ? 'Hide' : 'Manage'"></span>
+                <svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24" :class="{'rotate-180': expandedWebsite === website.id}">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- No Websites -->
+      <div
+        x-show="!loading && !error && websites.length === 0"
+        class="empty-state"
+        style="margin-top: 100px"
+      >
+        <div class="empty-state-icon">🌐</div>
+        <div class="empty-state-title">No websites yet</div>
+        <div class="empty-state-text">Add your first website to start tracking analytics.</div>
+        <button @click="showCreateModal = true" class="btn btn-primary" style="margin-top: 16px">
+          <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          Add Website
+        </button>
+      </div>
+
+      <!-- Error State -->
+      <div x-show="!loading && error" class="empty-state" style="margin-top: 100px">
+        <div class="empty-state-icon">⚠️</div>
+        <div class="empty-state-title">Unable to load websites</div>
+        <div class="empty-state-text" x-text="error"></div>
+        <button @click="loadWebsites()" class="btn btn-primary" style="margin-top: 16px">Try Again</button>
+      </div>
+
+      <!-- Create Website Modal -->
+      <div x-show="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
+        <div class="modal glass card">
+          <h2>Add New Website</h2>
+          <form @submit.prevent="createWebsite()">
+            <div class="form-group">
+              <label for="domain">Domain *</label>
+              <input
+                type="text"
+                id="domain"
+                x-model="newWebsite.domain"
+                placeholder="example.com"
+                required
+                class="input"
+              />
+              <small>Common variations (www, http/https) will be added automatically</small>
+            </div>
+            <div class="form-group">
+              <label for="name">Display Name (optional)</label>
+              <input
+                type="text"
+                id="name"
+                x-model="newWebsite.name"
+                placeholder="My Awesome Site"
+                class="input"
+              />
+            </div>
+            <div x-show="createError" class="error-message" x-text="createError"></div>
+            <div class="modal-actions">
+              <button type="button" @click="showCreateModal = false; createError = ''" class="btn btn-ghost">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="creating">
+                <span x-show="!creating">Create Website</span>
+                <span x-show="creating">Creating...</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Toast Notification -->
+      <div
+        x-show="toast.show"
+        x-transition
+        class="toast"
+        :class="toast.type"
+        x-text="toast.message"
+      ></div>
+
+      <footer class="glass card">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+          "
+        >
+          <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 32px; width: auto" />
+          <span class="company-name">Kaunta Analytics</span>
+        </div>
+        <p>Built with Go, Fiber, Alpine.js, PostgreSQL, and Leaflet</p>
+        <p>
+          <a href="https://github.com/seuros/kaunta" class="repo-link">View on GitHub</a>
+          · <strong>v{{.Version}}</strong>
+        </p>
+      </footer>
+    </div>
+    <script defer src="/assets/vendor/vendor.js?v={{.Version}}"></script>
+    <style>
+      .websites-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+        gap: 24px;
+        margin-top: 24px;
+      }
+
+      .website-card {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .website-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .website-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+      }
+
+      .website-domain {
+        font-size: 14px;
+        color: var(--text-tertiary);
+      }
+
+      .website-info {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+        background: var(--bg-accent);
+        border-radius: 8px;
+      }
+
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .info-label {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .info-value {
+        font-size: 13px;
+        color: var(--text-primary);
+        font-family: monospace;
+      }
+
+      .domains-section {
+        border-top: 1px solid var(--border-color);
+        padding-top: 16px;
+      }
+
+      .domains-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .domains-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary);
+      }
+
+      .domains-count {
+        background: var(--accent-color);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .domains-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .domain-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: var(--bg-secondary);
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: monospace;
+      }
+
+      .btn-icon-danger {
+        background: none;
+        border: none;
+        padding: 4px;
+        cursor: pointer;
+        color: var(--text-tertiary);
+        border-radius: 4px;
+        transition: all 0.2s;
+      }
+
+      .btn-icon-danger:hover:not(:disabled) {
+        color: #dc2626;
+        background: rgba(220, 38, 38, 0.1);
+      }
+
+      .btn-icon-danger:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      .add-domain-form {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .input-sm {
+        padding: 6px 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 13px;
+        flex: 1;
+        background: var(--bg-glass);
+      }
+
+      .input-sm:focus {
+        outline: none;
+        border-color: var(--accent-color);
+      }
+
+      .add-domain-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .expand-btn {
+        width: 100%;
+        justify-content: center;
+        margin-top: 8px;
+      }
+
+      .expand-btn svg {
+        transition: transform 0.2s;
+      }
+
+      .rotate-180 {
+        transform: rotate(180deg);
+      }
+
+      .icon-xs {
+        width: 14px;
+        height: 14px;
+      }
+
+      .btn-xs {
+        padding: 4px 10px;
+        font-size: 12px;
+        gap: 4px;
+      }
+
+      /* Modal styles */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+      }
+
+      .modal {
+        width: 100%;
+        max-width: 480px;
+      }
+
+      .modal h2 {
+        margin: 0 0 24px;
+        font-size: 20px;
+        color: var(--text-primary);
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary);
+      }
+
+      .form-group small {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+
+      .input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        background: var(--bg-glass);
+        color: var(--text-primary);
+      }
+
+      .input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .error-message {
+        background: rgba(220, 38, 38, 0.1);
+        color: #dc2626;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 14px;
+        margin-top: 16px;
+      }
+
+      /* Toast styles */
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 1001;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .toast.success {
+        background: #10b981;
+        color: white;
+      }
+
+      .toast.error {
+        background: #dc2626;
+        color: white;
+      }
+
+      @media (max-width: 768px) {
+        .websites-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+    <script>
+      function websitesDashboard() {
+        return {
+          websites: [],
+          loading: true,
+          error: null,
+          showCreateModal: false,
+          creating: false,
+          createError: '',
+          newWebsite: { domain: '', name: '' },
+          expandedWebsite: null,
+          addingDomainTo: null,
+          newDomain: '',
+          copiedId: null,
+          toast: { show: false, message: '', type: '' },
+
+          async init() {
+            await this.loadWebsites();
+          },
+
+          async loadWebsites() {
+            this.loading = true;
+            this.error = null;
+            try {
+              const response = await fetch('/api/websites/list');
+              if (!response.ok) {
+                throw new Error('Failed to load websites');
+              }
+              this.websites = await response.json();
+            } catch (err) {
+              console.error('Failed to load websites:', err);
+              this.error = err.message;
+            } finally {
+              this.loading = false;
+            }
+          },
+
+          async createWebsite() {
+            if (!this.newWebsite.domain) return;
+
+            this.creating = true;
+            this.createError = '';
+
+            try {
+              const response = await fetch('/api/websites', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRF-Token': this.getCsrfToken(),
+                },
+                credentials: 'include',
+                body: JSON.stringify(this.newWebsite),
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                throw new Error(data.error || 'Failed to create website');
+              }
+
+              this.websites.push(data);
+              this.showCreateModal = false;
+              this.newWebsite = { domain: '', name: '' };
+              this.showToast('Website created successfully!', 'success');
+            } catch (err) {
+              this.createError = err.message;
+            } finally {
+              this.creating = false;
+            }
+          },
+
+          async addDomain(website) {
+            if (!this.newDomain) return;
+
+            try {
+              const response = await fetch(`/api/websites/${website.id}/domains`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRF-Token': this.getCsrfToken(),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ domain: this.newDomain }),
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                throw new Error(data.error || 'Failed to add domain');
+              }
+
+              // Update website in list
+              const index = this.websites.findIndex(w => w.id === website.id);
+              if (index !== -1) {
+                this.websites[index] = data;
+              }
+
+              this.addingDomainTo = null;
+              this.newDomain = '';
+              this.showToast('Domain added successfully!', 'success');
+            } catch (err) {
+              this.showToast(err.message, 'error');
+            }
+          },
+
+          async removeDomain(website, domain) {
+            if (website.allowed_domains.length <= 1) {
+              this.showToast('Cannot remove the last domain', 'error');
+              return;
+            }
+
+            try {
+              const response = await fetch(`/api/websites/${website.id}/domains`, {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRF-Token': this.getCsrfToken(),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ domain }),
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                throw new Error(data.error || 'Failed to remove domain');
+              }
+
+              // Update website in list
+              const index = this.websites.findIndex(w => w.id === website.id);
+              if (index !== -1) {
+                this.websites[index] = data;
+              }
+
+              this.showToast('Domain removed successfully!', 'success');
+            } catch (err) {
+              this.showToast(err.message, 'error');
+            }
+          },
+
+          copyTrackingCode(website) {
+            const code = `<script async src="/k.js" data-website-id="${website.id}"><\/script>`;
+            navigator.clipboard.writeText(code).then(() => {
+              this.copiedId = website.id;
+              this.showToast('Tracking code copied to clipboard!', 'success');
+              setTimeout(() => {
+                this.copiedId = null;
+              }, 2000);
+            }).catch(() => {
+              this.showToast('Failed to copy tracking code', 'error');
+            });
+          },
+
+          formatDate(dateStr) {
+            if (!dateStr) return '';
+            return new Date(dateStr).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            });
+          },
+
+          showToast(message, type) {
+            this.toast = { show: true, message, type };
+            setTimeout(() => {
+              this.toast.show = false;
+            }, 3000);
+          },
+
+          getCsrfToken() {
+            const value = '; ' + document.cookie;
+            const parts = value.split('; kaunta_csrf=');
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+          },
+
+          async logout() {
+            try {
+              const response = await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRF-Token': this.getCsrfToken(),
+                },
+                credentials: 'include',
+              });
+
+              if (response.ok) {
+                localStorage.removeItem('kaunta_website');
+                localStorage.removeItem('kaunta_dateRange');
+                window.location.href = '/login';
+              } else {
+                console.error('Logout failed:', await response.text());
+                alert('Logout failed. Please try again.');
+              }
+            } catch (error) {
+              console.error('Logout error:', error);
+              alert('Network error during logout. Please try again.');
+            }
+          },
+        };
+      }
+    </script>
+  </body>
+</html>

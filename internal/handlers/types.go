@@ -48,3 +48,28 @@ type MapResponse struct {
 	TotalVisitors int            `json:"total_visitors"`
 	PeriodDays    int            `json:"period_days"`
 }
+
+// WebsiteDetailResponse represents a website with its allowed domains
+type WebsiteDetailResponse struct {
+	ID             string   `json:"id"`
+	Domain         string   `json:"domain"`
+	Name           string   `json:"name"`
+	AllowedDomains []string `json:"allowed_domains"`
+	CreatedAt      string   `json:"created_at"`
+}
+
+// CreateWebsiteRequest is the payload for creating a new website
+type CreateWebsiteRequest struct {
+	Domain string `json:"domain"`
+	Name   string `json:"name,omitempty"`
+}
+
+// UpdateWebsiteRequest is the payload for updating a website
+type UpdateWebsiteRequest struct {
+	Name string `json:"name"`
+}
+
+// DomainRequest is the payload for adding/removing allowed domains
+type DomainRequest struct {
+	Domain string `json:"domain"`
+}

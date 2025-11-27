@@ -501,6 +501,23 @@ func serveAnalytics(
 	app.Get("/api/dashboard/entry-pages/:website_id", middleware.Auth, handlers.HandleEntryPages)
 	app.Get("/api/dashboard/exit-pages/:website_id", middleware.Auth, handlers.HandleExitPages)
 
+	// Website Management API (protected)
+	app.Get("/api/websites/list", middleware.Auth, handlers.HandleWebsiteList)
+	app.Get("/api/websites/:website_id", middleware.Auth, handlers.HandleWebsiteShow)
+	app.Post("/api/websites", middleware.Auth, handlers.HandleWebsiteCreate)
+	app.Put("/api/websites/:website_id", middleware.Auth, handlers.HandleWebsiteUpdate)
+	app.Post("/api/websites/:website_id/domains", middleware.Auth, handlers.HandleAddDomain)
+	app.Delete("/api/websites/:website_id/domains", middleware.Auth, handlers.HandleRemoveDomain)
+
+	// Website Management Dashboard page (protected)
+	app.Get("/dashboard/websites", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
+		return c.Render("views/dashboard/websites", fiber.Map{
+			"Title":         "Websites",
+			"Version":       Version,
+			"SelfWebsiteID": config.SelfWebsiteID,
+		})
+	})
+
 	// Start server
 	port := getEnv("PORT", "3000")
 	logging.L().Info("starting kaunta server", zap.String("port", port))

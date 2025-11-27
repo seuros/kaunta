@@ -134,6 +134,8 @@ Kaunta only listens for plain HTTP traffic (no built-in TLS). For HTTPS you shou
 kaunta website create example.com
 ```
 
+Or use the dashboard UI at `/dashboard/websites` to create and manage websites with allowed domains.
+
 This generates the website ID needed for tracking.
 
 ### 4. Add Tracker Script
