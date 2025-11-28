@@ -948,6 +948,7 @@
         </div>
         <div class="nav-links">
           <a href="#features">Features</a>
+          <a href="#latest-features">What's New</a>
           <a href="#installation">Installation</a>
           <a href="#usage">Usage</a>
           <a href="https://github.com/seuros/kaunta#readme">Documentation</a>
@@ -975,7 +976,7 @@
                 >
               </div>
               <p class="hero-subtitle">
-                A simple, fast, privacy-focused web analytics engine. Drop-in replacement for Umami.
+                Advanced privacy-focused analytics with email tracking, UTM campaigns, and real-time insights. Modern drop-in replacement for Umami.
               </p>
             </div>
 
@@ -1021,9 +1022,9 @@
           </div>
           <div class="feature-card">
             <div class="feature-icon">📊</div>
-            <h3 class="feature-title">Full Analytics</h3>
+            <h3 class="feature-title">Complete Analytics Suite</h3>
             <p class="feature-description">
-              Visitors, pageviews, referrers, devices, locations, real-time stats
+              Visitors, pageviews, referrers, devices, locations, UTM campaigns, email tracking
             </p>
           </div>
           <div class="feature-card">
@@ -1031,6 +1032,27 @@
             <h3 class="feature-title">Geolocation</h3>
             <p class="feature-description">
               City/region level with automatic MaxMind GeoLite2 download
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📧</div>
+            <h3 class="feature-title">Email & RSS Tracking</h3>
+            <p class="feature-description">
+              Pixel tracking for email campaigns and RSS feeds with detailed analytics
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🎯</div>
+            <h3 class="feature-title">Campaign Analytics</h3>
+            <p class="feature-description">
+              UTM parameter tracking for marketing campaigns and attribution analysis
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🔧</div>
+            <h3 class="feature-title">Health Monitoring</h3>
+            <p class="feature-description">
+              Built-in health checks and diagnostics with CLI doctor command
             </p>
           </div>
         </div>
@@ -1043,18 +1065,48 @@
         <div class="section-container">
           <h2 class="section-title">Installation</h2>
           <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem">
-            Kaunta requires PostgreSQL 17+
+            Kaunta requires PostgreSQL 17+ and supports Linux, macOS, Windows, and FreeBSD
           </p>
 
+          <h3
+            style="
+              font-size: 1.25rem;
+              margin: 2rem 0 1rem;
+              font-weight: 600;
+              text-align: center;
+              color: var(--text-primary);
+            "
+          >
+            Quick Install (Linux/macOS/FreeBSD)
+          </h3>
           <div class="code-block">
-            <div class="code-header">Setup Database</div>
+            <div class="code-header">bash</div>
             <div class="code-content">
-              <code
-                ><span class="code-keyword">export</span>
-                <span class="code-function">DATABASE_URL</span>=<span class="code-string"
-                  >"postgresql://user:password@localhost:5432/kaunta"</span
-                ></code
-              >
+              <code><span class="code-comment"># Install to ~/.local/bin (default)</span>
+curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/install.sh | bash
+
+<span class="code-comment"># Install system-wide (requires sudo)</span>
+curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/install.sh | bash -s -- --system</code>
+            </div>
+          </div>
+
+          <h3
+            style="
+              font-size: 1.25rem;
+              margin: 2rem 0 1rem;
+              font-weight: 600;
+              text-align: center;
+              color: var(--text-primary);
+            "
+          >
+            Configuration
+          </h3>
+          <div class="code-block">
+            <div class="code-header">Environment Variables</div>
+            <div class="code-content">
+              <code><span class="code-keyword">export</span> <span class="code-function">DATABASE_URL</span>=<span class="code-string">"postgresql://user:password@localhost:5432/kaunta"</span>
+<span class="code-keyword">export</span> <span class="code-function">PORT</span>=<span class="code-string">"3000"</span>
+<span class="code-keyword">export</span> <span class="code-function">SECURE_COOKIES</span>=<span class="code-string">"true"</span>  <span class="code-comment"># Enable for HTTPS</span></code>
             </div>
           </div>
 
@@ -1072,13 +1124,7 @@
           <div class="code-block">
             <div class="code-header">docker</div>
             <div class="code-content">
-              <code
-                ><span class="code-function">docker</span> run -e
-                <span class="code-function">DATABASE_URL</span>=<span class="code-string"
-                  >"postgresql://..."</span
-                >
-                -p 3000:3000 kaunta</code
-              >
+              <code><span class="code-function">docker</span> run -e <span class="code-function">DATABASE_URL</span>=<span class="code-string">"postgresql://..."</span> -p 3000:3000 kaunta</code>
             </div>
           </div>
 
@@ -1091,7 +1137,7 @@
               color: var(--text-primary);
             "
           >
-            Standalone Binary
+            Run Server
           </h3>
           <div class="code-block">
             <div class="code-header">bash</div>
@@ -1151,17 +1197,50 @@
         <div class="code-block">
           <div class="code-header">html</div>
           <div class="code-content">
-            <code
-              ><span class="code-keyword">&lt;script</span>
-              <span class="code-function">src</span>=<span class="code-string"
-                >"https://your-kaunta-server.com/k.js"</span
-              >
-              <span class="code-function">data-website-id</span>=<span class="code-string"
-                >"your-website-uuid"</span
-              >
-              <span class="code-function">async defer</span
-              ><span class="code-keyword">&gt;&lt;/script&gt;</span></code
-            >
+            <code><span class="code-keyword">&lt;script</span> <span class="code-function">src</span>=<span class="code-string">"https://your-kaunta-server.com/k.js"</span>
+        <span class="code-function">data-website-id</span>=<span class="code-string">"your-website-uuid"</span>
+        <span class="code-function">data-debug</span>=<span class="code-string">"true"</span>
+        <span class="code-function">async defer</span><span class="code-keyword">&gt;&lt;/script&gt;</span></code>
+          </div>
+        </div>
+
+        <div style="margin-top: 3rem;">
+          <h3
+            style="
+              font-size: 1.25rem;
+              margin: 2rem 0 1rem;
+              font-weight: 600;
+              text-align: center;
+              color: var(--text-primary);
+            "
+          >
+            Create Website & Get Tracking ID
+          </h3>
+          <div class="code-block">
+            <div class="code-header">bash</div>
+            <div class="code-content">
+              <code><span class="code-function">kaunta</span> website create <span class="code-string">example.com</span></code>
+            </div>
+          </div>
+
+          <h3
+            style="
+              font-size: 1.25rem;
+              margin: 2rem 0 1rem;
+              font-weight: 600;
+              text-align: center;
+              color: var(--text-primary);
+            "
+          >
+            Email & RSS Pixel Tracking
+          </h3>
+          <div class="code-block">
+            <div class="code-header">html</div>
+            <div class="code-content">
+              <code><span class="code-comment">&lt;!-- Email campaign tracking --&gt;</span>
+<span class="code-keyword">&lt;img</span> <span class="code-function">src</span>=<span class="code-string">"https://your-kaunta-server.com/p/YOUR-WEBSITE-ID.gif?utm_source=mailchimp&utm_campaign=welcome"</span>
+     <span class="code-function">width</span>=<span class="code-string">"1"</span> <span class="code-function">height</span>=<span class="code-string">"1"</span> <span class="code-function">style</span>=<span class="code-string">"display:none"</span> <span class="code-keyword">/&gt;</span></code>
+            </div>
           </div>
         </div>
 
@@ -1174,7 +1253,7 @@
             margin-top: 2rem;
           "
         >
-          That's it! Analytics start collecting.
+          That's it! Analytics start collecting with full UTM campaign tracking.
         </p>
       </div>
     </section>
@@ -1216,13 +1295,8 @@
               <div class="code-block">
                 <div class="code-header">bash</div>
                 <div class="code-content">
-                  <code
-                    ><span class="code-function">kaunta</span> user create
-                    <span class="code-string">admin</span>
-                    <span class="code-comment"
-                      ># You'll be prompted for name and password</span
-                    ></code
-                  >
+                  <code><span class="code-function">kaunta</span> user create <span class="code-string">admin</span>
+<span class="code-comment"># You'll be prompted for name and password</span></code>
                 </div>
               </div>
 
@@ -1301,14 +1375,14 @@
             <div class="feature-icon">📊</div>
             <h3 class="feature-title">Real-Time Stats</h3>
             <p class="feature-description">
-              Live visitor counts, pageviews, and activity updates every few seconds
+              Live visitor counts, pageviews, and activity updates with enhanced dashboard UI
             </p>
           </div>
           <div class="feature-card">
             <div class="feature-icon">🔍</div>
             <h3 class="feature-title">Advanced Filtering</h3>
             <p class="feature-description">
-              Filter by country, browser, device, page, and date ranges for deep insights
+              Filter by country, browser, OS breakdown, device, page, and UTM campaigns
             </p>
           </div>
           <div class="feature-card">
@@ -1320,16 +1394,16 @@
           </div>
           <div class="feature-card">
             <div class="feature-icon">📈</div>
-            <h3 class="feature-title">Trend Analysis</h3>
+            <h3 class="feature-title">Campaign Tracking</h3>
             <p class="feature-description">
-              Time-series charts showing traffic patterns over time with customizable periods
+              UTM parameter analysis, email pixel tracking, and marketing attribution
             </p>
           </div>
           <div class="feature-card">
             <div class="feature-icon">🎯</div>
-            <h3 class="feature-title">Audience Insights</h3>
+            <h3 class="feature-title">User Journey Analysis</h3>
             <p class="feature-description">
-              Detailed breakdowns of browsers, devices, operating systems, and referrer sources
+              Entry/exit page tracking, session flows, and detailed audience insights
             </p>
           </div>
           <div class="feature-card">
@@ -1372,32 +1446,125 @@
 
           <ul class="dashboard-list" style="margin-bottom: 0">
             <li>
-              <strong>Visitor Analytics</strong
-              ><span>Total visitors, unique sessions, returning vs new visitors</span>
+              <strong>Advanced Visitor Analytics</strong
+              ><span>Total visitors, unique sessions, returning vs new with enhanced dashboard UI</span>
             </li>
             <li>
-              <strong>Page Performance</strong
-              ><span>Most popular pages, entry/exit points, page load insights</span>
+              <strong>User Journey Tracking</strong
+              ><span>Entry/exit page analysis, session flows, and navigation patterns</span>
             </li>
             <li>
-              <strong>Traffic Sources</strong
-              ><span>Referrer tracking, search engines, direct traffic, social media</span>
+              <strong>Campaign Attribution</strong
+              ><span>UTM parameter tracking, email pixel analytics, and marketing ROI analysis</span>
             </li>
             <li>
-              <strong>Geographic Data</strong
+              <strong>Enhanced Geographic Data</strong
               ><span
-                >Country, region, and city-level visitor distribution with map visualization</span
+                >Country, region, and city-level visitor distribution with interactive map</span
               >
             </li>
             <li>
-              <strong>Technology Stack</strong
-              ><span>Browser types, device categories, screen resolutions, operating systems</span>
+              <strong>Detailed Technology Insights</strong
+              ><span>Browser types, OS breakdown with modern icons, device categories, screen resolutions</span>
             </li>
             <li>
-              <strong>Real-Time Monitoring</strong
-              ><span>Live visitor activity, current page views, active users online now</span>
+              <strong>Real-Time Monitoring & Health</strong
+              ><span>Live activity, current page views, system health checks, and diagnostics</span>
             </li>
           </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Latest Features Section -->
+    <section class="section" id="latest-features">
+      <div class="section-container">
+        <h2 class="section-title">Latest Features & Enhancements</h2>
+        <p
+          style="
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+          "
+        >
+          Kaunta continues to evolve with powerful new features for modern analytics needs. 
+          From email tracking to enhanced dashboards, discover what's new in the latest release.
+        </p>
+
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">📧</div>
+            <h3 class="feature-title">Email Pixel Tracking</h3>
+            <p class="feature-description">
+              Track email opens and engagement with invisible 1x1 pixel tracking for newsletters and campaigns
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3 class="feature-title">UTM Campaign Analytics</h3>
+            <p class="feature-description">
+              Complete UTM parameter tracking with campaign attribution, source analysis, and ROI measurement
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🎨</div>
+            <h3 class="feature-title">Enhanced Dashboard UI</h3>
+            <p class="feature-description">
+              Modern dashboard icons, improved OS breakdown visualization, and streamlined user experience
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🔀</div>
+            <h3 class="feature-title">User Journey Mapping</h3>
+            <p class="feature-description">
+              Entry and exit page tracking with tabbed dashboard views for better user flow analysis
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🏥</div>
+            <h3 class="feature-title">Health Check System</h3>
+            <p class="feature-description">
+              Built-in health monitoring with CLI doctor command for system diagnostics and troubleshooting
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">⚙️</div>
+            <h3 class="feature-title">Website Management Dashboard</h3>
+            <p class="feature-description">
+              Improved admin interface for managing multiple websites with enhanced controls and settings
+            </p>
+          </div>
+        </div>
+
+        <div
+          style="
+            text-align: center;
+            margin-top: 3rem;
+            padding: 2rem;
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 16px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+          "
+        >
+          <h3
+            style="
+              font-size: 1.2rem;
+              margin-bottom: 1rem;
+              color: var(--accent-color);
+              font-weight: 600;
+            "
+          >
+            🚀 Version 0.27.0 Released
+          </h3>
+          <p style="color: var(--text-secondary); margin-bottom: 1.5rem">
+            The latest release includes all these features plus performance improvements and bug fixes
+          </p>
+          <a href="https://github.com/seuros/kaunta/releases" class="btn btn-primary">
+            View Release Notes
+          </a>
         </div>
       </div>
     </section>
