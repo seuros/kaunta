@@ -38,6 +38,22 @@ func TestGetClientIPLogic(t *testing.T) {
 			description:    "Should fallback to c.IP() when CF-Connecting-IP is empty",
 		},
 		{
+			name:               "cloudflare multiple IPs takes first",
+			proxyMode:          "cloudflare",
+			cfConnectingIP:     "102.97.33.165, 2400:cb00:40:1000:abaf:890d:d2f:bbf4",
+			xForwardedFor:      "198.51.100.1",
+			expectedStartsWith: "102.97.33.165",
+			description:        "Should extract first IP from CF-Connecting-IP when multiple IPs (IPv4 and IPv6)",
+		},
+		{
+			name:               "cloudflare trims whitespace",
+			proxyMode:          "cloudflare",
+			cfConnectingIP:     "102.97.33.165 , 198.51.100.1",
+			xForwardedFor:      "",
+			expectedStartsWith: "102.97.33.165",
+			description:        "Should trim whitespace from CF-Connecting-IP",
+		},
+		{
 			name:               "xforwarded takes first IP",
 			proxyMode:          "xforwarded",
 			cfConnectingIP:     "203.0.113.1",
@@ -73,7 +89,7 @@ func TestGetClientIPLogic(t *testing.T) {
 			switch tt.proxyMode {
 			case "cloudflare":
 				if tt.cfConnectingIP != "" {
-					ip = tt.cfConnectingIP
+					ip = strings.TrimSpace(strings.Split(tt.cfConnectingIP, ",")[0])
 				} else {
 					ip = "127.0.0.1" // fallback
 				}

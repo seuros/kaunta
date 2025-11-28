@@ -418,6 +418,9 @@ func serveAnalytics(
 	})
 	app.Post("/api/send", handlers.HandleTracking)
 
+	// Pixel tracking (for email, RSS, no-JS environments)
+	app.Get("/p/:id.gif", handlers.HandlePixelTracking)
+
 	// Stats API (Plausible-inspired) - protected
 	app.Get("/api/stats/realtime/:website_id", middleware.Auth, handlers.HandleCurrentVisitors)
 

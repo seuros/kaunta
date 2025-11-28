@@ -74,10 +74,25 @@ type PayloadData struct {
 	UTMContent  *string `json:"utm_content,omitempty"`  // ad variant identifier
 }
 
-// HandleTracking is the /api/send endpoint - compatible with Umami
-func HandleTracking(c fiber.Ctx) error {
+// getTrackingPayload extracts TrackingPayload from either JSON POST body or pixel query params
+func getTrackingPayload(c fiber.Ctx) (*TrackingPayload, error) {
+	// Check for pixel tracking payload (from Locals set by HandlePixelTracking)
+	if payload, ok := c.Locals("pixel_payload").(TrackingPayload); ok {
+		return &payload, nil
+	}
+
+	// Default: JSON POST body (existing behavior)
 	var payload TrackingPayload
 	if err := c.Bind().Body(&payload); err != nil {
+		return nil, err
+	}
+	return &payload, nil
+}
+
+// HandleTracking is the /api/send endpoint - compatible with Umami
+func HandleTracking(c fiber.Ctx) error {
+	payload, err := getTrackingPayload(c)
+	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"error": "Invalid JSON payload",
 		})
@@ -564,12 +579,13 @@ func getClientIP(c fiber.Ctx, proxyMode string) string {
 	switch proxyMode {
 	case "cloudflare":
 		if cfIP := c.Get("CF-Connecting-IP"); cfIP != "" {
-			return cfIP
+			// Take first IP from comma-separated list and trim whitespace
+			return strings.TrimSpace(strings.Split(cfIP, ",")[0])
 		}
 	case "xforwarded":
 		if xff := c.Get("X-Forwarded-For"); xff != "" {
-			// Take first IP from comma-separated list
-			return strings.Split(xff, ",")[0]
+			// Take first IP from comma-separated list and trim whitespace
+			return strings.TrimSpace(strings.Split(xff, ",")[0])
 		}
 	}
 	// Default: use direct connection IP
