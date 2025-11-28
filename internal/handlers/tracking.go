@@ -579,12 +579,13 @@ func getClientIP(c fiber.Ctx, proxyMode string) string {
 	switch proxyMode {
 	case "cloudflare":
 		if cfIP := c.Get("CF-Connecting-IP"); cfIP != "" {
-			return cfIP
+			// Take first IP from comma-separated list and trim whitespace
+			return strings.TrimSpace(strings.Split(cfIP, ",")[0])
 		}
 	case "xforwarded":
 		if xff := c.Get("X-Forwarded-For"); xff != "" {
-			// Take first IP from comma-separated list
-			return strings.Split(xff, ",")[0]
+			// Take first IP from comma-separated list and trim whitespace
+			return strings.TrimSpace(strings.Split(xff, ",")[0])
 		}
 	}
 	// Default: use direct connection IP
