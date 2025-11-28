@@ -485,6 +485,7 @@ func serveAnalytics(
 	app.Get("/api/dashboard/referrers/:website_id", middleware.Auth, handlers.HandleTopReferrers)
 	app.Get("/api/dashboard/browsers/:website_id", middleware.Auth, handlers.HandleTopBrowsers)
 	app.Get("/api/dashboard/devices/:website_id", middleware.Auth, handlers.HandleTopDevices)
+	app.Get("/api/dashboard/os/:website_id", middleware.Auth, handlers.HandleTopOS)
 	app.Get("/api/dashboard/countries/:website_id", middleware.Auth, handlers.HandleTopCountries)
 	app.Get("/api/dashboard/cities/:website_id", middleware.Auth, handlers.HandleTopCities)
 	app.Get("/api/dashboard/regions/:website_id", middleware.Auth, handlers.HandleTopRegions)

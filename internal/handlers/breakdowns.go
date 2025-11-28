@@ -91,9 +91,71 @@ func HandleTopDevices(c fiber.Ctx) error {
 	return handleBreakdown(c, "device")
 }
 
-// HandleTopCountries returns top countries breakdown
+// HandleTopCountries returns top countries breakdown with ISO codes
 func HandleTopCountries(c fiber.Ctx) error {
-	return handleBreakdown(c, "country")
+	websiteIDStr := c.Params("website_id")
+	websiteID, err := uuid.Parse(websiteIDStr)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid website ID"})
+	}
+
+	pagination := ParsePaginationParamsWithValidation(c, "breakdown")
+
+	// Extract filter parameters
+	browser := c.Query("browser")
+	device := c.Query("device")
+	page := c.Query("page")
+
+	var browserParam, deviceParam, pageParam interface{}
+	if browser != "" {
+		browserParam = browser
+	}
+	if device != "" {
+		deviceParam = device
+	}
+	if page != "" {
+		pageParam = page
+	}
+
+	// Query returns ISO code as name, we convert to full name and keep code
+	query := `SELECT * FROM get_breakdown($1, $2, 1, $3, $4, $5, $6, $7, $8, $9, $10)`
+	rows, err := database.DB.Query(
+		query,
+		websiteID,
+		"country",
+		pagination.Per,
+		pagination.Offset,
+		nil, // country filter not applicable when querying countries
+		browserParam,
+		deviceParam,
+		pageParam,
+		pagination.SortBy,
+		string(pagination.SortOrder),
+	)
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to query countries"})
+	}
+	defer func() { _ = rows.Close() }()
+
+	items := make([]BreakdownItem, 0)
+	var totalCount int64
+	for rows.Next() {
+		var isoCode string
+		var count int64
+		var rowTotal int64
+		if err := rows.Scan(&isoCode, &count, &rowTotal); err != nil {
+			continue
+		}
+		totalCount = rowTotal
+		items = append(items, BreakdownItem{
+			Name:  getCountryName(isoCode), // Convert ISO to full name
+			Code:  isoCode,                 // Keep ISO code for flag emoji
+			Count: int(count),
+		})
+	}
+
+	return c.JSON(NewPaginatedResponse(items, pagination, totalCount))
 }
 
 // HandleTopCities returns top cities breakdown
@@ -147,6 +209,11 @@ func HandleEntryPages(c fiber.Ctx) error {
 // HandleExitPages returns exit pages breakdown (last page before leaving)
 func HandleExitPages(c fiber.Ctx) error {
 	return handleBreakdown(c, "exit_page")
+}
+
+// HandleTopOS returns top operating systems breakdown
+func HandleTopOS(c fiber.Ctx) error {
+	return handleBreakdown(c, "os")
 }
 
 // HandleMapData returns visitor data aggregated by country for choropleth maps

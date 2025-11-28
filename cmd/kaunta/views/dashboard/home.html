@@ -151,6 +151,16 @@
       </button>
       <button
         class="tab transition-standard"
+        :class="{ 'active': activeTab === 'os' }"
+        @click="activeTab = 'os'; await loadBreakdown()"
+      >
+        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+        </svg>
+        OS
+      </button>
+      <button
+        class="tab transition-standard"
         :class="{ 'active': activeTab === 'countries' }"
         @click="activeTab = 'countries'; await loadBreakdown()"
       >
@@ -245,7 +255,7 @@
               style="cursor: pointer; user-select: none;"
               class="sortable-header"
             >
-              <span x-text="activeTab === 'pages' ? 'Page Path' : activeTab === 'referrers' ? 'Referrer' : activeTab === 'browsers' ? 'Browser' : activeTab === 'devices' ? 'Device' : activeTab === 'countries' ? 'Country' : activeTab === 'cities' ? 'City' : activeTab === 'regions' ? 'Region' : activeTab === 'entry-pages' ? 'Entry Page' : activeTab === 'exit-pages' ? 'Exit Page' : 'Name'"></span>
+              <span x-text="activeTab === 'pages' ? 'Page Path' : activeTab === 'referrers' ? 'Referrer' : activeTab === 'browsers' ? 'Browser' : activeTab === 'devices' ? 'Device' : activeTab === 'os' ? 'Operating System' : activeTab === 'countries' ? 'Country' : activeTab === 'cities' ? 'City' : activeTab === 'regions' ? 'Region' : activeTab === 'entry-pages' ? 'Entry Page' : activeTab === 'exit-pages' ? 'Exit Page' : 'Name'"></span>
               <span x-show="sortColumn === 'name'" x-text="sortDirection === 'asc' ? ' ↑' : ' ↓'" style="opacity: 0.7;"></span>
             </th>
             <th
@@ -261,7 +271,17 @@
         <tbody>
           <template x-for="(item, index) in breakdownData" :key="index">
             <tr>
-              <td x-text="item.name"></td>
+              <td style="display: flex; align-items: center; gap: 8px;">
+                <!-- Country flags (emoji) -->
+                <span x-show="activeTab === 'countries' && item.code" x-text="countryToFlag(item.code)" style="font-size: 1.2em;"></span>
+                <!-- Browser icons -->
+                <span x-show="activeTab === 'browsers'" x-html="browserIcon(item.name)" class="breakdown-icon"></span>
+                <!-- OS icons -->
+                <span x-show="activeTab === 'os'" x-html="osIcon(item.name)" class="breakdown-icon"></span>
+                <!-- Device icons -->
+                <span x-show="activeTab === 'devices'" x-html="deviceIcon(item.name)" class="breakdown-icon"></span>
+                <span x-text="item.name"></span>
+              </td>
               <td
                 style="text-align: right; font-weight: 500; color: var(--accent-color)"
                 x-text="item.count.toLocaleString()"

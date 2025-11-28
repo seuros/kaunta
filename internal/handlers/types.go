@@ -30,6 +30,7 @@ type TimeSeriesPoint struct {
 // BreakdownItem represents a breakdown metric with count
 type BreakdownItem struct {
 	Name  string `json:"name"`
+	Code  string `json:"code,omitempty"` // ISO code for countries
 	Count int    `json:"count"`
 }
 
