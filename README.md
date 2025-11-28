@@ -427,6 +427,58 @@ https://yoursite.com?utm_source=twitter&utm_medium=social&utm_campaign=product_l
 
 No additional configuration needed - just use standard UTM parameters in your marketing links.
 
+## Pixel Tracking (No JavaScript Required)
+
+For environments where JavaScript doesn't run (emails, RSS feeds, bots), use the pixel tracking endpoint:
+
+```html
+<!-- Basic pixel -->
+<img src="https://analytics.example.com/p/YOUR-WEBSITE-ID.gif"
+     width="1" height="1" alt="" />
+
+<!-- With UTM parameters for email campaigns -->
+<img src="https://analytics.example.com/p/YOUR-WEBSITE-ID.gif?name=email_open&utm_source=mailchimp&utm_campaign=welcome"
+     width="1" height="1" style="display:none" />
+
+<!-- RSS feed tracking -->
+<img src="https://analytics.example.com/p/YOUR-WEBSITE-ID.gif?url=https://blog.example.com/post-title"
+     width="1" height="1" />
+
+<!-- No-JS fallback -->
+<noscript>
+  <img src="https://analytics.example.com/p/YOUR-WEBSITE-ID.gif"
+       width="1" height="1" alt="" />
+</noscript>
+```
+
+### Query Parameters
+
+All parameters are optional except the website ID (in the URL path):
+
+- `url` - Page URL being tracked (falls back to Referer header)
+- `title` - Page title
+- `name` - Custom event name (default: pageview)
+- `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content` - Campaign tracking
+
+### What Gets Tracked
+
+The pixel automatically captures:
+- **IP address** - For GeoIP lookup (country, city, region)
+- **User-Agent** - Browser, OS, device detection
+- **Referrer** - From HTTP Referer header
+- **Language** - From Accept-Language header
+- **Bot detection** - Same PostgreSQL-based detection as JS tracking
+
+### Use Cases
+
+- **Email campaigns** - Track email opens and click-throughs
+- **RSS feeds** - Monitor RSS reader engagement
+- **AMP pages** - Google AMP compatible tracking
+- **Server-side events** - Track backend processes, API calls, webhooks
+- **Bot/crawler analytics** - Track search engine crawlers and bots
+
+The pixel tracking shares the same session ID algorithm as JavaScript tracking, so visitors are tracked consistently across both methods.
+
 ## Umami Compatible
 
 Drop-in replacement for Umami. Works with Umami's JavaScript tracker and seamlessly migrates existing databases:
