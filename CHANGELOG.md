@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/seuros/kaunta/compare/v0.27.0...v0.28.0) (2025-11-28)
+
+
+### Features
+
+* move password verification to Go-side bcrypt ([#85](https://github.com/seuros/kaunta/issues/85)) ([a0fe6ab](https://github.com/seuros/kaunta/commit/a0fe6ab8928d9b0672685fd16d7c6ff3e12d3f5b))
+
 ## [0.27.0](https://github.com/seuros/kaunta/compare/v0.26.0...v0.27.0) (2025-11-28)
 
 
