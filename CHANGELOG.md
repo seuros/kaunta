@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.27.0](https://github.com/seuros/kaunta/compare/v0.26.0...v0.27.0) (2025-11-28)
+
+
+### Features
+
+* add dashboard icons and OS breakdown ([#83](https://github.com/seuros/kaunta/issues/83)) ([3473a2f](https://github.com/seuros/kaunta/commit/3473a2fc1bda99fcc0668bd378a8ad061449fcb4))
+* add pixel tracking endpoint for email and RSS analytics ([#81](https://github.com/seuros/kaunta/issues/81)) ([5908e42](https://github.com/seuros/kaunta/commit/5908e429013a04ed4aeab19f3c7e5c9ea4554b03))
+
 ## [0.26.0](https://github.com/seuros/kaunta/compare/v0.25.0...v0.26.0) (2025-11-27)
 
 
