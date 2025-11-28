@@ -12,6 +12,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/csrf"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/logging"
@@ -260,12 +261,14 @@ func fetchUserFromDB(username string) (*userRecord, error) {
 }
 
 func verifyPasswordInDB(password, passwordHash string) (bool, error) {
-	var passwordValid bool
-	err := database.DB.QueryRow("SELECT verify_password($1, $2)", password, passwordHash).Scan(&passwordValid)
+	err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password))
+	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
-	return passwordValid, nil
+	return true, nil
 }
 
 func insertSessionInDB(sessionID uuid.UUID, userID uuid.UUID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) error {
