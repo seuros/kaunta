@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.1](https://github.com/seuros/kaunta/compare/v0.28.0...v0.28.1) (2025-11-29)
+
+
+### Bug Fixes
+
+* preserve HTTPS scheme in TRUSTED_ORIGINS config ([#88](https://github.com/seuros/kaunta/issues/88)) ([270f4a3](https://github.com/seuros/kaunta/commit/270f4a30b19ff29f4886d0cf1df5ee7b5548d3d3))
+
 ## [0.28.0](https://github.com/seuros/kaunta/compare/v0.27.0...v0.28.0) (2025-11-28)
 
 
