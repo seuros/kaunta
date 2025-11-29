@@ -976,7 +976,8 @@
                 >
               </div>
               <p class="hero-subtitle">
-                Advanced privacy-focused analytics with email tracking, UTM campaigns, and real-time insights. Modern drop-in replacement for Umami.
+                Advanced privacy-focused analytics with email tracking, UTM campaigns, and real-time
+                insights. Modern drop-in replacement for Umami.
               </p>
             </div>
 
@@ -984,6 +985,10 @@
               <a href="https://github.com/seuros/kaunta#readme" class="btn btn-primary">
                 <span>🚀</span>
                 Get Started
+              </a>
+              <a href="#usage" class="btn btn-secondary">
+                <span>📦</span>
+                Quick Guide
               </a>
             </div>
 
@@ -1082,11 +1087,15 @@
           <div class="code-block">
             <div class="code-header">bash</div>
             <div class="code-content">
-              <code><span class="code-comment"># Install to ~/.local/bin (default)</span>
-curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/install.sh | bash
+              <code
+                ><span class="code-comment"># Install to ~/.local/bin (default)</span>
+                curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/install.sh
+                | bash
 
-<span class="code-comment"># Install system-wide (requires sudo)</span>
-curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/install.sh | bash -s -- --system</code>
+                <span class="code-comment"># Install system-wide (requires sudo)</span>
+                curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/install.sh
+                | bash -s -- --system</code
+              >
             </div>
           </div>
 
@@ -1104,9 +1113,19 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
           <div class="code-block">
             <div class="code-header">Environment Variables</div>
             <div class="code-content">
-              <code><span class="code-keyword">export</span> <span class="code-function">DATABASE_URL</span>=<span class="code-string">"postgresql://user:password@localhost:5432/kaunta"</span>
-<span class="code-keyword">export</span> <span class="code-function">PORT</span>=<span class="code-string">"3000"</span>
-<span class="code-keyword">export</span> <span class="code-function">SECURE_COOKIES</span>=<span class="code-string">"true"</span>  <span class="code-comment"># Enable for HTTPS</span></code>
+              <code
+                ><span class="code-keyword">export</span>
+                <span class="code-function">DATABASE_URL</span>=<span class="code-string"
+                  >"postgresql://user:password@localhost:5432/kaunta"</span
+                >
+                <span class="code-keyword">export</span>
+                <span class="code-function">PORT</span>=<span class="code-string">"3000"</span>
+                <span class="code-keyword">export</span>
+                <span class="code-function">SECURE_COOKIES</span>=<span class="code-string"
+                  >"true"</span
+                >
+                <span class="code-comment"># Enable for HTTPS</span></code
+              >
             </div>
           </div>
 
@@ -1124,7 +1143,13 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
           <div class="code-block">
             <div class="code-header">docker</div>
             <div class="code-content">
-              <code><span class="code-function">docker</span> run -e <span class="code-function">DATABASE_URL</span>=<span class="code-string">"postgresql://..."</span> -p 3000:3000 kaunta</code>
+              <code
+                ><span class="code-function">docker</span> run -e
+                <span class="code-function">DATABASE_URL</span>=<span class="code-string"
+                  >"postgresql://..."</span
+                >
+                -p 3000:3000 kaunta</code
+              >
             </div>
           </div>
 
@@ -1197,14 +1222,22 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
         <div class="code-block">
           <div class="code-header">html</div>
           <div class="code-content">
-            <code><span class="code-keyword">&lt;script</span> <span class="code-function">src</span>=<span class="code-string">"https://your-kaunta-server.com/k.js"</span>
-        <span class="code-function">data-website-id</span>=<span class="code-string">"your-website-uuid"</span>
-        <span class="code-function">data-debug</span>=<span class="code-string">"true"</span>
-        <span class="code-function">async defer</span><span class="code-keyword">&gt;&lt;/script&gt;</span></code>
+            <code
+              ><span class="code-keyword">&lt;script</span>
+              <span class="code-function">src</span>=<span class="code-string"
+                >"https://your-kaunta-server.com/k.js"</span
+              >
+              <span class="code-function">data-website-id</span>=<span class="code-string"
+                >"your-website-uuid"</span
+              >
+              <span class="code-function">data-debug</span>=<span class="code-string">"true"</span>
+              <span class="code-function">async defer</span
+              ><span class="code-keyword">&gt;&lt;/script&gt;</span></code
+            >
           </div>
         </div>
 
-        <div style="margin-top: 3rem;">
+        <div style="margin-top: 3rem">
           <h3
             style="
               font-size: 1.25rem;
@@ -1219,7 +1252,10 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
           <div class="code-block">
             <div class="code-header">bash</div>
             <div class="code-content">
-              <code><span class="code-function">kaunta</span> website create <span class="code-string">example.com</span></code>
+              <code
+                ><span class="code-function">kaunta</span> website create
+                <span class="code-string">example.com</span></code
+              >
             </div>
           </div>
 
@@ -1237,9 +1273,19 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
           <div class="code-block">
             <div class="code-header">html</div>
             <div class="code-content">
-              <code><span class="code-comment">&lt;!-- Email campaign tracking --&gt;</span>
-<span class="code-keyword">&lt;img</span> <span class="code-function">src</span>=<span class="code-string">"https://your-kaunta-server.com/p/YOUR-WEBSITE-ID.gif?utm_source=mailchimp&utm_campaign=welcome"</span>
-     <span class="code-function">width</span>=<span class="code-string">"1"</span> <span class="code-function">height</span>=<span class="code-string">"1"</span> <span class="code-function">style</span>=<span class="code-string">"display:none"</span> <span class="code-keyword">/&gt;</span></code>
+              <code
+                ><span class="code-comment">&lt;!-- Email campaign tracking --&gt;</span>
+                <span class="code-keyword">&lt;img</span>
+                <span class="code-function">src</span>=<span class="code-string"
+                  >"https://your-kaunta-server.com/p/YOUR-WEBSITE-ID.gif?utm_source=mailchimp&utm_campaign=welcome"</span
+                >
+                <span class="code-function">width</span>=<span class="code-string">"1"</span>
+                <span class="code-function">height</span>=<span class="code-string">"1"</span>
+                <span class="code-function">style</span>=<span class="code-string"
+                  >"display:none"</span
+                >
+                <span class="code-keyword">/&gt;</span></code
+              >
             </div>
           </div>
         </div>
@@ -1295,8 +1341,13 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
               <div class="code-block">
                 <div class="code-header">bash</div>
                 <div class="code-content">
-                  <code><span class="code-function">kaunta</span> user create <span class="code-string">admin</span>
-<span class="code-comment"># You'll be prompted for name and password</span></code>
+                  <code
+                    ><span class="code-function">kaunta</span> user create
+                    <span class="code-string">admin</span>
+                    <span class="code-comment"
+                      ># You'll be prompted for name and password</span
+                    ></code
+                  >
                 </div>
               </div>
 
@@ -1447,7 +1498,9 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
           <ul class="dashboard-list" style="margin-bottom: 0">
             <li>
               <strong>Advanced Visitor Analytics</strong
-              ><span>Total visitors, unique sessions, returning vs new with enhanced dashboard UI</span>
+              ><span
+                >Total visitors, unique sessions, returning vs new with enhanced dashboard UI</span
+              >
             </li>
             <li>
               <strong>User Journey Tracking</strong
@@ -1455,7 +1508,9 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
             </li>
             <li>
               <strong>Campaign Attribution</strong
-              ><span>UTM parameter tracking, email pixel analytics, and marketing ROI analysis</span>
+              ><span
+                >UTM parameter tracking, email pixel analytics, and marketing ROI analysis</span
+              >
             </li>
             <li>
               <strong>Enhanced Geographic Data</strong
@@ -1465,7 +1520,10 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
             </li>
             <li>
               <strong>Detailed Technology Insights</strong
-              ><span>Browser types, OS breakdown with modern icons, device categories, screen resolutions</span>
+              ><span
+                >Browser types, OS breakdown with modern icons, device categories, screen
+                resolutions</span
+              >
             </li>
             <li>
               <strong>Real-Time Monitoring & Health</strong
@@ -1490,8 +1548,8 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
             margin-right: auto;
           "
         >
-          Kaunta continues to evolve with powerful new features for modern analytics needs. 
-          From email tracking to enhanced dashboards, discover what's new in the latest release.
+          Kaunta continues to evolve with powerful new features for modern analytics needs. From
+          email tracking to enhanced dashboards, discover what's new in the latest release.
         </p>
 
         <div class="features-grid">
@@ -1499,21 +1557,24 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
             <div class="feature-icon">📧</div>
             <h3 class="feature-title">Email Pixel Tracking</h3>
             <p class="feature-description">
-              Track email opens and engagement with invisible 1x1 pixel tracking for newsletters and campaigns
+              Track email opens and engagement with invisible 1x1 pixel tracking for newsletters and
+              campaigns
             </p>
           </div>
           <div class="feature-card">
             <div class="feature-icon">📊</div>
             <h3 class="feature-title">UTM Campaign Analytics</h3>
             <p class="feature-description">
-              Complete UTM parameter tracking with campaign attribution, source analysis, and ROI measurement
+              Complete UTM parameter tracking with campaign attribution, source analysis, and ROI
+              measurement
             </p>
           </div>
           <div class="feature-card">
             <div class="feature-icon">🎨</div>
             <h3 class="feature-title">Enhanced Dashboard UI</h3>
             <p class="feature-description">
-              Modern dashboard icons, improved OS breakdown visualization, and streamlined user experience
+              Modern dashboard icons, improved OS breakdown visualization, and streamlined user
+              experience
             </p>
           </div>
           <div class="feature-card">
@@ -1527,14 +1588,16 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
             <div class="feature-icon">🏥</div>
             <h3 class="feature-title">Health Check System</h3>
             <p class="feature-description">
-              Built-in health monitoring with CLI doctor command for system diagnostics and troubleshooting
+              Built-in health monitoring with CLI doctor command for system diagnostics and
+              troubleshooting
             </p>
           </div>
           <div class="feature-card">
             <div class="feature-icon">⚙️</div>
             <h3 class="feature-title">Website Management Dashboard</h3>
             <p class="feature-description">
-              Improved admin interface for managing multiple websites with enhanced controls and settings
+              Improved admin interface for managing multiple websites with enhanced controls and
+              settings
             </p>
           </div>
         </div>
@@ -1557,10 +1620,11 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
               font-weight: 600;
             "
           >
-            🚀 Version 0.27.0 Released
+            🚀 <span id="latest-version">Latest Version Available</span>
           </h3>
           <p style="color: var(--text-secondary); margin-bottom: 1.5rem">
-            The latest release includes all these features plus performance improvements and bug fixes
+            The latest release includes all these features plus performance improvements and bug
+            fixes
           </p>
           <a href="https://github.com/seuros/kaunta/releases" class="btn btn-primary">
             View Release Notes
@@ -1643,5 +1707,38 @@ curl -fsSL https://raw.githubusercontent.com/seuros/kaunta/master/scripts/instal
         </p>
       </div>
     </footer>
+
+    <script>
+      // Automatically fetch and display the latest Kaunta version
+      async function fetchLatestVersion() {
+        const versionElement = document.getElementById("latest-version");
+        if (!versionElement) return;
+
+        try {
+          versionElement.textContent = "Loading...";
+
+          const response = await fetch(
+            "https://api.github.com/repos/seuros/kaunta/releases/latest",
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch release data");
+          }
+
+          const release = await response.json();
+          const version = release.tag_name.replace("v", "");
+
+          versionElement.textContent = `Version ${version} Released`;
+        } catch (error) {
+          console.log("Failed to fetch latest version:", error);
+          // Show helpful fallback message
+          versionElement.innerHTML =
+            'Latest Version Available <br><small style="font-size: 0.8em; opacity: 0.8;">Check GitHub for updates</small>';
+        }
+      }
+
+      // Fetch version when page loads
+      document.addEventListener("DOMContentLoaded", fetchLatestVersion);
+    </script>
   </body>
 </html>
