@@ -141,9 +141,7 @@ func parseTrustedOrigins(originsStr string) []string {
 	for _, part := range parts {
 		origin := strings.TrimSpace(part)
 		origin = strings.ToLower(origin)
-		// Strip protocol if provided
-		origin = strings.TrimPrefix(origin, "http://")
-		origin = strings.TrimPrefix(origin, "https://")
+		// Keep scheme if provided (required for CSRF validation)
 		origin = strings.TrimSuffix(origin, "/")
 
 		if origin != "" {

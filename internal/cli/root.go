@@ -291,12 +291,15 @@ func serveAnalytics(
 	}
 
 	// Transform domain strings to full URLs for CSRF middleware
-	trustedOriginURLs := make([]string, 0, len(trustedOrigins))
+	trustedOriginURLs := make([]string, 0, len(trustedOrigins)*2)
 	for _, domain := range trustedOrigins {
-		if !strings.HasPrefix(domain, "http://") && !strings.HasPrefix(domain, "https://") {
-			trustedOriginURLs = append(trustedOriginURLs, "http://"+domain)
-		} else {
+		if strings.HasPrefix(domain, "http://") || strings.HasPrefix(domain, "https://") {
+			// Already has scheme - use as-is
 			trustedOriginURLs = append(trustedOriginURLs, domain)
+		} else {
+			// Legacy: no scheme stored - trust both protocols for backward compatibility
+			trustedOriginURLs = append(trustedOriginURLs, "http://"+domain)
+			trustedOriginURLs = append(trustedOriginURLs, "https://"+domain)
 		}
 	}
 
