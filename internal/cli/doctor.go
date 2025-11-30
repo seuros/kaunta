@@ -188,7 +188,7 @@ func checkMigrations(cfg *config.Config) CheckResult {
 		}
 	}
 
-	expectedVersion := uint(12)
+	expectedVersion := database.LatestMigrationVersion
 	if version != expectedVersion {
 		return CheckResult{
 			Name:       "Database Migrations",

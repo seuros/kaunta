@@ -1,3 +1,4 @@
+//go:generate go run ./tools/genmigrationversion
 package database
 
 import (
