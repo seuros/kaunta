@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.2](https://github.com/seuros/kaunta/compare/v0.29.1...v0.29.2) (2025-11-30)
+
+
+### Bug Fixes
+
+* prevent Chart.js error on hidden canvas ([16a7bd4](https://github.com/seuros/kaunta/commit/16a7bd42148cec12499cda34a623af7be3928e6e))
+
 ## [0.29.1](https://github.com/seuros/kaunta/compare/v0.29.0...v0.29.1) (2025-11-30)
 
 
