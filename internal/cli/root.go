@@ -525,6 +525,12 @@ func serveAnalytics(
 		})
 	})
 
+	// Goals API (protected)
+	app.Get("/api/goals/:website_id", middleware.Auth, handlers.HandleGoalList)
+	app.Post("/api/goals", middleware.Auth, handlers.HandleGoalCreate)
+	app.Put("/api/goals/:id", middleware.Auth, handlers.HandleGoalUpdate)
+	app.Delete("/api/goals/:id", middleware.Auth, handlers.HandleGoalDelete)
+
 	// Start server
 	port := getEnv("PORT", "3000")
 	logging.L().Info("starting kaunta server", zap.String("port", port))
