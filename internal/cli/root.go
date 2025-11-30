@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -207,7 +208,21 @@ func serveAnalytics(
 	if err != nil {
 		logging.L().Warn("failed to load config for trusted origins", zap.Error(err))
 	} else if len(cfg.TrustedOrigins) > 0 {
-		syncTrustedOrigins(cfg.TrustedOrigins)
+		validOrigins := make([]string, 0, len(cfg.TrustedOrigins))
+		for _, origin := range cfg.TrustedOrigins {
+			clean, err := config.SanitizeTrustedDomain(origin)
+			if err != nil {
+				logging.L().Warn("skipping invalid trusted origin from config", zap.String("origin", origin), zap.Error(err))
+				continue
+			}
+			validOrigins = append(validOrigins, clean)
+		}
+
+		if len(validOrigins) > 0 {
+			syncTrustedOrigins(validOrigins)
+		} else {
+			logging.L().Warn("no valid trusted origins to sync from config/env")
+		}
 	}
 
 	// Ensure self website exists for dogfooding (creates if missing for existing installations)
@@ -290,16 +305,13 @@ func serveAnalytics(
 		trustedOrigins = []string{} // Empty list if error
 	}
 
-	// Transform domain strings to full URLs for CSRF middleware
-	trustedOriginURLs := make([]string, 0, len(trustedOrigins)*2)
+	// Transform domain strings to full URLs for CSRF middleware and validate format
+	trustedOriginURLs := make([]string, 0, len(trustedOrigins))
 	for _, domain := range trustedOrigins {
-		if strings.HasPrefix(domain, "http://") || strings.HasPrefix(domain, "https://") {
-			// Already has scheme - use as-is
-			trustedOriginURLs = append(trustedOriginURLs, domain)
+		if normalized, ok := normalizeOriginForCSRF(domain); ok {
+			trustedOriginURLs = append(trustedOriginURLs, normalized)
 		} else {
-			// Legacy: no scheme stored - trust both protocols for backward compatibility
-			trustedOriginURLs = append(trustedOriginURLs, "http://"+domain)
-			trustedOriginURLs = append(trustedOriginURLs, "https://"+domain)
+			logging.L().Warn("skipping invalid trusted origin", zap.String("origin", domain))
 		}
 	}
 
@@ -991,6 +1003,38 @@ func syncTrustedOrigins(origins []string) {
 		}
 	}
 	logging.L().Info("finished syncing trusted origins")
+}
+
+// normalizeOriginForCSRF converts a domain (with or without scheme) into a full origin URL
+// acceptable by Fiber's CSRF middleware. It rejects paths, queries, fragments, wildcards,
+// and empty values.
+func normalizeOriginForCSRF(domain string) (string, bool) {
+	trimmed := strings.TrimSpace(domain)
+	if trimmed == "" {
+		return "", false
+	}
+
+	origin := trimmed
+	if !strings.HasPrefix(origin, "http://") && !strings.HasPrefix(origin, "https://") {
+		origin = "http://" + origin
+	}
+
+	origin = strings.TrimSuffix(origin, "/")
+
+	u, err := url.Parse(origin)
+	if err != nil {
+		return "", false
+	}
+
+	if u.Scheme == "" || u.Host == "" || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+		return "", false
+	}
+
+	if strings.Contains(u.Host, "*") {
+		return "", false
+	}
+
+	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host), true
 }
 
 // ensureSelfWebsite creates or migrates the self-tracking website

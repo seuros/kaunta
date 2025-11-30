@@ -127,58 +127,31 @@ data_dir = "./config-data"
 	assert.Equal(t, []string{"example.com", "foo.test"}, cfg.TrustedOrigins)
 }
 
-func TestParseTrustedOrigins(t *testing.T) {
+func TestSanitizeTrustedDomain(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		expected []string
+		input       string
+		expected    string
+		shouldError bool
 	}{
-		{
-			name:     "empty string",
-			input:    "",
-			expected: []string{},
-		},
-		{
-			name:     "single domain without scheme",
-			input:    "example.com",
-			expected: []string{"example.com"},
-		},
-		{
-			name:     "preserves https scheme",
-			input:    "https://example.com",
-			expected: []string{"https://example.com"},
-		},
-		{
-			name:     "preserves http scheme",
-			input:    "http://example.com",
-			expected: []string{"http://example.com"},
-		},
-		{
-			name:     "multiple origins with mixed schemes",
-			input:    "https://secure.example.com, http://insecure.test, plain.domain",
-			expected: []string{"https://secure.example.com", "http://insecure.test", "plain.domain"},
-		},
-		{
-			name:     "strips trailing slashes",
-			input:    "https://example.com/",
-			expected: []string{"https://example.com"},
-		},
-		{
-			name:     "lowercases origins",
-			input:    "HTTPS://Example.COM",
-			expected: []string{"https://example.com"},
-		},
-		{
-			name:     "trims whitespace",
-			input:    "  https://example.com  ,  http://test.com  ",
-			expected: []string{"https://example.com", "http://test.com"},
-		},
+		{"example.com", "example.com", false},
+		{"EXAMPLE.com", "example.com", false},
+		{"http://example.com", "example.com", false},
+		{"https://example.com:3000/", "example.com:3000", false},
+		{"example.com/path", "", true},
+		{"https://example.com/path", "", true},
+		{"http://example.com?foo=1", "", true},
+		{"http://example.com#frag", "", true},
+		{"", "", true},
+		{"https://*.example.com", "", true},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := parseTrustedOrigins(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
+		got, err := SanitizeTrustedDomain(tt.input)
+		if tt.shouldError {
+			assert.Error(t, err, tt.input)
+			continue
+		}
+		assert.NoError(t, err, tt.input)
+		assert.Equal(t, tt.expected, got)
 	}
 }

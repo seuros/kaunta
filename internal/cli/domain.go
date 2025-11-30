@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/seuros/kaunta/internal/config"
 	"github.com/seuros/kaunta/internal/database"
 )
 
@@ -34,23 +35,9 @@ Examples:
   kaunta domain add dashboard.mysite.com --description "Main analytics dashboard"`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		domain := strings.ToLower(strings.TrimSpace(args[0]))
-
-		// Validate domain format
-		if domain == "" {
-			return fmt.Errorf("domain cannot be empty")
-		}
-
-		// Strip protocol if provided
-		domain = strings.TrimPrefix(domain, "http://")
-		domain = strings.TrimPrefix(domain, "https://")
-
-		// Strip trailing slash
-		domain = strings.TrimSuffix(domain, "/")
-
-		// Basic validation
-		if strings.Contains(domain, " ") {
-			return fmt.Errorf("domain cannot contain spaces")
+		cleanDomain, err := config.SanitizeTrustedDomain(args[0])
+		if err != nil {
+			return err
 		}
 
 		// Connect to database
@@ -61,15 +48,15 @@ Examples:
 
 		// Check if domain already exists
 		var exists bool
-		err := database.DB.QueryRow(
+		err = database.DB.QueryRow(
 			"SELECT EXISTS(SELECT 1 FROM trusted_origin WHERE lower(domain) = $1)",
-			domain,
+			cleanDomain,
 		).Scan(&exists)
 		if err != nil {
 			return fmt.Errorf("failed to check existing domain: %w", err)
 		}
 		if exists {
-			return fmt.Errorf("domain '%s' already exists", domain)
+			return fmt.Errorf("domain '%s' already exists", cleanDomain)
 		}
 
 		// Get description
@@ -90,7 +77,7 @@ Examples:
 			CreatedAt   string
 		}
 
-		err = database.DB.QueryRow(query, domain, description).Scan(
+		err = database.DB.QueryRow(query, cleanDomain, description).Scan(
 			&result.ID,
 			&result.Domain,
 			&result.Description,

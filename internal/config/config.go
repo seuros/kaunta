@@ -139,14 +139,11 @@ func parseTrustedOrigins(originsStr string) []string {
 	origins := make([]string, 0, len(parts))
 
 	for _, part := range parts {
-		origin := strings.TrimSpace(part)
-		origin = strings.ToLower(origin)
-		// Keep scheme if provided (required for CSRF validation)
-		origin = strings.TrimSuffix(origin, "/")
-
-		if origin != "" {
-			origins = append(origins, origin)
+		origin, err := SanitizeTrustedDomain(part)
+		if err != nil {
+			continue
 		}
+		origins = append(origins, origin)
 	}
 
 	return origins
