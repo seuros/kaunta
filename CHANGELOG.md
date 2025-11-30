@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.29.0](https://github.com/seuros/kaunta/compare/v0.28.1...v0.29.0) (2025-11-30)
+
+
+### Features
+
+* add goals CRUD API ([#91](https://github.com/seuros/kaunta/issues/91)) ([913851a](https://github.com/seuros/kaunta/commit/913851a456ab53505f93eede8c099fdc5786b769))
+
+
+### Bug Fixes
+
+* sanitize trusted origins and enforce constraint ([#93](https://github.com/seuros/kaunta/issues/93)) ([3ef8391](https://github.com/seuros/kaunta/commit/3ef8391f229df4b50ce5c777e271476253411437))
+
 ## [0.28.1](https://github.com/seuros/kaunta/compare/v0.28.0...v0.28.1) (2025-11-29)
 
 
