@@ -100,7 +100,7 @@ func TestAuthIntegration_LoginLogoutFlow(t *testing.T) {
 
 	meReq := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
 	meReq.AddCookie(sessionCookie)
-	meResp, err := app.Test(meReq)
+	meResp, err := testRequest(app, meReq)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, meResp.StatusCode)
 
@@ -112,13 +112,13 @@ func TestAuthIntegration_LoginLogoutFlow(t *testing.T) {
 
 	logoutReq := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 	logoutReq.AddCookie(sessionCookie)
-	logoutResp, err := app.Test(logoutReq)
+	logoutResp, err := testRequest(app, logoutReq)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, logoutResp.StatusCode)
 
 	meReqAfterLogout := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
 	meReqAfterLogout.AddCookie(sessionCookie)
-	meRespAfterLogout, err := app.Test(meReqAfterLogout)
+	meRespAfterLogout, err := testRequest(app, meReqAfterLogout)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, meRespAfterLogout.StatusCode)
 }
@@ -136,7 +136,7 @@ func TestAuthIntegration_ProtectedRouteAuthorization(t *testing.T) {
 	app := newIntegrationAuthApp()
 
 	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	resp, err := app.Test(req)
+	resp, err := testRequest(app, req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
@@ -144,18 +144,18 @@ func TestAuthIntegration_ProtectedRouteAuthorization(t *testing.T) {
 
 	protectedReq := httptest.NewRequest(http.MethodGet, "/protected", nil)
 	protectedReq.AddCookie(sessionCookie)
-	protectedResp, err := app.Test(protectedReq)
+	protectedResp, err := testRequest(app, protectedReq)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, protectedResp.StatusCode)
 
 	logoutReq := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 	logoutReq.AddCookie(sessionCookie)
-	_, err = app.Test(logoutReq)
+	_, err = testRequest(app, logoutReq)
 	require.NoError(t, err)
 
 	protectedReqAfter := httptest.NewRequest(http.MethodGet, "/protected", nil)
 	protectedReqAfter.AddCookie(sessionCookie)
-	protectedRespAfter, err := app.Test(protectedReqAfter)
+	protectedRespAfter, err := testRequest(app, protectedReqAfter)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, protectedRespAfter.StatusCode)
 }
@@ -171,6 +171,10 @@ func newIntegrationAuthApp() *fiber.App {
 	return app
 }
 
+func testRequest(app *fiber.App, req *http.Request) (*http.Response, error) {
+	return app.Test(req, fiber.TestConfig{Timeout: 5 * time.Second})
+}
+
 func loginIntegrationUser(t *testing.T, app *fiber.App, username, password string) (*http.Cookie, LoginResponse) {
 	t.Helper()
 
@@ -178,7 +182,7 @@ func loginIntegrationUser(t *testing.T, app *fiber.App, username, password strin
 		strings.NewReader(fmt.Sprintf(`{"username":"%s","password":"%s"}`, username, password)))
 	loginReq.Header.Set("Content-Type", "application/json")
 
-	resp, err := app.Test(loginReq)
+	resp, err := testRequest(app, loginReq)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
