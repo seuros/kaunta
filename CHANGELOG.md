@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.1](https://github.com/seuros/kaunta/compare/v0.29.0...v0.29.1) (2025-11-30)
+
+
+### Bug Fixes
+
+* derive migration version at build time ([#94](https://github.com/seuros/kaunta/issues/94)) ([9b7828c](https://github.com/seuros/kaunta/commit/9b7828c8e57044ce5726346bb553c9ef1a63e8ed))
+
 ## [0.29.0](https://github.com/seuros/kaunta/compare/v0.28.1...v0.29.0) (2025-11-30)
 
 
