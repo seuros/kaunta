@@ -187,8 +187,15 @@ h1 {
    ======================================== */
 .container {
   max-width: 1440px;
+  min-height: 100vh;
   margin: 0 auto;
   padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+}
+
+.container > footer {
+  margin-top: auto;
 }
 
 .section {
@@ -417,6 +424,54 @@ label {
   font-size: var(--font-sm);
   color: var(--text-tertiary);
   line-height: 1.4;
+}
+
+/* ========================================
+   BADGES
+   ======================================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px var(--space-sm);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: monospace;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.badge-primary {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: white;
+}
+
+.badge-secondary {
+  background: var(--text-secondary);
+  border-color: var(--text-secondary);
+  color: white;
+}
+
+.badge-success {
+  background: var(--success-color);
+  border-color: var(--success-color);
+  color: white;
+}
+
+.badge-error {
+  background: var(--error-color);
+  border-color: var(--error-color);
+  color: white;
+}
+
+.badge-outline {
+  background: transparent;
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
 }
 
 /* ========================================
@@ -1002,7 +1057,9 @@ footer .repo-link:hover {
 
 .stat-card {
   position: relative;
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base);
 }
 
 .stat-card:hover {

@@ -45,7 +45,11 @@
             </svg>
             Dashboard
           </a>
-          <button @click="showCreateModal = true" title="Add Website" class="btn btn-sm btn-primary">
+          <button
+            @click="showCreateModal = true"
+            title="Add Website"
+            class="btn btn-sm btn-primary"
+          >
             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
@@ -88,12 +92,13 @@
             <div class="website-header">
               <div>
                 <h3 x-text="website.name || website.domain" class="website-name"></h3>
-                <span class="website-domain" x-text="website.domain"></span>
+                <span class="badge badge-secondary" x-text="website.domain"></span>
               </div>
               <div class="website-actions">
                 <button
                   @click="copyTrackingCode(website)"
-                  class="btn btn-xs btn-ghost"
+                  class="btn btn-sm"
+                  :class="copiedId === website.id ? 'btn-primary' : 'btn-secondary'"
                   title="Copy Tracking Code"
                 >
                   <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,11 +136,11 @@
                     <span x-text="domain"></span>
                     <button
                       @click="removeDomain(website, domain)"
-                      class="btn-icon-danger"
+                      class="btn btn-xs btn-danger"
                       title="Remove domain"
                       :disabled="website.allowed_domains.length <= 1"
                     >
-                      <svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
                           stroke-linecap="round"
                           stroke-linejoin="round"
@@ -153,22 +158,21 @@
                     placeholder="example.com"
                     @keyup.enter="addDomain(website)"
                     @keyup.escape="addingDomainTo = null; newDomain = ''"
-                    class="input-sm"
+                    class="input focus-ring"
+                    style="flex: 1"
                   />
-                  <button @click="addDomain(website)" class="btn btn-xs btn-primary">Add</button>
-                  <button
-                    @click="addingDomainTo = null; newDomain = ''"
-                    class="btn btn-xs btn-ghost"
-                  >
+                  <button @click="addDomain(website)" class="btn btn-primary">Add</button>
+                  <button @click="addingDomainTo = null; newDomain = ''" class="btn btn-secondary">
                     Cancel
                   </button>
                 </div>
                 <button
                   x-show="addingDomainTo !== website.id"
                   @click="addingDomainTo = website.id"
-                  class="btn btn-xs btn-ghost add-domain-btn"
+                  class="btn btn-secondary"
+                  style="width: 100%; justify-content: center"
                 >
-                  <svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
@@ -181,15 +185,19 @@
               </div>
               <button
                 @click="expandedWebsite = expandedWebsite === website.id ? null : website.id"
-                class="btn btn-xs btn-ghost expand-btn"
+                class="btn btn-secondary"
+                style="width: 100%; justify-content: center; margin-top: var(--space-sm)"
               >
-                <span x-text="expandedWebsite === website.id ? 'Hide' : 'Manage'"></span>
+                <span
+                  x-text="expandedWebsite === website.id ? 'Hide Domains' : 'Manage Domains'"
+                ></span>
                 <svg
-                  class="icon-xs"
+                  class="icon-sm"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                   :class="{'rotate-180': expandedWebsite === website.id}"
+                  style="transition: transform var(--transition-base)"
                 >
                   <path
                     stroke-linecap="round"
@@ -315,76 +323,96 @@
       .websites-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-        gap: 24px;
-        margin-top: 24px;
+        gap: var(--space-lg);
+        margin-top: var(--space-lg);
+        align-items: start;
       }
 
       .website-card {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: var(--space-lg);
+        transition:
+          transform var(--transition-base),
+          box-shadow var(--transition-base);
+      }
+
+      .website-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-xl);
       }
 
       .website-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 12px;
+        gap: var(--space-sm);
       }
 
       .website-name {
-        font-size: 18px;
+        font-size: var(--font-lg);
         font-weight: 600;
-        color: var(--text-primary);
-        margin: 0;
+        color: var(--accent-dark);
+        margin: 0 0 4px 0;
+        line-height: 1.2;
       }
 
       .website-domain {
-        font-size: 14px;
-        color: var(--text-tertiary);
+        font-size: var(--font-base);
+        color: var(--text-secondary);
+        font-family: monospace;
+        background: var(--glass-bg);
+        padding: 4px var(--space-sm);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--glass-border);
       }
 
       .website-info {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        padding: 12px;
+        gap: var(--space-sm);
+        padding: var(--space-md);
         background: var(--bg-accent);
-        border-radius: 8px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--glass-border);
       }
 
       .info-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 12px;
+        gap: var(--space-sm);
       }
 
       .info-label {
-        font-size: 13px;
+        font-size: var(--font-sm);
         color: var(--text-secondary);
+        font-weight: 500;
       }
 
       .info-value {
-        font-size: 13px;
+        font-size: var(--font-sm);
         color: var(--text-primary);
         font-family: monospace;
+        background: var(--glass-bg);
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
       }
 
       .domains-section {
         border-top: 1px solid var(--border-color);
-        padding-top: 16px;
+        padding-top: var(--space-md);
       }
 
       .domains-header {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-bottom: 8px;
+        gap: var(--space-sm);
+        margin-bottom: var(--space-sm);
       }
 
       .domains-label {
-        font-size: 14px;
+        font-size: var(--font-base);
         font-weight: 500;
         color: var(--text-secondary);
       }
@@ -392,68 +420,45 @@
       .domains-count {
         background: var(--accent-color);
         color: white;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 12px;
+        padding: 2px var(--space-sm);
+        border-radius: var(--radius-sm);
+        font-size: var(--font-xs);
         font-weight: 600;
+        min-width: 20px;
+        text-align: center;
       }
 
       .domains-list {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        margin-bottom: 12px;
+        gap: var(--space-sm);
+        margin-bottom: var(--space-sm);
       }
 
       .domain-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 8px 12px;
-        background: var(--bg-secondary);
-        border-radius: 6px;
-        font-size: 13px;
+        padding: var(--space-sm) var(--space-md);
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-sm);
+        font-size: var(--font-sm);
         font-family: monospace;
+        transition: all var(--transition-base);
+        min-height: var(--input-height-sm);
       }
 
-      .btn-icon-danger {
-        background: none;
-        border: none;
-        padding: 4px;
-        cursor: pointer;
-        color: var(--text-tertiary);
-        border-radius: 4px;
-        transition: all 0.2s;
-      }
-
-      .btn-icon-danger:hover:not(:disabled) {
-        color: #dc2626;
-        background: rgba(220, 38, 38, 0.1);
-      }
-
-      .btn-icon-danger:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
+      .domain-item:hover {
+        background: var(--glass-bg-hover);
+        border-color: var(--accent-color);
       }
 
       .add-domain-form {
         display: flex;
-        gap: 8px;
+        gap: var(--space-sm);
         align-items: center;
-      }
-
-      .input-sm {
-        padding: 6px 10px;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        font-size: 13px;
-        flex: 1;
-        background: var(--bg-glass);
-      }
-
-      .input-sm:focus {
-        outline: none;
-        border-color: var(--accent-color);
+        margin-bottom: var(--space-sm);
       }
 
       .add-domain-btn {
@@ -464,128 +469,32 @@
       .expand-btn {
         width: 100%;
         justify-content: center;
-        margin-top: 8px;
-      }
-
-      .expand-btn svg {
-        transition: transform 0.2s;
-      }
-
-      .rotate-180 {
-        transform: rotate(180deg);
-      }
-
-      .icon-xs {
-        width: 14px;
-        height: 14px;
-      }
-
-      .btn-xs {
-        padding: 4px 10px;
-        font-size: 12px;
-        gap: 4px;
-      }
-
-      /* Modal styles */
-      .modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        padding: 20px;
-      }
-
-      .modal {
-        width: 100%;
-        max-width: 480px;
-      }
-
-      .modal h2 {
-        margin: 0 0 24px;
-        font-size: 20px;
-        color: var(--text-primary);
-      }
-
-      .form-group {
-        margin-bottom: 20px;
-      }
-
-      .form-group label {
-        display: block;
-        margin-bottom: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--text-secondary);
-      }
-
-      .form-group small {
-        display: block;
-        margin-top: 4px;
-        font-size: 12px;
-        color: var(--text-tertiary);
-      }
-
-      .input {
-        width: 100%;
-        padding: 10px 14px;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 14px;
-        background: var(--bg-glass);
-        color: var(--text-primary);
-      }
-
-      .input:focus {
-        outline: none;
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-      }
-
-      .modal-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 12px;
-        margin-top: 24px;
-      }
-
-      .error-message {
-        background: rgba(220, 38, 38, 0.1);
-        color: #dc2626;
-        padding: 10px 14px;
-        border-radius: 8px;
-        font-size: 14px;
-        margin-top: 16px;
-      }
-
-      /* Toast styles */
-      .toast {
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        padding: 12px 20px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        z-index: 1001;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      }
-
-      .toast.success {
-        background: #10b981;
-        color: white;
-      }
-
-      .toast.error {
-        background: #dc2626;
-        color: white;
+        margin-top: var(--space-sm);
       }
 
       @media (max-width: 768px) {
         .websites-grid {
           grid-template-columns: 1fr;
+          gap: var(--space-md);
+        }
+
+        .website-header {
+          flex-direction: column;
+          align-items: stretch;
+          gap: var(--space-md);
+        }
+
+        .website-actions {
+          align-self: flex-start;
+        }
+
+        .add-domain-form {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .add-domain-form .btn {
+          width: 100%;
         }
       }
     </style>
