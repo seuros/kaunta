@@ -110,6 +110,10 @@ func HandleGoalCreate(c fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "failed to create goal"})
 	}
 
+	// Invalidate cache when goal is created
+	websiteUUID, _ := uuid.Parse(req.WebsiteID)
+	InvalidateGoalCache(websiteUUID)
+
 	return c.Status(201).JSON(goalResponse{
 		ID:        id,
 		WebsiteID: req.WebsiteID,
@@ -157,6 +161,11 @@ func HandleGoalUpdate(c fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "update failed"})
 	}
 
+	// Fetch website_id for cache invalidation
+	var websiteID uuid.UUID
+	_ = database.DB.QueryRow("SELECT website_id FROM goals WHERE id = $1", id).Scan(&websiteID)
+	InvalidateGoalCache(websiteID)
+
 	return c.JSON(goalResponse{
 		ID:        id,
 		WebsiteID: "", // We don't have this in update context
@@ -175,9 +184,17 @@ func HandleGoalDelete(c fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid goal id"})
 	}
 
+	// Fetch website_id before delete for cache invalidation
+	var websiteID uuid.UUID
+	_ = database.DB.QueryRow("SELECT website_id FROM goals WHERE id = $1", id).Scan(&websiteID)
+
 	_, err := database.DB.Exec(`DELETE FROM goals WHERE id = $1`, id)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "delete failed"})
 	}
+
+	// Invalidate cache after successful delete
+	InvalidateGoalCache(websiteID)
+
 	return c.SendStatus(204)
 }

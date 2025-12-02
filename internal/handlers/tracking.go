@@ -270,13 +270,51 @@ func HandleTracking(c fiber.Ctx) error {
 		visitSalt := hashDate(createdAt, "hour")
 		visitID := generateUUID(sessionID.String(), visitSalt)
 
-		err = saveEvent(websiteID, sessionID, visitID, createdAt, payload.Payload,
+		// CHANGED: saveEvent now returns eventID
+		eventID, err := saveEvent(websiteID, sessionID, visitID, createdAt, payload.Payload,
 			browser, os, device, country, region, city)
 
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{
 				"error": "Failed to save event: " + err.Error(),
 			})
+		}
+
+		// NEW: Check and record goal completion
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		// Determine event type
+		eventType := 1 // pageview
+		if payload.Payload.Name != nil && strings.TrimSpace(*payload.Payload.Name) != "" {
+			eventType = 2 // custom event
+		}
+
+		// Extract url_path for goal matching
+		var urlPath *string
+		if payload.Payload.URL != nil {
+			if u, err := url.Parse(*payload.Payload.URL); err == nil {
+				path := u.Path
+				urlPath = &path
+			}
+		}
+
+		goalID := checkAndRecordGoalCompletion(
+			ctx,
+			websiteID,
+			sessionID,
+			eventID,
+			eventType,
+			urlPath,
+			payload.Payload.Name,
+		)
+
+		// NEW: If goal matched, update event with goal_id
+		if goalID != nil {
+			_, _ = database.DB.ExecContext(ctx,
+				`UPDATE website_event SET goal_id = $1 WHERE event_id = $2`,
+				goalID, eventID,
+			)
 		}
 
 		eventPath := ""
@@ -338,7 +376,7 @@ func upsertSession(sessionID, websiteID uuid.UUID, browser, os, device, screen, 
 
 // saveEvent saves a pageview or custom event
 func saveEvent(websiteID, sessionID, visitID uuid.UUID, createdAt time.Time,
-	payload PayloadData, browser, os, device, country, region, city *string) error {
+	payload PayloadData, browser, os, device, country, region, city *string) (uuid.UUID, error) {
 
 	eventID := uuid.New()
 	eventType := 1
@@ -457,9 +495,118 @@ func saveEvent(websiteID, sessionID, visitID uuid.UUID, createdAt time.Time,
 
 	if err != nil {
 		logging.L().Error("failed to insert event", zap.Error(err))
+		return uuid.Nil, err
 	}
 
-	return err
+	return eventID, nil
+}
+
+// checkAndRecordGoalCompletion matches the event against active goals and records completions
+// Returns the matched goal_id (if any) for tagging the event
+// Handles deduplication via goal_completions table
+func checkAndRecordGoalCompletion(
+	ctx context.Context,
+	websiteID uuid.UUID,
+	sessionID uuid.UUID,
+	eventID uuid.UUID,
+	eventType int,
+	urlPath *string,
+	eventName *string,
+) *uuid.UUID {
+	// Fetch goals for this website from cache
+	goals, err := GetGoalsForWebsite(websiteID)
+	if err != nil {
+		// Log warning but don't fail tracking request
+		logging.L().Warn("failed to fetch goals for matching",
+			zap.String("website_id", websiteID.String()),
+			zap.Error(err))
+		return nil
+	}
+
+	// No goals configured - skip matching
+	if len(goals) == 0 {
+		return nil
+	}
+
+	// Match goals based on event type
+	var matchedGoalID *uuid.UUID
+
+	for _, goal := range goals {
+		matched := false
+
+		switch goal.Type {
+		case "page_view":
+			// Match: event_type=1 AND url_path exactly matches target_url
+			if eventType == 1 && urlPath != nil && *urlPath == goal.TargetValue {
+				matched = true
+			}
+
+		case "custom_event":
+			// Match: event_type=2 AND event_name exactly matches target_event
+			if eventType == 2 && eventName != nil && *eventName == goal.TargetValue {
+				matched = true
+			}
+		}
+
+		if matched {
+			matchedGoalID = &goal.ID
+			break // First match wins (goals should be mutually exclusive)
+		}
+	}
+
+	// No match found
+	if matchedGoalID == nil {
+		return nil
+	}
+
+	// Check if already completed in this session (deduplication)
+	var exists bool
+	err = database.DB.QueryRowContext(ctx,
+		`SELECT EXISTS(
+            SELECT 1 FROM goal_completions
+            WHERE goal_id = $1 AND session_id = $2
+        )`,
+		matchedGoalID, sessionID,
+	).Scan(&exists)
+
+	if err != nil {
+		logging.L().Warn("failed to check goal completion existence",
+			zap.String("goal_id", matchedGoalID.String()),
+			zap.Error(err))
+		return nil // Fail safe - don't record if check fails
+	}
+
+	// Already completed in this session - return goal_id for event tagging only
+	if exists {
+		logging.L().Debug("goal already completed in session",
+			zap.String("goal_id", matchedGoalID.String()),
+			zap.String("session_id", sessionID.String()))
+		return matchedGoalID
+	}
+
+	// Record new goal completion (INSERT into goal_completions)
+	completionID := uuid.New()
+	_, err = database.DB.ExecContext(ctx,
+		`INSERT INTO goal_completions
+            (id, goal_id, session_id, event_id, website_id, completed_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (goal_id, session_id) DO NOTHING`, // Safety net for race conditions
+		completionID, matchedGoalID, sessionID, eventID, websiteID,
+	)
+
+	if err != nil {
+		// Log error but still return goal_id for event tagging
+		logging.L().Error("failed to insert goal completion",
+			zap.String("goal_id", matchedGoalID.String()),
+			zap.Error(err))
+	} else {
+		logging.L().Info("goal completed",
+			zap.String("goal_id", matchedGoalID.String()),
+			zap.String("session_id", sessionID.String()),
+			zap.String("completion_id", completionID.String()))
+	}
+
+	return matchedGoalID
 }
 
 // generateUUID creates a deterministic UUID from components

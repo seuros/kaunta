@@ -558,6 +558,12 @@ func serveAnalytics(
 	app.Put("/api/goals/:id", middleware.Auth, handlers.HandleGoalUpdate)
 	app.Delete("/api/goals/:id", middleware.Auth, handlers.HandleGoalDelete)
 
+	// Goal Analytics API (protected)
+	app.Get("/api/dashboard/goals/:goal_id/analytics", middleware.Auth, handlers.HandleGoalAnalytics)
+	app.Get("/api/dashboard/goals/:goal_id/timeseries", middleware.Auth, handlers.HandleGoalTimeSeries)
+	app.Get("/api/dashboard/goals/:goal_id/breakdown/:dimension", middleware.Auth, handlers.HandleGoalBreakdown)
+	app.Get("/api/dashboard/goals/:goal_id/converting-pages", middleware.Auth, handlers.HandleGoalConvertingPages)
+
 	// Start server
 	port := getEnv("PORT", "3000")
 	logging.L().Info("starting kaunta server", zap.String("port", port))

@@ -74,3 +74,11 @@ type UpdateWebsiteRequest struct {
 type DomainRequest struct {
 	Domain string `json:"domain"`
 }
+
+// GoalAnalytics holds conversion metrics for a goal
+type GoalAnalytics struct {
+	Completions    int     `json:"completions"`     // Total goal completions
+	UniqueSessions int     `json:"unique_sessions"` // Unique sessions that completed goal
+	ConversionRate float64 `json:"conversion_rate"` // Percentage (0-100)
+	TotalSessions  int     `json:"total_sessions"`  // Total sessions in period
+}

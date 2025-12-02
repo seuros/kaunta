@@ -127,6 +127,12 @@
                 </td>
                 <td x-text="formatDate(goal.created_at)"></td>
                 <td>
+                  <button @click="viewAnalytics(goal)" class="btn btn-xs btn-primary">
+                    <svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    Analytics
+                  </button>
                   <button @click="editGoal(goal)" class="btn btn-xs btn-ghost">Edit</button>
                   <button @click="deleteGoal(goal)" class="btn btn-xs btn-danger">Delete</button>
                 </td>
@@ -343,6 +349,106 @@
         </div>
       </div>
 
+      <!-- Goal Analytics Modal -->
+      <div
+        x-show="showAnalyticsModal"
+        class="modal-overlay"
+        @click.self="closeAnalyticsModal()"
+        x-transition
+      >
+        <div class="modal glass card" style="max-width: 1200px; width: 90vw">
+          <h2 class="modal-title">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            <span x-text="'Analytics: ' + (currentGoal ? currentGoal.name : '')"></span>
+          </h2>
+
+          <!-- Date Range Filter -->
+          <div class="date-range-buttons glass" style="margin-bottom: 24px">
+            <button class="btn btn-xs date-btn" :class="{ 'active': analyticsDateRange === '1' }" @click="setAnalyticsDateRange('1')">Today</button>
+            <button class="btn btn-xs date-btn" :class="{ 'active': analyticsDateRange === '7' }" @click="setAnalyticsDateRange('7')">7 days</button>
+            <button class="btn btn-xs date-btn" :class="{ 'active': analyticsDateRange === '30' }" @click="setAnalyticsDateRange('30')">30 days</button>
+          </div>
+
+          <!-- Conversion Metrics Cards -->
+          <div x-show="!analyticsLoading" class="stats-grid" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+            <div class="stat-card glass card">
+              <div class="stat-label">Conversion Rate</div>
+              <div class="stat-value">
+                <span x-text="analytics.conversion_rate ? analytics.conversion_rate.toFixed(2) + '%' : '0%'"></span>
+              </div>
+              <div class="stat-footer">
+                <span x-text="analytics.unique_sessions + ' of ' + analytics.total_sessions + ' sessions'"></span>
+              </div>
+            </div>
+            <div class="stat-card glass card">
+              <div class="stat-label">Total Completions</div>
+              <div class="stat-value" x-text="analytics.completions || 0"></div>
+            </div>
+            <div class="stat-card glass card">
+              <div class="stat-label">Unique Sessions</div>
+              <div class="stat-value" x-text="analytics.unique_sessions || 0"></div>
+            </div>
+            <div class="stat-card glass card">
+              <div class="stat-label">Total Sessions</div>
+              <div class="stat-value" x-text="analytics.total_sessions || 0"></div>
+            </div>
+          </div>
+
+          <!-- Time Series Chart -->
+          <div x-show="!analyticsLoading" class="section glass card" style="margin-bottom: 24px">
+            <h3>Completions Over Time</h3>
+            <canvas id="goalChart" style="max-height: 300px"></canvas>
+          </div>
+
+          <!-- Tabbed Breakdowns -->
+          <div x-show="!analyticsLoading" class="section glass card">
+            <div class="tabs" style="margin-bottom: 16px; display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.1)">
+              <button class="tab-btn" :class="{ 'active': analyticsTab === 'pages' }" @click="setAnalyticsTab('pages')" style="padding: 8px 16px; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent">Top Converting Pages</button>
+              <button class="tab-btn" :class="{ 'active': analyticsTab === 'referrer' }" @click="setAnalyticsTab('referrer')" style="padding: 8px 16px; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent">Referrers</button>
+              <button class="tab-btn" :class="{ 'active': analyticsTab === 'country' }" @click="setAnalyticsTab('country')" style="padding: 8px 16px; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent">Countries</button>
+              <button class="tab-btn" :class="{ 'active': analyticsTab === 'device' }" @click="setAnalyticsTab('device')" style="padding: 8px 16px; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent">Devices</button>
+              <button class="tab-btn" :class="{ 'active': analyticsTab === 'browser' }" @click="setAnalyticsTab('browser')" style="padding: 8px 16px; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent">Browsers</button>
+            </div>
+
+            <!-- Breakdown Table -->
+            <table x-show="breakdownData.length > 0">
+              <thead>
+                <tr>
+                  <th x-text="analyticsTab === 'pages' ? 'Page' : (analyticsTab.charAt(0).toUpperCase() + analyticsTab.slice(1))"></th>
+                  <th>Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="item in breakdownData" :key="item.name || item.path">
+                  <tr>
+                    <td x-text="item.name || item.path"></td>
+                    <td x-text="item.count || item.conversions"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+
+            <div x-show="breakdownData.length === 0" class="empty-state">
+              <div class="empty-state-text">No data available for this breakdown</div>
+            </div>
+          </div>
+
+          <!-- Loading State -->
+          <div x-show="analyticsLoading" class="loading" style="margin: 40px 0; text-align: center">
+            <div class="spinner"></div>
+            <div>Loading analytics...</div>
+          </div>
+
+          <!-- Close Button -->
+          <div class="modal-actions">
+            <button @click="closeAnalyticsModal()" class="btn btn-ghost">Close</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Toast Notification -->
       <div
         x-show="toast.show"
@@ -393,6 +499,21 @@
             value: "",
           },
           toast: { show: false, message: "", type: "" },
+
+          // Analytics modal state
+          showAnalyticsModal: false,
+          analyticsLoading: false,
+          analyticsDateRange: '7',
+          analyticsTab: 'pages',
+          analytics: {
+            completions: 0,
+            unique_sessions: 0,
+            conversion_rate: 0,
+            total_sessions: 0
+          },
+          timeseriesData: [],
+          breakdownData: [],
+          goalChart: null,
 
           async init() {
             await this.loadWebsites();
@@ -665,6 +786,156 @@
               console.error("Logout error:", error);
               alert("Network error during logout. Please try again.");
             }
+          },
+
+          // Analytics Modal Functions
+          async viewAnalytics(goal) {
+            this.currentGoal = goal;
+            this.showAnalyticsModal = true;
+            this.analyticsDateRange = '7';
+            this.analyticsTab = 'pages';
+            await this.loadGoalAnalytics();
+          },
+
+          async loadGoalAnalytics() {
+            if (!this.currentGoal) return;
+
+            this.analyticsLoading = true;
+
+            try {
+              // Fetch analytics and timeseries in parallel
+              const [analyticsRes, timeseriesRes] = await Promise.all([
+                fetch(`/api/dashboard/goals/${this.currentGoal.id}/analytics?days=${this.analyticsDateRange}`),
+                fetch(`/api/dashboard/goals/${this.currentGoal.id}/timeseries?days=${this.analyticsDateRange}`)
+              ]);
+
+              if (!analyticsRes.ok || !timeseriesRes.ok) {
+                throw new Error('Failed to load analytics data');
+              }
+
+              this.analytics = await analyticsRes.json();
+              this.timeseriesData = await timeseriesRes.json();
+
+              // Render chart
+              this.renderGoalChart();
+
+              // Load initial breakdown
+              await this.loadBreakdown();
+
+            } catch (err) {
+              console.error('Failed to load goal analytics:', err);
+              this.showToast('Failed to load analytics', 'error');
+            } finally {
+              this.analyticsLoading = false;
+            }
+          },
+
+          async loadBreakdown() {
+            if (!this.currentGoal) return;
+
+            try {
+              let url;
+              if (this.analyticsTab === 'pages') {
+                url = `/api/dashboard/goals/${this.currentGoal.id}/converting-pages?days=${this.analyticsDateRange}&per=10&offset=0`;
+              } else {
+                url = `/api/dashboard/goals/${this.currentGoal.id}/breakdown/${this.analyticsTab}?days=${this.analyticsDateRange}&per=10&offset=0`;
+              }
+
+              const response = await fetch(url);
+              if (!response.ok) {
+                throw new Error('Failed to load breakdown');
+              }
+
+              const data = await response.json();
+              this.breakdownData = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
+
+            } catch (err) {
+              console.error('Failed to load breakdown:', err);
+              this.breakdownData = [];
+            }
+          },
+
+          setAnalyticsDateRange(days) {
+            this.analyticsDateRange = days;
+            this.loadGoalAnalytics();
+          },
+
+          setAnalyticsTab(tab) {
+            this.analyticsTab = tab;
+            this.loadBreakdown();
+          },
+
+          renderGoalChart() {
+            // Destroy existing chart
+            if (this.goalChart) {
+              this.goalChart.destroy();
+              this.goalChart = null;
+            }
+
+            const canvas = document.getElementById('goalChart');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+
+            // Format labels based on date range
+            const labels = this.timeseriesData.map(point => {
+              const date = new Date(point.timestamp);
+              if (this.analyticsDateRange === '1') {
+                // Hourly format for today
+                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+              } else if (this.analyticsDateRange === '7') {
+                // Date + hour for 7 days
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit' });
+              } else {
+                // Daily format for 30 days
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              }
+            });
+
+            const values = this.timeseriesData.map(point => point.value);
+
+            this.goalChart = new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: 'Completions',
+                  data: values,
+                  borderColor: 'rgba(59, 130, 246, 1)',
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                  tension: 0.4,
+                  fill: true
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                  legend: {
+                    display: false
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      stepSize: 1
+                    }
+                  }
+                }
+              }
+            });
+          },
+
+          closeAnalyticsModal() {
+            this.showAnalyticsModal = false;
+            this.currentGoal = null;
+            if (this.goalChart) {
+              this.goalChart.destroy();
+              this.goalChart = null;
+            }
+            this.breakdownData = [];
+            this.timeseriesData = [];
           },
         };
       }
