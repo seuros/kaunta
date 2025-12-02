@@ -91,11 +91,12 @@ func HandleGoalCreate(c fiber.Ctx) error {
 
 	// Convert frontend format to DB format
 	var targetURL, targetEvent *string
-	if req.Type == "page_view" {
+	switch req.Type {
+	case "page_view":
 		targetURL = &req.Value
-	} else if req.Type == "custom_event" {
+	case "custom_event":
 		targetEvent = &req.Value
-	} else {
+	default:
 		return c.Status(400).JSON(fiber.Map{"error": "invalid goal type"})
 	}
 
@@ -138,11 +139,12 @@ func HandleGoalUpdate(c fiber.Ctx) error {
 
 	// Convert frontend format to DB format
 	var targetURL, targetEvent *string
-	if req.Type == "page_view" {
+	switch req.Type {
+	case "page_view":
 		targetURL = &req.Value
-	} else if req.Type == "custom_event" {
+	case "custom_event":
 		targetEvent = &req.Value
-	} else {
+	default:
 		return c.Status(400).JSON(fiber.Map{"error": "invalid goal type"})
 	}
 

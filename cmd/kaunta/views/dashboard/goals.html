@@ -12,88 +12,6 @@
     <title>{{.Title}} - Kaunta</title>
     <link rel="stylesheet" href="/assets/vendor/vendor.css?v={{.Version}}" />
     <link rel="stylesheet" href="/assets/global.css" />
-    <style>
-      .modal-title {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin: 0 0 24px;
-        font-size: 20px;
-        color: var(--text-primary);
-      }
-      .modal-title svg {
-        width: 24px;
-        height: 24px;
-        color: var(--accent-color);
-      }
-      .radio-group {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-top: 8px;
-      }
-      .radio-label input[type="radio"] {
-        display: none;
-      }
-      .radio-button-card {
-        padding: 16px;
-        border: 2px solid var(--border-color);
-        border-radius: var(--radius);
-        cursor: pointer;
-        transition: all 0.2s ease;
-        background: var(--bg-glass);
-        text-align: center;
-        height: 100%;
-      }
-      .radio-label input[type="radio"]:checked + .radio-button-card {
-        border-color: var(--accent-color);
-        background: var(--bg-accent);
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-      }
-      .radio-button-card:hover {
-        border-color: var(--accent-color);
-        background: rgba(230, 240, 255, 0.85);
-      }
-      .radio-button-card svg {
-        width: 24px;
-        height: 24px;
-        margin-bottom: 8px;
-        color: var(--accent-color);
-        opacity: 0.8;
-        transition: all 0.2s ease;
-      }
-      .radio-label input[type="radio"]:checked + .radio-button-card svg {
-        opacity: 1;
-      }
-      .radio-button-card span {
-        display: block;
-        font-weight: 500;
-        color: var(--text-primary);
-      }
-      .radio-button-card small {
-        display: block;
-        font-size: 12px;
-        color: var(--text-secondary);
-        margin-top: 4px;
-        line-height: 1.4;
-      }
-      .input-with-icon {
-        position: relative;
-      }
-      .input-with-icon svg {
-        position: absolute;
-        left: 14px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 16px;
-        height: 16px;
-        color: var(--text-tertiary);
-        pointer-events: none;
-      }
-      .input-with-icon .input {
-        padding-left: 40px;
-      }
-    </style>
     {{if .SelfWebsiteID}}
     <!-- Self-tracking for dogfooding -->
     <script async src="/k.js" data-website-id="{{.SelfWebsiteID}}"></script>
@@ -260,12 +178,27 @@
       </div>
 
       <!-- Create/Edit Goal Modal -->
-      <div x-show="showCreateModal || showEditModal" class="modal-overlay" @click.self="closeModals()" x-transition>
+      <div
+        x-show="showCreateModal || showEditModal"
+        class="modal-overlay"
+        @click.self="closeModals()"
+        x-transition
+      >
         <div class="modal glass card">
           <h2 class="modal-title">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              ></path>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+              ></path>
             </svg>
             <span x-text="showEditModal ? 'Edit Goal' : 'Add New Goal'"></span>
           </h2>
@@ -273,8 +206,22 @@
             <div class="form-group">
               <label for="goal-name">Goal Name *</label>
               <div class="input-with-icon">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                <input type="text" id="goal-name" x-model="goalForm.name" placeholder="e.g., Newsletter Signup" required class="input" />
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  ></path>
+                </svg>
+                <input
+                  type="text"
+                  id="goal-name"
+                  x-model="goalForm.name"
+                  placeholder="e.g., Newsletter Signup"
+                  required
+                  class="input"
+                />
               </div>
             </div>
 
@@ -282,17 +229,45 @@
               <label>Goal Type *</label>
               <div class="radio-group">
                 <label class="radio-label">
-                  <input type="radio" x-model="goalForm.type" value="page_view" @change="onTypeChange()" name="goal-type-radio" required>
+                  <input
+                    type="radio"
+                    x-model="goalForm.type"
+                    value="page_view"
+                    @change="onTypeChange()"
+                    name="goal-type-radio"
+                    required
+                  />
                   <div class="radio-button-card">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      ></path>
+                    </svg>
                     <span>Page View</span>
                     <small>Track visits to a specific URL.</small>
                   </div>
                 </label>
                 <label class="radio-label">
-                  <input type="radio" x-model="goalForm.type" value="custom_event" @change="onTypeChange()" name="goal-type-radio" required>
+                  <input
+                    type="radio"
+                    x-model="goalForm.type"
+                    value="custom_event"
+                    @change="onTypeChange()"
+                    name="goal-type-radio"
+                    required
+                  />
                   <div class="radio-button-card">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 9l4-4 4 4m0 6l-4 4-4-4"
+                      ></path>
+                    </svg>
                     <span>Custom Event</span>
                     <small>Track a custom named event.</small>
                   </div>
@@ -304,19 +279,49 @@
               <div class="form-group" x-show="goalForm.type === 'page_view'">
                 <label for="goal-page-value">Page URL *</label>
                 <div class="input-with-icon">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                  <input type="text" id="goal-page-value" x-model="goalForm.value" placeholder="/thank-you" class="input" />
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                    ></path>
+                  </svg>
+                  <input
+                    type="text"
+                    id="goal-page-value"
+                    x-model="goalForm.value"
+                    placeholder="/thank-you"
+                    class="input"
+                  />
                 </div>
-                <small>The page URL visitors reach when they complete this goal (e.g. /thank-you)</small>
+                <small
+                  >The page URL visitors reach when they complete this goal (e.g. /thank-you)</small
+                >
               </div>
 
               <div class="form-group" x-show="goalForm.type === 'custom_event'">
                 <label for="goal-event-value">Event Name *</label>
                 <div class="input-with-icon">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"></path></svg>
-                  <input type="text" id="goal-event-value" x-model="goalForm.value" placeholder="e.g., signup" class="input" />
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"
+                    ></path>
+                  </svg>
+                  <input
+                    type="text"
+                    id="goal-event-value"
+                    x-model="goalForm.value"
+                    placeholder="e.g., signup"
+                    class="input"
+                  />
                 </div>
-                <small>The custom event name sent from your website (e.g. "signup", "purchase")</small>
+                <small
+                  >The custom event name sent from your website (e.g. "signup", "purchase")</small
+                >
               </div>
             </div>
 
@@ -324,8 +329,14 @@
             <div class="modal-actions">
               <button type="button" @click="closeModals()" class="btn btn-ghost">Cancel</button>
               <button type="submit" class="btn btn-primary" :disabled="submitting">
-                <span x-show="!submitting" x-text="showEditModal ? 'Update Goal' : 'Create Goal'"></span>
-                <span x-show="submitting" x-text="showEditModal ? 'Updating...' : 'Creating...'"></span>
+                <span
+                  x-show="!submitting"
+                  x-text="showEditModal ? 'Update Goal' : 'Create Goal'"
+                ></span>
+                <span
+                  x-show="submitting"
+                  x-text="showEditModal ? 'Updating...' : 'Creating...'"
+                ></span>
               </button>
             </div>
           </form>

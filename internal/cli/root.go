@@ -291,16 +291,13 @@ func serveAnalytics(
 		trustedOrigins = []string{} // Empty list if error
 	}
 
-	// Transform domain strings to full URLs for CSRF middleware
-	trustedOriginURLs := make([]string, 0, len(trustedOrigins)*2)
+	// Transform domain strings to full URLs for CSRF middleware and validate format
+	trustedOriginURLs := make([]string, 0, len(trustedOrigins))
 	for _, domain := range trustedOrigins {
-		if strings.HasPrefix(domain, "http://") || strings.HasPrefix(domain, "https://") {
-			// Already has scheme - use as-is
-			trustedOriginURLs = append(trustedOriginURLs, domain)
+		if normalized, ok := normalizeOriginForCSRF(domain); ok {
+			trustedOriginURLs = append(trustedOriginURLs, normalized)
 		} else {
-			// Legacy: no scheme stored - trust both protocols for backward compatibility
-			trustedOriginURLs = append(trustedOriginURLs, "http://"+domain)
-			trustedOriginURLs = append(trustedOriginURLs, "https://"+domain)
+			logging.L().Warn("skipping invalid trusted origin", zap.String("origin", domain))
 		}
 	}
 
