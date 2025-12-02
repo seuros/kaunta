@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.0](https://github.com/seuros/kaunta/compare/v0.32.1...v0.33.0) (2025-12-02)
+
+
+### Features
+
+* improve websites cards design ([#106](https://github.com/seuros/kaunta/issues/106)) ([b3b3537](https://github.com/seuros/kaunta/commit/b3b35371426e3374d06835da7343eebaeae4bd6a))
+
 ## [0.32.1](https://github.com/seuros/kaunta/compare/v0.32.0...v0.32.1) (2025-12-02)
 
 
