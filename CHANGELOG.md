@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/seuros/kaunta/compare/v0.34.0...v0.35.0) (2025-12-02)
+
+
+### Features
+
+* implement goal tracking with analytics dashboard ([64e474f](https://github.com/seuros/kaunta/commit/64e474fc2f80503bb57d12433a9e336e19e679c9))
+
 ## [0.34.0](https://github.com/seuros/kaunta/compare/v0.33.0...v0.34.0) (2025-12-02)
 
 
