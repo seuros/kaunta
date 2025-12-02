@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.30.0](https://github.com/seuros/kaunta/compare/v0.29.3...v0.30.0) (2025-12-02)
+
+
+### Features
+
+* **goals:** implement goals ui and fix dashboard styling ([#99](https://github.com/seuros/kaunta/issues/99)) ([7e91097](https://github.com/seuros/kaunta/commit/7e910976e9efadee18da1ba166a5fd10a65f3a1d))
+
+
+### Bug Fixes
+
+* extract css and js ([#100](https://github.com/seuros/kaunta/issues/100)) ([6a091f9](https://github.com/seuros/kaunta/commit/6a091f9f7d056df3480c8777035dfcb1ac965382))
+
 ## [0.29.3](https://github.com/seuros/kaunta/compare/v0.29.2...v0.29.3) (2025-12-01)
 
 
