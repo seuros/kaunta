@@ -45,13 +45,14 @@
             </svg>
             Dashboard
           </a>
-          <button
-            @click="showCreateModal = true"
-            class="btn btn-sm btn-primary glass transition-standard"
-            title="Add Website"
-          >
+          <button @click="showCreateModal = true" title="Add Website" class="btn btn-sm btn-primary">
             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              ></path>
             </svg>
             Add Website
           </button>
@@ -96,7 +97,12 @@
                   title="Copy Tracking Code"
                 >
                   <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    ></path>
                   </svg>
                   <span x-text="copiedId === website.id ? 'Copied!' : 'Copy Code'"></span>
                 </button>
@@ -130,7 +136,12 @@
                       :disabled="website.allowed_domains.length <= 1"
                     >
                       <svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        ></path>
                       </svg>
                     </button>
                   </div>
@@ -145,7 +156,12 @@
                     class="input-sm"
                   />
                   <button @click="addDomain(website)" class="btn btn-xs btn-primary">Add</button>
-                  <button @click="addingDomainTo = null; newDomain = ''" class="btn btn-xs btn-ghost">Cancel</button>
+                  <button
+                    @click="addingDomainTo = null; newDomain = ''"
+                    class="btn btn-xs btn-ghost"
+                  >
+                    Cancel
+                  </button>
                 </div>
                 <button
                   x-show="addingDomainTo !== website.id"
@@ -153,7 +169,12 @@
                   class="btn btn-xs btn-ghost add-domain-btn"
                 >
                   <svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 4v16m8-8H4"
+                    ></path>
                   </svg>
                   Add Domain
                 </button>
@@ -163,8 +184,19 @@
                 class="btn btn-xs btn-ghost expand-btn"
               >
                 <span x-text="expandedWebsite === website.id ? 'Hide' : 'Manage'"></span>
-                <svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24" :class="{'rotate-180': expandedWebsite === website.id}">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                <svg
+                  class="icon-xs"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  :class="{'rotate-180': expandedWebsite === website.id}"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  ></path>
                 </svg>
               </button>
             </div>
@@ -183,7 +215,12 @@
         <div class="empty-state-text">Add your first website to start tracking analytics.</div>
         <button @click="showCreateModal = true" class="btn btn-primary" style="margin-top: 16px">
           <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            ></path>
           </svg>
           Add Website
         </button>
@@ -194,7 +231,9 @@
         <div class="empty-state-icon">⚠️</div>
         <div class="empty-state-title">Unable to load websites</div>
         <div class="empty-state-text" x-text="error"></div>
-        <button @click="loadWebsites()" class="btn btn-primary" style="margin-top: 16px">Try Again</button>
+        <button @click="loadWebsites()" class="btn btn-primary" style="margin-top: 16px">
+          Try Again
+        </button>
       </div>
 
       <!-- Create Website Modal -->
@@ -226,7 +265,13 @@
             </div>
             <div x-show="createError" class="error-message" x-text="createError"></div>
             <div class="modal-actions">
-              <button type="button" @click="showCreateModal = false; createError = ''" class="btn btn-ghost">Cancel</button>
+              <button
+                type="button"
+                @click="showCreateModal = false; createError = ''"
+                class="btn btn-ghost"
+              >
+                Cancel
+              </button>
               <button type="submit" class="btn btn-primary" :disabled="creating">
                 <span x-show="!creating">Create Website</span>
                 <span x-show="creating">Creating...</span>
@@ -552,13 +597,13 @@
           error: null,
           showCreateModal: false,
           creating: false,
-          createError: '',
-          newWebsite: { domain: '', name: '' },
+          createError: "",
+          newWebsite: { domain: "", name: "" },
           expandedWebsite: null,
           addingDomainTo: null,
-          newDomain: '',
+          newDomain: "",
           copiedId: null,
-          toast: { show: false, message: '', type: '' },
+          toast: { show: false, message: "", type: "" },
 
           async init() {
             await this.loadWebsites();
@@ -568,13 +613,13 @@
             this.loading = true;
             this.error = null;
             try {
-              const response = await fetch('/api/websites/list');
+              const response = await fetch("/api/websites/list");
               if (!response.ok) {
-                throw new Error('Failed to load websites');
+                throw new Error("Failed to load websites");
               }
               this.websites = await response.json();
             } catch (err) {
-              console.error('Failed to load websites:', err);
+              console.error("Failed to load websites:", err);
               this.error = err.message;
             } finally {
               this.loading = false;
@@ -585,29 +630,29 @@
             if (!this.newWebsite.domain) return;
 
             this.creating = true;
-            this.createError = '';
+            this.createError = "";
 
             try {
-              const response = await fetch('/api/websites', {
-                method: 'POST',
+              const response = await fetch("/api/websites", {
+                method: "POST",
                 headers: {
-                  'Content-Type': 'application/json',
-                  'X-CSRF-Token': this.getCsrfToken(),
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": this.getCsrfToken(),
                 },
-                credentials: 'include',
+                credentials: "include",
                 body: JSON.stringify(this.newWebsite),
               });
 
               const data = await response.json();
 
               if (!response.ok) {
-                throw new Error(data.error || 'Failed to create website');
+                throw new Error(data.error || "Failed to create website");
               }
 
               this.websites.push(data);
               this.showCreateModal = false;
-              this.newWebsite = { domain: '', name: '' };
-              this.showToast('Website created successfully!', 'success');
+              this.newWebsite = { domain: "", name: "" };
+              this.showToast("Website created successfully!", "success");
             } catch (err) {
               this.createError = err.message;
             } finally {
@@ -620,89 +665,92 @@
 
             try {
               const response = await fetch(`/api/websites/${website.id}/domains`, {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                  'Content-Type': 'application/json',
-                  'X-CSRF-Token': this.getCsrfToken(),
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": this.getCsrfToken(),
                 },
-                credentials: 'include',
+                credentials: "include",
                 body: JSON.stringify({ domain: this.newDomain }),
               });
 
               const data = await response.json();
 
               if (!response.ok) {
-                throw new Error(data.error || 'Failed to add domain');
+                throw new Error(data.error || "Failed to add domain");
               }
 
               // Update website in list
-              const index = this.websites.findIndex(w => w.id === website.id);
+              const index = this.websites.findIndex((w) => w.id === website.id);
               if (index !== -1) {
                 this.websites[index] = data;
               }
 
               this.addingDomainTo = null;
-              this.newDomain = '';
-              this.showToast('Domain added successfully!', 'success');
+              this.newDomain = "";
+              this.showToast("Domain added successfully!", "success");
             } catch (err) {
-              this.showToast(err.message, 'error');
+              this.showToast(err.message, "error");
             }
           },
 
           async removeDomain(website, domain) {
             if (website.allowed_domains.length <= 1) {
-              this.showToast('Cannot remove the last domain', 'error');
+              this.showToast("Cannot remove the last domain", "error");
               return;
             }
 
             try {
               const response = await fetch(`/api/websites/${website.id}/domains`, {
-                method: 'DELETE',
+                method: "DELETE",
                 headers: {
-                  'Content-Type': 'application/json',
-                  'X-CSRF-Token': this.getCsrfToken(),
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": this.getCsrfToken(),
                 },
-                credentials: 'include',
+                credentials: "include",
                 body: JSON.stringify({ domain }),
               });
 
               const data = await response.json();
 
               if (!response.ok) {
-                throw new Error(data.error || 'Failed to remove domain');
+                throw new Error(data.error || "Failed to remove domain");
               }
 
               // Update website in list
-              const index = this.websites.findIndex(w => w.id === website.id);
+              const index = this.websites.findIndex((w) => w.id === website.id);
               if (index !== -1) {
                 this.websites[index] = data;
               }
 
-              this.showToast('Domain removed successfully!', 'success');
+              this.showToast("Domain removed successfully!", "success");
             } catch (err) {
-              this.showToast(err.message, 'error');
+              this.showToast(err.message, "error");
             }
           },
 
           copyTrackingCode(website) {
             const code = `<script async src="/k.js" data-website-id="${website.id}"><\/script>`;
-            navigator.clipboard.writeText(code).then(() => {
-              this.copiedId = website.id;
-              this.showToast('Tracking code copied to clipboard!', 'success');
-              setTimeout(() => {
-                this.copiedId = null;
-              }, 2000);
-            }).catch(() => {
-              this.showToast('Failed to copy tracking code', 'error');
-            });
+            navigator.clipboard
+              .writeText(code)
+              .then(() => {
+                this.copiedId = website.id;
+                this.showToast("Tracking code copied to clipboard!", "success");
+                setTimeout(() => {
+                  this.copiedId = null;
+                }, 2000);
+              })
+              .catch(() => {
+                this.showToast("Failed to copy tracking code", "error");
+              });
           },
 
           formatDate(dateStr) {
-            if (!dateStr) return '';
-            return new Date(dateStr).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
+            if (!dateStr) return "";
+            return new Date(dateStr).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
             });
           },
 
@@ -714,34 +762,34 @@
           },
 
           getCsrfToken() {
-            const value = '; ' + document.cookie;
-            const parts = value.split('; kaunta_csrf=');
-            if (parts.length === 2) return parts.pop().split(';').shift();
-            return '';
+            const value = "; " + document.cookie;
+            const parts = value.split("; kaunta_csrf=");
+            if (parts.length === 2) return parts.pop().split(";").shift();
+            return "";
           },
 
           async logout() {
             try {
-              const response = await fetch('/api/auth/logout', {
-                method: 'POST',
+              const response = await fetch("/api/auth/logout", {
+                method: "POST",
                 headers: {
-                  'Content-Type': 'application/json',
-                  'X-CSRF-Token': this.getCsrfToken(),
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": this.getCsrfToken(),
                 },
-                credentials: 'include',
+                credentials: "include",
               });
 
               if (response.ok) {
-                localStorage.removeItem('kaunta_website');
-                localStorage.removeItem('kaunta_dateRange');
-                window.location.href = '/login';
+                localStorage.removeItem("kaunta_website");
+                localStorage.removeItem("kaunta_dateRange");
+                window.location.href = "/login";
               } else {
-                console.error('Logout failed:', await response.text());
-                alert('Logout failed. Please try again.');
+                console.error("Logout failed:", await response.text());
+                alert("Logout failed. Please try again.");
               }
             } catch (error) {
-              console.error('Logout error:', error);
-              alert('Network error during logout. Please try again.');
+              console.error("Logout error:", error);
+              alert("Network error during logout. Please try again.");
             }
           },
         };

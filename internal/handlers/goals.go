@@ -10,6 +10,16 @@ import (
 	"github.com/seuros/kaunta/internal/models"
 )
 
+type goalResponse struct {
+	ID        string `json:"id"`
+	WebsiteID string `json:"website_id"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`  // "page_view" or "custom_event"
+	Value     string `json:"value"` // the URL or event name
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
 // HandleGoalList → GET /api/goals/:website_id
 func HandleGoalList(c fiber.Ctx) error {
 	websiteID := c.Params("website_id")
@@ -43,38 +53,70 @@ func HandleGoalList(c fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "rows error"})
 	}
 
-	return c.JSON(goals)
+	var response []goalResponse
+	for _, g := range goals {
+		typ := "page_view"
+		val := ""
+		if g.TargetEvent != nil && *g.TargetEvent != "" {
+			typ = "custom_event"
+			val = *g.TargetEvent
+		} else if g.TargetURL != nil {
+			val = *g.TargetURL
+		}
+
+		response = append(response, goalResponse{
+			ID:        g.ID,
+			WebsiteID: g.WebsiteID,
+			Name:      g.Name,
+			Type:      typ,
+			Value:     val,
+			CreatedAt: g.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: g.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+	return c.JSON(response)
 }
 
 // HandleGoalCreate   → POST /api/goals
 func HandleGoalCreate(c fiber.Ctx) error {
 	var req struct {
-		WebsiteID   string  `json:"website_id" validate:"required,uuid4"`
-		Name        string  `json:"name" validate:"required"`
-		TargetURL   *string `json:"target_url"`
-		TargetEvent *string `json:"target_event"`
+		WebsiteID string `json:"website_id" validate:"required,uuid4"`
+		Name      string `json:"name" validate:"required"`
+		Type      string `json:"type" validate:"required"`
+		Value     string `json:"value" validate:"required"`
 	}
 	if err := c.Bind().JSON(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid payload"})
 	}
 
+	// Convert frontend format to DB format
+	var targetURL, targetEvent *string
+	if req.Type == "page_view" {
+		targetURL = &req.Value
+	} else if req.Type == "custom_event" {
+		targetEvent = &req.Value
+	} else {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid goal type"})
+	}
+
 	id := uuid.New().String()
+	now := time.Now()
 	_, err := database.DB.Exec(
 		`INSERT INTO goals (id, website_id, name, target_url, target_event, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
-		id, req.WebsiteID, req.Name, req.TargetURL, req.TargetEvent)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		id, req.WebsiteID, req.Name, targetURL, targetEvent, now, now)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "failed to create goal"})
 	}
 
-	return c.Status(201).JSON(models.Goal{
-		ID:          id,
-		WebsiteID:   req.WebsiteID,
-		Name:        req.Name,
-		TargetURL:   req.TargetURL,
-		TargetEvent: req.TargetEvent,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+	return c.Status(201).JSON(goalResponse{
+		ID:        id,
+		WebsiteID: req.WebsiteID,
+		Name:      req.Name,
+		Type:      req.Type,
+		Value:     req.Value,
+		CreatedAt: now.Format(time.RFC3339),
+		UpdatedAt: now.Format(time.RFC3339),
 	})
 }
 
@@ -86,22 +128,42 @@ func HandleGoalUpdate(c fiber.Ctx) error {
 	}
 
 	var req struct {
-		Name        *string `json:"name"`
-		TargetURL   *string `json:"target_url"`
-		TargetEvent *string `json:"target_event"`
+		Name  string `json:"name" validate:"required"`
+		Type  string `json:"type" validate:"required"`
+		Value string `json:"value" validate:"required"`
 	}
 	if err := c.Bind().JSON(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid payload"})
 	}
 
+	// Convert frontend format to DB format
+	var targetURL, targetEvent *string
+	if req.Type == "page_view" {
+		targetURL = &req.Value
+	} else if req.Type == "custom_event" {
+		targetEvent = &req.Value
+	} else {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid goal type"})
+	}
+
+	now := time.Now()
 	_, err := database.DB.Exec(
-		`UPDATE goals SET name = COALESCE($1, name), target_url = $2, target_event = $3, updated_at = NOW()
-		 WHERE id = $4`,
-		req.Name, req.TargetURL, req.TargetEvent, id)
+		`UPDATE goals SET name = $1, target_url = $2, target_event = $3, updated_at = $4
+		 WHERE id = $5`,
+		req.Name, targetURL, targetEvent, now, id)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "update failed"})
 	}
-	return c.SendStatus(200)
+
+	return c.JSON(goalResponse{
+		ID:        id,
+		WebsiteID: "", // We don't have this in update context
+		Name:      req.Name,
+		Type:      req.Type,
+		Value:     req.Value,
+		CreatedAt: "", // We don't have this in update context
+		UpdatedAt: now.Format(time.RFC3339),
+	})
 }
 
 // HandleGoalDelete   → DELETE /api/goals/:id

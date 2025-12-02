@@ -1,4 +1,5 @@
 :root {
+  /* Colors */
   --bg-primary: #ffffff;
   --bg-secondary: #f8f9fa;
   --bg-accent: #e6f0ff;
@@ -9,9 +10,12 @@
   --border-color: #d6e2ff;
   --accent-color: #3b82f6;
   --accent-dark: #1e3a8a;
+
+  /* Gradients */
   --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(200, 220, 255, 0.4));
   --gradient-primary: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
 
+  /* Spacing */
   --space-xs: 8px;
   --space-sm: 12px;
   --space-md: 16px;
@@ -19,12 +23,14 @@
   --space-xl: 32px;
   --space-2xl: 48px;
 
+  /* Border Radius */
   --radius-sm: 8px;
   --radius: 12px;
   --radius-lg: 16px;
 }
 
-/* ===== SHARED BASE STYLES ===== */
+/* ===== RESET & BASE ===== */
+
 * {
   margin: 0;
   padding: 0;
@@ -49,15 +55,9 @@ h1 {
   background-clip: text;
 }
 
-/* ===== SHARED UTILITY CLASSES ===== */
+/* ===== UTILITY CLASSES ===== */
 [x-cloak] {
   display: none !important;
-}
-
-.glass {
-  background: var(--bg-glass);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border-color);
 }
 
 .transition-standard {
@@ -69,6 +69,180 @@ h1 {
     transform 0.2s ease;
 }
 
+.focus-accent:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+  z-index: 10;
+}
+
+/* Glass background + shared input/btn elements */
+.bg-glass,
+input,
+select,
+.date-picker,
+.btn-secondary,
+header input,
+header select,
+header .data,
+header button,
+header .btn,
+.input {
+  background: var(--bg-glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+input,
+select,
+.date-picker,
+.input {
+  color: var(--text-primary);
+  cursor: pointer;
+  font-weight: 400;
+  font-size: 14px;
+  padding: var(--space-sm) var(--space-md);
+  height: 40px;
+  min-width: 160px;
+  position: relative;
+  z-index: 1;
+  border-radius: var(--radius);
+}
+
+.input-sm {
+  padding: var(--space-xs) 36px var(--space-xs) var(--space-sm);
+  font-size: 13px;
+  min-width: 160px;
+}
+
+.input-xs {
+  padding: 10px var(--space-md);
+}
+
+input:focus,
+select:focus,
+.input:focus,
+header input:hover,
+header select:hover,
+select:hover,
+.date-picker:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+  background: rgba(230, 240, 255, 0.85);
+  color: var(--text-primary);
+}
+
+header input:hover,
+header select:hover {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+  background: rgba(230, 240, 255, 0.85);
+}
+
+select option {
+  background: white;
+  color: var(--text-primary);
+  padding: var(--space-xs) var(--space-md);
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  padding: var(--space-sm) var(--space-lg);
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  background: var(--bg-glass);
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+.btn-sm {
+  padding: var(--space-xs) var(--space-md);
+  font-size: 13px;
+  gap: 6px;
+}
+
+.btn-xs {
+  padding: var(--space-xs) 14px;
+  font-size: 13px;
+  gap: 6px;
+  border-radius: 10px;
+}
+
+.btn-primary,
+header .btn-primary {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: white;
+}
+
+.btn-secondary {
+  background: var(--bg-glass);
+  color: var(--accent-color);
+  border-color: var(--border-color);
+}
+
+.btn-ghost,
+.btn-danger {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: transparent;
+}
+
+.btn-primary:hover:not(:disabled),
+header .btn-primary:hover {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-secondary:hover {
+  background: rgba(230, 240, 255, 0.85);
+  border-color: var(--accent-color);
+}
+
+.btn-ghost:hover {
+  background: rgba(230, 240, 255, 0.85);
+  color: var(--accent-color);
+  transform: translateY(-1px);
+  border-color: var(--accent-color);
+}
+
+.btn-danger:hover,
+header .btn-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #dc2626;
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  background: var(--text-tertiary);
+  border-color: var(--text-tertiary);
+  color: white;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* ===== CARDS ===== */
 .card {
   border-radius: var(--radius-lg);
   box-shadow: 0 8px 32px rgba(59, 130, 246, 0.08);
@@ -84,15 +258,16 @@ h1 {
   padding: var(--space-xl);
 }
 
-.focus-accent:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
-  z-index: 10;
+/* ===== GLASS ===== */
+.glass {
+  background: var(--bg-glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
 }
 
-/* ===== SHARED ICON SIZES ===== */
-.icon-sm {
+/* ===== ICON SIZES ===== */
+.icon-sm,
+.breakdown-icon {
   width: 16px;
   height: 16px;
 }
@@ -112,13 +287,11 @@ h1 {
   height: 48px;
 }
 
-/* Breakdown table icons */
+/* breakdown icon specific */
 .breakdown-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
   flex-shrink: 0;
   opacity: 0.8;
 }
@@ -128,11 +301,11 @@ h1 {
   height: 100%;
 }
 
-/* ===== SHARED LAYOUT ===== */
+/* ===== LAYOUT ===== */
 .container {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 32px;
+  padding: var(--space-xl);
 }
 
 .subtitle {
@@ -166,35 +339,14 @@ h1 {
   flex-wrap: wrap;
 }
 
-@media (max-width: 768px) {
-  .hero h1 {
-    font-size: 36px;
-  }
-
-  .hero .subtitle {
-    font-size: 18px;
-  }
-
-  .cta-buttons {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .btn {
-    width: 100%;
-    max-width: 300px;
-    justify-content: center;
-  }
-}
-
-/* ===== HEADER COMPONENT ===== */
+/* ===== HEADER ===== */
 header {
-  margin-bottom: 32px;
+  margin-bottom: var(--space-xl);
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: var(--space-md);
 }
 
 .header-left h1 {
@@ -211,21 +363,29 @@ header {
   flex-wrap: wrap;
 }
 
-.header-controls select {
-  width: auto;
-  min-width: 180px;
+.header-controls > .btn,
+.filters .btn {
+  height: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
-/* ===== FOOTER COMPONENT ===== */
+/* inputs and buttons inside header use common styles above */
+
+/* ===== FOOTER ===== */
 footer {
-  margin-top: 48px;
+  margin-top: var(--space-2xl);
 }
 
 footer p {
   color: var(--text-tertiary);
   font-size: 14px;
-  margin: 0 0 8px 0;
+  margin-bottom: 8px;
   text-align: center;
+}
+
+footer p:last-child {
+  margin-bottom: 0;
 }
 
 footer .company-name {
@@ -247,17 +407,14 @@ footer .repo-link:hover {
   text-decoration: underline;
 }
 
-footer p:last-child {
-  margin-bottom: 0;
-}
-
 /* ===== FORM COMPONENTS ===== */
 .form-group {
   margin-bottom: 20px;
   text-align: left;
 }
 
-label {
+label,
+.form-group label {
   display: block;
   margin-bottom: 8px;
   color: var(--text-secondary);
@@ -265,146 +422,19 @@ label {
   font-size: 14px;
 }
 
-input,
-select,
-.date-picker {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  color: var(--text-primary);
-  background: var(--bg-glass);
-  backdrop-filter: blur(10px);
-  transition: all 0.2s ease;
-  cursor: pointer;
-  font-weight: 400;
-  position: relative;
-  z-index: 1;
-  padding: var(--space-sm) var(--space-md);
-  font-size: 14px;
-  height: 40px;
-  min-width: 160px;
+.form-group label {
+  margin-bottom: 6px;
 }
 
-.input-sm {
-  padding: var(--space-xs) 36px var(--space-xs) var(--space-sm);
-  font-size: 13px;
-  min-width: 160px;
+.form-group small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.4;
 }
 
-.input-xs {
-  padding: 10px var(--space-md);
-}
-
-input:focus,
-select:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
-  background: rgba(230, 240, 255, 0.95);
-}
-
-select:hover,
-.date-picker:hover {
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
-  background: rgba(230, 240, 255, 0.85);
-}
-
-select option {
-  background: white;
-  color: var(--text-primary);
-  padding: var(--space-xs) var(--space-md);
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  padding: var(--space-sm) var(--space-lg);
-  font-size: 14px;
-}
-
-.btn-sm {
-  padding: var(--space-xs) var(--space-md);
-  font-size: 13px;
-  gap: 6px;
-}
-
-.btn-xs {
-  padding: var(--space-xs) 14px;
-  font-size: 13px;
-  gap: 6px;
-  border-radius: 10px;
-}
-
-.btn-primary {
-  background: var(--accent-color);
-  color: white;
-  border-color: var(--accent-color);
-}
-
-.btn-secondary {
-  background: var(--bg-glass);
-  backdrop-filter: blur(10px);
-  color: var(--accent-color);
-  border-color: var(--border-color);
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--text-secondary);
-}
-
-.btn-danger {
-  background: transparent;
-  color: var(--text-secondary);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
-}
-
-.btn-secondary:hover {
-  background: rgba(230, 240, 255, 0.85);
-  border-color: var(--accent-color);
-}
-
-.btn-ghost:hover {
-  background: rgba(230, 240, 255, 0.85);
-  color: var(--accent-color);
-  transform: translateY(-1px);
-  border-color: var(--accent-color);
-}
-
-.btn-danger:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
-  transform: translateY(-1px);
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-.btn:disabled {
-  background: var(--text-tertiary);
-  border-color: var(--text-tertiary);
-  color: white;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.btn:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-/* ===== FILTER COMPONENTS ===== */
+/* ===== FILTERS ===== */
 .filters {
   display: flex;
   gap: var(--space-sm);
@@ -424,12 +454,22 @@ select option {
 .date-btn {
   background: transparent;
   color: var(--text-secondary);
+  border: 1px solid transparent;
+  padding: 0 12px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .date-btn:hover {
   color: var(--accent-color);
   background: rgba(59, 130, 246, 0.1);
-  border-color: var(--border-color);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
 }
 
 .date-btn.active {
@@ -440,11 +480,12 @@ select option {
 }
 
 /* ===== ERROR STATES ===== */
-.error {
+.error,
+.error-message {
   background: rgba(239, 68, 68, 0.1);
   color: #dc2626;
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   margin-bottom: 20px;
   display: none;
   border: 1px solid rgba(239, 68, 68, 0.2);
@@ -455,7 +496,7 @@ select option {
   display: block;
 }
 
-/* ===== TABLE COMPONENTS ===== */
+/* ===== TABLE ===== */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -508,6 +549,7 @@ tbody tr:hover {
   opacity: 0.4;
   font-size: 12px;
   transition: all 0.3s ease;
+  vertical-align: middle;
 }
 
 .sort-arrow.active {
@@ -515,7 +557,7 @@ tbody tr:hover {
   color: var(--accent-color);
 }
 
-/* ===== LOADING STATES ===== */
+/* ===== LOADING ===== */
 .loading {
   text-align: center;
   padding: 80px 20px;
@@ -537,6 +579,7 @@ tbody tr:hover {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -566,9 +609,9 @@ tbody tr:hover {
   color: var(--text-secondary);
 }
 
-/* ===== SECTION COMPONENTS ===== */
+/* ===== SECTION ===== */
 .section {
-  margin-bottom: 32px;
+  margin-bottom: var(--space-xl);
 }
 
 .section-header {
@@ -589,7 +632,7 @@ tbody tr:hover {
   gap: 8px;
 }
 
-/* ===== TAB COMPONENTS ===== */
+/* ===== TABS ===== */
 .tabs {
   display: flex;
   gap: 8px;
@@ -615,6 +658,7 @@ tbody tr:hover {
   gap: 6px;
   border-radius: 8px 8px 0 0;
   text-decoration: none;
+  transition: color 0.3s ease;
 }
 
 .tab:hover {
@@ -634,10 +678,75 @@ tbody tr:hover {
   transition: all 0.3s ease;
 }
 
-/* ===== SHARED RESPONSIVE ===== */
+/* ===== MODAL ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.08);
+  padding: var(--space-lg);
+}
+
+.modal h2 {
+  margin: 0 0 24px;
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+/* Use unified form-group styles already set */
+
+/* Inputs inside modal reuse .input */
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* Error message inside modal uses .error-message */
+
+/* ===== TOAST ===== */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 1001;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toast.success {
+  background: #10b981;
+  color: white;
+}
+
+.toast.error {
+  background: #dc2626;
+  color: white;
+}
+
+/* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
   .container {
-    padding: 16px;
+    padding: var(--space-md);
   }
 
   header {
@@ -648,11 +757,12 @@ tbody tr:hover {
   .header-controls {
     width: 100%;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-md);
   }
 
   .header-controls select {
     width: 100%;
+    min-width: auto;
   }
 
   .filters {
@@ -661,17 +771,8 @@ tbody tr:hover {
     gap: var(--space-sm);
   }
 
-  .header-controls select {
-    width: 100%;
-    min-width: auto;
-  }
-
   .input-sm,
   .btn-sm {
-    width: 100%;
-  }
-
-  .date-range-buttons {
     width: 100%;
   }
 
@@ -690,5 +791,29 @@ tbody tr:hover {
   .tab {
     padding: 8px 12px;
     font-size: 12px;
+  }
+
+  .hero h1 {
+    font-size: 36px;
+  }
+
+  .hero .subtitle {
+    font-size: 18px;
+  }
+
+  .cta-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .btn {
+    width: 100%;
+    max-width: 300px;
+    justify-content: center;
+  }
+
+  .modal {
+    max-width: 90%;
+    margin: var(--space-md);
   }
 }

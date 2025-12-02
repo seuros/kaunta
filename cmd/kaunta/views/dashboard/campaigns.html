@@ -45,20 +45,15 @@
             </svg>
             Dashboard
           </a>
-          <div
+          <button
             x-show="selectedWebsite"
-            class="glass transition-standard"
-            style="
-              padding: 10px 16px;
-              border-radius: 12px;
-              font-size: 14px;
-              color: var(--text-primary);
-            "
+            class="btn btn-sm"
+            style="cursor: default; pointer-events: none;"
           >
             <template x-for="site in websites" :key="site.id">
               <span x-show="site.id === selectedWebsite" x-text="site.name || site.domain"></span>
             </template>
-          </div>
+          </button>
           <!-- Logout Button -->
           <button
             @click="logout()"

@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+
+    <!-- Private dashboard - not for indexing -->
+    <meta name="robots" content="noindex, nofollow" />
+
+    <title>{{.Title}} - Kaunta</title>
+    <link rel="stylesheet" href="/assets/vendor/vendor.css?v={{.Version}}" />
+    <link rel="stylesheet" href="/assets/global.css" />
+    <style>
+      .modal-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 0 24px;
+        font-size: 20px;
+        color: var(--text-primary);
+      }
+      .modal-title svg {
+        width: 24px;
+        height: 24px;
+        color: var(--accent-color);
+      }
+      .radio-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 8px;
+      }
+      .radio-label input[type="radio"] {
+        display: none;
+      }
+      .radio-button-card {
+        padding: 16px;
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: var(--bg-glass);
+        text-align: center;
+        height: 100%;
+      }
+      .radio-label input[type="radio"]:checked + .radio-button-card {
+        border-color: var(--accent-color);
+        background: var(--bg-accent);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+      }
+      .radio-button-card:hover {
+        border-color: var(--accent-color);
+        background: rgba(230, 240, 255, 0.85);
+      }
+      .radio-button-card svg {
+        width: 24px;
+        height: 24px;
+        margin-bottom: 8px;
+        color: var(--accent-color);
+        opacity: 0.8;
+        transition: all 0.2s ease;
+      }
+      .radio-label input[type="radio"]:checked + .radio-button-card svg {
+        opacity: 1;
+      }
+      .radio-button-card span {
+        display: block;
+        font-weight: 500;
+        color: var(--text-primary);
+      }
+      .radio-button-card small {
+        display: block;
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+        line-height: 1.4;
+      }
+      .input-with-icon {
+        position: relative;
+      }
+      .input-with-icon svg {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        color: var(--text-tertiary);
+        pointer-events: none;
+      }
+      .input-with-icon .input {
+        padding-left: 40px;
+      }
+    </style>
+    {{if .SelfWebsiteID}}
+    <!-- Self-tracking for dogfooding -->
+    <script async src="/k.js" data-website-id="{{.SelfWebsiteID}}"></script>
+    {{end}}
+  </head>
+  <body>
+    <div class="container" x-data="goalsDashboard()" x-init="init()" x-cloak>
+      <header class="glass card">
+        <div class="header-left">
+          <div style="display: flex; align-items: center; gap: 12px">
+            <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 48px; width: auto" />
+            <div style="line-height: 1.2">
+              <h1 style="margin: 0; margin-bottom: 2px">Kaunta (カウンタ)</h1>
+              <div class="subtitle">Goals Management</div>
+            </div>
+          </div>
+        </div>
+        <div class="header-controls">
+          <a
+            href="/dashboard"
+            class="btn btn-sm btn-ghost glass transition-standard"
+            title="Back to Dashboard"
+          >
+            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              ></path>
+            </svg>
+            Dashboard
+          </a>
+
+          <select
+            x-model="selectedWebsite"
+            @change="switchWebsite()"
+            x-show="websites.length > 0"
+            class="input-sm glass transition-standard focus-accent"
+          >
+            <template x-for="site in websites" :key="site.id">
+              <option :value="site.id" x-text="site.name || site.domain"></option>
+            </template>
+          </select>
+
+          <button
+            @click="showCreateModal = true"
+            title="Add Goal"
+            x-show="selectedWebsite"
+            class="btn btn-sm btn-primary"
+          >
+            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              ></path>
+            </svg>
+            Add Goal
+          </button>
+
+          <!-- Logout Button -->
+          <button
+            @click="logout()"
+            class="btn btn-sm btn-danger glass transition-standard"
+            title="Logout"
+          >
+            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              ></path>
+            </svg>
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <!-- Loading State -->
+      <div x-show="loading" class="loading" style="margin-top: 100px">
+        <div class="spinner"></div>
+        <div>Loading goals...</div>
+      </div>
+
+      <!-- Goals Table -->
+      <div x-show="!loading && !error && selectedWebsite" class="section glass card">
+        <div class="section-header">
+          <h2>Goals for <span x-text="getWebsiteName()"></span></h2>
+        </div>
+
+        <table x-show="goals.length > 0" class="glass card">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Value</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="goal in goals" :key="goal.id">
+              <tr>
+                <td x-text="goal.name"></td>
+                <td>
+                  <span x-text="formatType(goal.type)"></span>
+                </td>
+                <td>
+                  <code x-text="goal.value"></code>
+                </td>
+                <td x-text="formatDate(goal.created_at)"></td>
+                <td>
+                  <button @click="editGoal(goal)" class="btn btn-xs btn-ghost">Edit</button>
+                  <button @click="deleteGoal(goal)" class="btn btn-xs btn-danger">Delete</button>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+
+        <!-- No Goals -->
+        <div x-show="goals.length === 0 && !goalsLoading" class="empty-state">
+          <div class="empty-state-icon">🎯</div>
+          <div class="empty-state-title">No goals yet</div>
+          <div class="empty-state-text">
+            Track important events like signups, purchases, or downloads.
+          </div>
+          <button @click="showCreateModal = true" class="btn btn-primary">
+            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              ></path>
+            </svg>
+            Add Your First Goal
+          </button>
+        </div>
+      </div>
+
+      <!-- No Website Selected -->
+      <div
+        x-show="!loading && !error && !selectedWebsite"
+        class="empty-state"
+        style="margin-top: 100px"
+      >
+        <div class="empty-state-icon">🌐</div>
+        <div class="empty-state-title">No website selected</div>
+        <div class="empty-state-text">Please select a website to manage goals.</div>
+      </div>
+
+      <!-- Error State -->
+      <div x-show="!loading && error" class="empty-state" style="margin-top: 100px">
+        <div class="empty-state-icon">⚠️</div>
+        <div class="empty-state-title">Unable to load goals</div>
+        <div class="empty-state-text" x-text="error"></div>
+        <button @click="loadGoals()" class="btn btn-primary" style="margin-top: 16px">
+          Try Again
+        </button>
+      </div>
+
+      <!-- Create/Edit Goal Modal -->
+      <div x-show="showCreateModal || showEditModal" class="modal-overlay" @click.self="closeModals()" x-transition>
+        <div class="modal glass card">
+          <h2 class="modal-title">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            </svg>
+            <span x-text="showEditModal ? 'Edit Goal' : 'Add New Goal'"></span>
+          </h2>
+          <form @submit.prevent="showEditModal ? updateGoal() : createGoal()">
+            <div class="form-group">
+              <label for="goal-name">Goal Name *</label>
+              <div class="input-with-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <input type="text" id="goal-name" x-model="goalForm.name" placeholder="e.g., Newsletter Signup" required class="input" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Goal Type *</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input type="radio" x-model="goalForm.type" value="page_view" @change="onTypeChange()" name="goal-type-radio" required>
+                  <div class="radio-button-card">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <span>Page View</span>
+                    <small>Track visits to a specific URL.</small>
+                  </div>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" x-model="goalForm.type" value="custom_event" @change="onTypeChange()" name="goal-type-radio" required>
+                  <div class="radio-button-card">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                    <span>Custom Event</span>
+                    <small>Track a custom named event.</small>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div x-show="goalForm.type" x-transition>
+              <div class="form-group" x-show="goalForm.type === 'page_view'">
+                <label for="goal-page-value">Page URL *</label>
+                <div class="input-with-icon">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                  <input type="text" id="goal-page-value" x-model="goalForm.value" placeholder="/thank-you" class="input" />
+                </div>
+                <small>The page URL visitors reach when they complete this goal (e.g. /thank-you)</small>
+              </div>
+
+              <div class="form-group" x-show="goalForm.type === 'custom_event'">
+                <label for="goal-event-value">Event Name *</label>
+                <div class="input-with-icon">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"></path></svg>
+                  <input type="text" id="goal-event-value" x-model="goalForm.value" placeholder="e.g., signup" class="input" />
+                </div>
+                <small>The custom event name sent from your website (e.g. "signup", "purchase")</small>
+              </div>
+            </div>
+
+            <div x-show="formError" class="error-message" x-text="formError" x-transition></div>
+            <div class="modal-actions">
+              <button type="button" @click="closeModals()" class="btn btn-ghost">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="submitting">
+                <span x-show="!submitting" x-text="showEditModal ? 'Update Goal' : 'Create Goal'"></span>
+                <span x-show="submitting" x-text="showEditModal ? 'Updating...' : 'Creating...'"></span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Toast Notification -->
+      <div
+        x-show="toast.show"
+        x-transition
+        class="toast"
+        :class="toast.type"
+        x-text="toast.message"
+      ></div>
+
+      <footer class="glass card">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+          "
+        >
+          <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 32px; width: auto" />
+          <span class="company-name">Kaunta Analytics</span>
+        </div>
+        <p>Built with Go, Fiber, Alpine.js, PostgreSQL, and Leaflet</p>
+        <p>
+          <a href="https://github.com/seuros/kaunta" class="repo-link">View on GitHub</a>
+          · <strong>v{{.Version}}</strong>
+        </p>
+      </footer>
+    </div>
+    <script defer src="/assets/vendor/vendor.js?v={{.Version}}"></script>
+    <script>
+      function goalsDashboard() {
+        return {
+          websites: [],
+          selectedWebsite: localStorage.getItem("kaunta_website") || "",
+          goals: [],
+          loading: true,
+          goalsLoading: false,
+          error: null,
+          showCreateModal: false,
+          showEditModal: false,
+          submitting: false,
+          formError: "",
+          currentGoal: null,
+          goalForm: {
+            name: "",
+            type: "",
+            value: "",
+          },
+          toast: { show: false, message: "", type: "" },
+
+          async init() {
+            await this.loadWebsites();
+            if (this.selectedWebsite) {
+              await this.loadGoals();
+            }
+            this.loading = false;
+          },
+
+          async loadWebsites() {
+            try {
+              const response = await fetch("/api/websites");
+              if (!response.ok) {
+                throw new Error("Failed to load websites");
+              }
+              const data = await response.json();
+              this.websites = Array.isArray(data.data)
+                ? data.data
+                : Array.isArray(data)
+                  ? data
+                  : [];
+
+              if (!this.selectedWebsite && this.websites.length > 0) {
+                this.selectedWebsite = this.websites[0].id;
+                localStorage.setItem("kaunta_website", this.selectedWebsite);
+              }
+            } catch (err) {
+              console.error("Failed to load websites:", err);
+              this.error = err.message;
+            }
+          },
+
+          async switchWebsite() {
+            if (this.selectedWebsite) {
+              localStorage.setItem("kaunta_website", this.selectedWebsite);
+              this.goalsLoading = true;
+              await this.loadGoals();
+              this.goalsLoading = false;
+            }
+          },
+
+          async loadGoals() {
+            if (!this.selectedWebsite) return;
+
+            this.goalsLoading = true;
+            try {
+              const response = await fetch(`/api/goals/${this.selectedWebsite}`);
+              if (!response.ok) {
+                throw new Error("Failed to load goals");
+              }
+              const data = await response.json();
+              let responseData = data;
+              if (responseData === null) responseData = [];
+              this.goals = Array.isArray(responseData.data)
+                ? responseData.data
+                : Array.isArray(responseData)
+                  ? responseData
+                  : [];
+            } catch (err) {
+              console.error("Failed to load goals:", err);
+              this.error = err.message;
+              this.goals = [];
+            } finally {
+              this.goalsLoading = false;
+            }
+          },
+
+          async createGoal() {
+            if (!this.validateForm()) return;
+
+            this.submitting = true;
+            this.formError = "";
+
+            try {
+              const response = await fetch("/api/goals", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": this.getCsrfToken(),
+                },
+                credentials: "include",
+                body: JSON.stringify({
+                  website_id: this.selectedWebsite,
+                  name: this.goalForm.name,
+                  type: this.goalForm.type,
+                  value: this.goalForm.value,
+                }),
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                throw new Error(data.error || "Failed to create goal");
+              }
+
+              this.goals.push(data);
+              this.closeModals();
+              this.showToast("Goal created successfully!", "success");
+            } catch (err) {
+              this.formError = err.message;
+            } finally {
+              this.submitting = false;
+            }
+          },
+
+          editGoal(goal) {
+            this.currentGoal = goal;
+            this.goalForm = {
+              name: goal.name,
+              type: goal.type,
+              value: goal.value,
+            };
+            this.showEditModal = true;
+          },
+
+          async updateGoal() {
+            if (!this.validateForm() || !this.currentGoal) return;
+
+            this.submitting = true;
+            this.formError = "";
+
+            try {
+              const response = await fetch(`/api/goals/${this.currentGoal.id}`, {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": this.getCsrfToken(),
+                },
+                credentials: "include",
+                body: JSON.stringify({
+                  name: this.goalForm.name,
+                  type: this.goalForm.type,
+                  value: this.goalForm.value,
+                }),
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                throw new Error(data.error || "Failed to update goal");
+              }
+
+              const index = this.goals.findIndex((g) => g.id === this.currentGoal.id);
+              if (index !== -1) {
+                this.goals[index] = data;
+              }
+
+              this.closeModals();
+              this.showToast("Goal updated successfully!", "success");
+            } catch (err) {
+              this.formError = err.message;
+            } finally {
+              this.submitting = false;
+            }
+          },
+
+          async deleteGoal(goal) {
+            if (!confirm(`Are you sure you want to delete the goal "${goal.name}"?`)) {
+              return;
+            }
+
+            try {
+              const response = await fetch(`/api/goals/${goal.id}`, {
+                method: "DELETE",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": this.getCsrfToken(),
+                },
+                credentials: "include",
+              });
+
+              if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || "Failed to delete goal");
+              }
+
+              this.goals = this.goals.filter((g) => g.id !== goal.id);
+              this.showToast("Goal deleted successfully!", "success");
+            } catch (err) {
+              this.showToast(err.message, "error");
+            }
+          },
+
+          validateForm() {
+            if (!this.goalForm.name.trim()) {
+              this.formError = "Goal name is required";
+              return false;
+            }
+            if (!this.goalForm.type) {
+              this.formError = "Goal type is required";
+              return false;
+            }
+            if (!this.goalForm.value.trim()) {
+              this.formError = "Goal value is required";
+              return false;
+            }
+            return true;
+          },
+
+          onTypeChange() {
+            this.goalForm.value = "";
+            this.formError = "";
+          },
+
+          closeModals() {
+            this.showCreateModal = false;
+            this.showEditModal = false;
+            this.currentGoal = null;
+            this.goalForm = { name: "", type: "", value: "" };
+            this.formError = "";
+          },
+
+          getWebsiteName() {
+            if (!this.selectedWebsite || !this.websites.length) return "";
+            const website = this.websites.find((w) => w.id === this.selectedWebsite);
+            return website ? website.name || website.domain : "";
+          },
+
+          formatType(type) {
+            return type === "page_view" ? "Page URL" : "Custom Event";
+          },
+
+          getTypeClass(type) {
+            return type === "page_view" ? "page" : "event";
+          },
+
+          formatDate(dateStr) {
+            if (!dateStr) return "";
+            return new Date(dateStr).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            });
+          },
+
+          showToast(message, type) {
+            this.toast = { show: true, message, type };
+            setTimeout(() => {
+              this.toast.show = false;
+            }, 3000);
+          },
+
+          getCsrfToken() {
+            const value = "; " + document.cookie;
+            const parts = value.split("; kaunta_csrf=");
+            if (parts.length === 2) return parts.pop().split(";").shift();
+            return "";
+          },
+
+          async logout() {
+            try {
+              const response = await fetch("/api/auth/logout", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": this.getCsrfToken(),
+                },
+                credentials: "include",
+              });
+
+              if (response.ok) {
+                localStorage.removeItem("kaunta_website");
+                localStorage.removeItem("kaunta_dateRange");
+                window.location.href = "/login";
+              } else {
+                console.error("Logout failed:", await response.text());
+                alert("Logout failed. Please try again.");
+              }
+            } catch (error) {
+              console.error("Logout error:", error);
+              alert("Network error during logout. Please try again.");
+            }
+          },
+        };
+      }
+    </script>
+  </body>
+</html>
