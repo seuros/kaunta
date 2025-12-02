@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -1000,6 +1001,43 @@ func syncTrustedOrigins(origins []string) {
 		}
 	}
 	logging.L().Info("finished syncing trusted origins")
+}
+
+// normalizeOriginForCSRF converts a domain (with or without scheme) into a full origin URL
+// acceptable by Fiber's CSRF middleware. It rejects paths, queries, fragments, wildcards,
+// and empty values.
+func normalizeOriginForCSRF(domain string) (string, bool) {
+	trimmed := strings.TrimSpace(domain)
+	if trimmed == "" {
+		return "", false
+	}
+
+	origin := trimmed
+	if !strings.HasPrefix(origin, "http://") && !strings.HasPrefix(origin, "https://") {
+		// Use https:// for non-localhost domains (safer default for production)
+		if strings.HasPrefix(origin, "localhost") || strings.HasPrefix(origin, "127.0.0.1") {
+			origin = "http://" + origin
+		} else {
+			origin = "https://" + origin
+		}
+	}
+
+	origin = strings.TrimSuffix(origin, "/")
+
+	u, err := url.Parse(origin)
+	if err != nil {
+		return "", false
+	}
+
+	if u.Scheme == "" || u.Host == "" || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+		return "", false
+	}
+
+	if strings.Contains(u.Host, "*") {
+		return "", false
+	}
+
+	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host), true
 }
 
 // ensureSelfWebsite creates or migrates the self-tracking website
