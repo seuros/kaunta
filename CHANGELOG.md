@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.3](https://github.com/seuros/kaunta/compare/v0.29.2...v0.29.3) (2025-12-01)
+
+
+### Bug Fixes
+
+* http support ([c10bfb5](https://github.com/seuros/kaunta/commit/c10bfb5d730b9c8b4124fa54b282db944c60b05e))
+
 ## [0.29.2](https://github.com/seuros/kaunta/compare/v0.29.1...v0.29.2) (2025-11-30)
 
 
