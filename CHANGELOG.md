@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.32.0](https://github.com/seuros/kaunta/compare/v0.31.0...v0.32.0) (2025-12-02)
+
+
+### Features
+
+* show path of referrer int he dashboard ([38d9f22](https://github.com/seuros/kaunta/commit/38d9f22919c7fb39b61b3673831135210ecd3a09))
+
+
+### Bug Fixes
+
+* fix null constraint ([dce56a5](https://github.com/seuros/kaunta/commit/dce56a5bab56cce34390f2695f72968e3c77a0f2)), closes [#103](https://github.com/seuros/kaunta/issues/103)
+
 ## [0.31.0](https://github.com/seuros/kaunta/compare/v0.30.0...v0.31.0) (2025-12-02)
 
 
