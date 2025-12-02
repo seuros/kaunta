@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.1](https://github.com/seuros/kaunta/compare/v0.35.0...v0.35.1) (2025-12-02)
+
+
+### Bug Fixes
+
+* inject version into Docker binary via ldflags ([d920959](https://github.com/seuros/kaunta/commit/d9209599654a77dba4f0066b2eec3ac0b3960280))
+
 ## [0.35.0](https://github.com/seuros/kaunta/compare/v0.34.0...v0.35.0) (2025-12-02)
 
 
