@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.32.1](https://github.com/seuros/kaunta/compare/v0.32.0...v0.32.1) (2025-12-02)
+
+
+### Bug Fixes
+
+* add /up health check endpoint to setup wizard server ([5195507](https://github.com/seuros/kaunta/commit/51955074e3e8f66259e34dc31b68f470e1a01e25))
+* reload config and set environment vars after setup wizard completes ([594f1fc](https://github.com/seuros/kaunta/commit/594f1fcba1881caf0c0437f0fc09e40ba3ebe17a))
+
 ## [0.32.0](https://github.com/seuros/kaunta/compare/v0.31.0...v0.32.0) (2025-12-02)
 
 
