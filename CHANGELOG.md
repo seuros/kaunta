@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0](https://github.com/seuros/kaunta/compare/v0.30.0...v0.31.0) (2025-12-02)
+
+
+### Features
+
+* invalidate css cache ([46be55a](https://github.com/seuros/kaunta/commit/46be55a9fef29a6f1fe9da7fe49c495f4c57b097))
+
 ## [0.30.0](https://github.com/seuros/kaunta/compare/v0.29.3...v0.30.0) (2025-12-02)
 
 
