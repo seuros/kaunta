@@ -4,230 +4,102 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+    <link rel="stylesheet" href="/assets/global.css" />
     <meta name="robots" content="noindex, nofollow" />
     <title>Setup - Kaunta</title>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      :root {
-        --bg-primary: #ffffff;
-        --bg-secondary: #f8f9fa;
-        --bg-accent: #e6f0ff;
-        --text-primary: #1a1a1a;
-        --text-secondary: #4b5e7a;
-        --border-color: #d6e2ff;
-        --accent-color: #3b82f6;
-        --accent-dark: #1e3a8a;
-        --success-color: #10b981;
-        --error-color: #ef4444;
-        --gradient-primary: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
-      }
-
+      /* Setup-specific styles */
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--bg-primary);
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 20px;
-        line-height: 1.6;
+        padding: var(--space-lg);
       }
 
       .setup-container {
-        background: var(--bg-primary);
-        border-radius: 16px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-xl);
         width: 100%;
-        max-width: 600px;
-        padding: 40px;
+        max-width: 800px;
+        padding: var(--space-2xl);
       }
 
       .logo {
         text-align: center;
-        margin-bottom: 30px;
+        margin-bottom: var(--space-2xl);
       }
 
-      h1 {
-        font-size: 2.5rem;
-        background: var(--gradient-primary);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        margin-bottom: 10px;
-      }
-
-      .subtitle {
-        color: var(--text-secondary);
-        text-align: center;
-        margin-bottom: 30px;
+      .logo h1 {
+        font-size: var(--font-3xl);
+        margin-bottom: var(--space-sm);
       }
 
       .form-section {
-        margin-bottom: 30px;
+        margin-bottom: var(--space-2xl);
       }
 
       .section-title {
-        font-size: 1.25rem;
+        font-size: var(--font-xl);
         font-weight: 600;
         color: var(--text-primary);
-        margin-bottom: 20px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid var(--bg-accent);
-      }
-
-      .form-group {
-        margin-bottom: 20px;
+        margin-bottom: var(--space-lg);
+        padding-bottom: var(--space-sm);
+        border-bottom: 2px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
       }
 
       .form-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 15px;
+        gap: var(--space-lg);
+        align-items: start;
       }
 
-      label {
-        display: block;
-        font-weight: 500;
-        color: var(--text-primary);
-        margin-bottom: 8px;
-        font-size: 0.95rem;
-      }
-
-      input,
-      select {
+      .form-row .form-group input,
+      .form-row .form-group select {
         width: 100%;
-        padding: 12px 15px;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 1rem;
-        transition: all 0.2s ease;
-        background: var(--bg-primary);
       }
 
-      input:focus,
-      select:focus {
-        outline: none;
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-      }
-
-      input.error {
-        border-color: var(--error-color);
-      }
-
-      .help-text {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-        margin-top: 5px;
-      }
-
-      .button {
-        padding: 12px 24px;
-        border: none;
-        border-radius: 8px;
-        font-size: 1rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .button-primary {
-        background: var(--accent-color);
-        color: white;
-      }
-
-      .button-primary:hover {
-        background: var(--accent-dark);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-      }
-
-      .button-secondary {
-        background: var(--bg-accent);
-        color: var(--accent-color);
-      }
-
-      .button-secondary:hover {
-        background: #d0e0ff;
-      }
-
-      .button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
+      .form-group input,
+      .form-group select {
+        width: 100%;
       }
 
       .form-actions {
         display: flex;
-        gap: 15px;
-        margin-top: 30px;
-        padding-top: 30px;
+        gap: var(--space-md);
+        margin-top: var(--space-2xl);
+        padding-top: var(--space-lg);
         border-top: 1px solid var(--border-color);
         justify-content: space-between;
+        align-items: center;
       }
 
-      .alert {
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-      }
-
-      .alert-success {
-        background: #d1fae5;
-        color: #065f46;
-        border: 1px solid #6ee7b7;
-      }
-
-      .alert-error {
-        background: #fee2e2;
-        color: #991b1b;
-        border: 1px solid #fca5a5;
-      }
-
-      .alert-info {
-        background: #dbeafe;
-        color: #1e40af;
-        border: 1px solid #93c5fd;
-      }
-
-      .spinner {
-        border: 2px solid var(--bg-accent);
-        border-top: 2px solid var(--accent-color);
-        border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        animation: spin 1s linear infinite;
-        display: inline-block;
-      }
-
-      @keyframes spin {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
+      .setup-container input.error {
+        border-color: var(--error-color);
+        box-shadow: 0 0 0 3px rgb(239 68 68 / 15%);
       }
 
       .password-strength {
         height: 4px;
-        background: var(--bg-accent);
+        background: var(--glass-bg);
         border-radius: 2px;
-        margin-top: 8px;
+        margin-top: var(--space-xs);
         overflow: hidden;
+        border: 1px solid var(--border-color);
       }
 
       .password-strength-bar {
         height: 100%;
-        transition: width 0.3s ease, background-color 0.3s ease;
+        transition: width var(--transition-slow), background-color var(--transition-slow);
       }
 
       .strength-weak {
@@ -244,6 +116,36 @@
         width: 100%;
         background: var(--success-color);
       }
+
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        body {
+          padding: var(--space-md);
+        }
+
+        .setup-container {
+          padding: var(--space-lg);
+        }
+
+        .form-row {
+          grid-template-columns: 1fr;
+        }
+
+        .form-actions {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .form-actions > div {
+          order: 2;
+          text-align: center;
+          margin-top: var(--space-sm);
+        }
+
+        .form-actions .btn {
+          order: 1;
+        }
+      }
     </style>
   </head>
   <body>
@@ -254,47 +156,53 @@
       </div>
 
       <!-- Status Messages -->
-      <div x-show="message" x-transition class="alert" :class="messageType === 'error' ? 'alert-error' : (messageType === 'success' ? 'alert-success' : 'alert-info')" x-text="message"></div>
+      <div x-show="message" x-transition>
+        <div class="error-message" x-show="messageType === 'error'" x-text="message"></div>
+        <div class="alert alert-success" x-show="messageType === 'success'" x-text="message" 
+             style="background: rgb(16 185 129 / 10%); color: var(--success-color); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); border: 1px solid rgb(16 185 129 / 20%);"></div>
+        <div class="alert alert-info" x-show="messageType === 'info'" x-text="message"
+             style="background: rgb(59 130 246 / 10%); color: var(--accent-color); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); border: 1px solid rgb(59 130 246 / 20%);"></div>
+      </div>
 
       <form @submit.prevent="submitSetup">
         <!-- Database Configuration -->
         <div class="form-section">
           <h2 class="section-title">Database Configuration</h2>
-          <p class="help-text" style="margin-bottom: 20px;">
+          <p class="help-text" style="margin-bottom: var(--space-lg);">
             Kaunta requires <strong>PostgreSQL 17+</strong> (uses advanced features like bot detection functions, CTEs, and window functions)
           </p>
 
           <div class="form-row">
             <div class="form-group">
               <label for="db_host">Host *</label>
-              <input type="text" id="db_host" name="db_host" x-model="form.db_host" required />
+              <input type="text" id="db_host" name="db_host" class="input focus-ring" x-model="form.db_host" required />
             </div>
             <div class="form-group">
               <label for="db_port">Port *</label>
-              <input type="text" id="db_port" name="db_port" x-model="form.db_port" required />
+              <input type="text" id="db_port" name="db_port" class="input focus-ring" x-model="form.db_port" required />
             </div>
           </div>
 
           <div class="form-group">
             <label for="db_name">Database Name *</label>
-            <input type="text" id="db_name" name="db_name" x-model="form.db_name" required />
+            <input type="text" id="db_name" name="db_name" class="input focus-ring" x-model="form.db_name" required />
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="db_user">Username *</label>
-              <input type="text" id="db_user" name="db_user" x-model="form.db_user" required />
+              <input type="text" id="db_user" name="db_user" class="input focus-ring" x-model="form.db_user" required />
             </div>
             <div class="form-group">
               <label for="db_password">Password</label>
-              <input type="password" id="db_password" name="db_password" x-model="form.db_password" />
-              <p class="help-text">Leave empty if not required</p>
+              <input type="password" id="db_password" name="db_password" class="input focus-ring" x-model="form.db_password" />
+              <small>Leave empty if not required</small>
             </div>
           </div>
 
           <div class="form-group">
             <label for="db_ssl_mode">SSL Mode</label>
-            <select id="db_ssl_mode" name="db_ssl_mode" x-model="form.db_ssl_mode">
+            <select id="db_ssl_mode" name="db_ssl_mode" class="focus-ring" x-model="form.db_ssl_mode">
               <option value="disable">Disable</option>
               <option value="require">Require</option>
               <option value="verify-ca">Verify CA</option>
@@ -302,7 +210,7 @@
             </select>
           </div>
 
-          <button type="button" @click="testDatabase" class="button button-secondary" :disabled="testing">
+          <button type="button" @click="testDatabase" class="btn btn-secondary" :disabled="testing">
             <span x-show="!testing">Test Database Connection</span>
             <span x-show="testing" class="spinner"></span>
           </button>
@@ -315,13 +223,13 @@
           <div class="form-row">
             <div class="form-group">
               <label for="server_port">Server Port</label>
-              <input type="text" id="server_port" name="server_port" x-model="form.server_port" />
-              <p class="help-text">Default: 3000</p>
+              <input type="text" id="server_port" name="server_port" class="input focus-ring" x-model="form.server_port" />
+              <small>Default: 3000</small>
             </div>
             <div class="form-group">
               <label for="data_dir">Data Directory</label>
-              <input type="text" id="data_dir" name="data_dir" x-model="form.data_dir" />
-              <p class="help-text">For GeoIP database</p>
+              <input type="text" id="data_dir" name="data_dir" class="input focus-ring" x-model="form.data_dir" />
+              <small>For GeoIP database</small>
             </div>
           </div>
         </div>
@@ -336,6 +244,7 @@
               type="text"
               id="admin_username"
               name="admin_username"
+              class="input focus-ring"
               x-model="form.admin_username"
               @input="validateUsername"
               required
@@ -343,7 +252,7 @@
               maxlength="30"
               pattern="[a-zA-Z0-9_]+"
             />
-            <p class="help-text">3-30 characters, letters, numbers, and underscores only</p>
+            <small>3-30 characters, letters, numbers, and underscores only</small>
           </div>
 
           <div class="form-group">
@@ -352,6 +261,7 @@
               type="text"
               id="admin_name"
               name="admin_name"
+              class="input focus-ring"
               x-model="form.admin_name"
               placeholder="Optional"
             />
@@ -363,6 +273,7 @@
               type="password"
               id="admin_password"
               name="admin_password"
+              class="input focus-ring"
               x-model="form.admin_password"
               @input="checkPasswordStrength"
               required
@@ -371,7 +282,7 @@
             <div class="password-strength" x-show="form.admin_password">
               <div class="password-strength-bar" :class="passwordStrengthClass"></div>
             </div>
-            <p class="help-text">Minimum 8 characters</p>
+            <small>Minimum 8 characters</small>
           </div>
 
           <div class="form-group">
@@ -380,6 +291,7 @@
               type="password"
               id="admin_password_confirm"
               name="admin_password_confirm"
+              class="input focus-ring"
               x-model="form.admin_password_confirm"
               required
               minlength="8"
@@ -390,9 +302,9 @@
         <!-- Form Actions -->
         <div class="form-actions">
           <div>
-            <p class="help-text">* Required fields</p>
+            <small style="color: var(--text-tertiary);">* Required fields</small>
           </div>
-          <button type="submit" class="button button-primary" :disabled="submitting">
+          <button type="submit" class="btn btn-primary" :disabled="submitting">
             <span x-show="!submitting">Complete Setup</span>
             <span x-show="submitting" class="spinner"></span>
           </button>

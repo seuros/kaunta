@@ -1186,13 +1186,23 @@ func runSetupServer() error {
 		return c.SendString("OK")
 	})
 
-	// Static assets (for favicon)
+	// Static assets (for favicon and CSS)
 	app.Get("/assets/favicon.ico", func(c fiber.Ctx) error {
 		data, err := fs.ReadFile(AssetsFS.(embed.FS), "assets/favicon.ico")
 		if err != nil {
 			return c.Status(404).SendString("Not found")
 		}
 		c.Set("Content-Type", "image/x-icon")
+		return c.Send(data)
+	})
+
+	app.Get("/assets/global.css", func(c fiber.Ctx) error {
+		data, err := fs.ReadFile(AssetsFS.(embed.FS), "assets/global.css")
+		if err != nil {
+			return c.Status(404).SendString("Not found")
+		}
+		c.Set("Content-Type", "text/css")
+		c.Set("Cache-Control", "public, max-age=3600")
 		return c.Send(data)
 	})
 
