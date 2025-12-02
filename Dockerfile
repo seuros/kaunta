@@ -11,6 +11,8 @@ RUN bun run build
 FROM golang:1.25-alpine AS backend-builder
 WORKDIR /app
 
+ARG VERSION=dev
+
 RUN apk add --no-cache git ca-certificates tzdata
 
 COPY go.mod go.sum ./
@@ -22,13 +24,13 @@ COPY --from=frontend-builder /app/cmd/kaunta/assets ./cmd/kaunta/assets
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build \
     -tags=docker \
-    -ldflags="-w -s" \
+    -ldflags="-w -s -X github.com/seuros/kaunta/internal/cli.Version=${VERSION}" \
     -o kaunta \
     ./cmd/kaunta
 
 FROM alpine:latest
 
-ARG VERSION=0.6.1
+ARG VERSION=dev
 LABEL org.opencontainers.image.title="Kaunta" \
       org.opencontainers.image.description="Privacy-focused analytics engine. Analytics without bloat." \
       org.opencontainers.image.version="${VERSION}" \
