@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.0](https://github.com/seuros/kaunta/compare/v0.33.0...v0.34.0) (2025-12-02)
+
+
+### Features
+
+* redesign setup and setup_complete ui ([#108](https://github.com/seuros/kaunta/issues/108)) ([6f120be](https://github.com/seuros/kaunta/commit/6f120be61985ac4ba57803be2b13a05ff19adbc2))
+
 ## [0.33.0](https://github.com/seuros/kaunta/compare/v0.32.1...v0.33.0) (2025-12-02)
 
 
