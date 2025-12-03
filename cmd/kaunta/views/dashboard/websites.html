@@ -1,54 +1,129 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+{{define "alpine-data"}}websitesDashboard(){{end}} {{define "alpine-init"}}init(){{end}} {{define
+"page-subtitle"}}Website Management{{end}} {{define "navigation"}}
+<a
+  href="/dashboard"
+  class="btn btn-sm btn-ghost glass transition-standard"
+  title="Back to Dashboard"
+>
+  <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M10 19l-7-7m0 0l7-7m-7 7h18"
+    ></path>
+  </svg>
+  Dashboard
+</a>
+{{end}} {{define "website-selector"}}
+<!-- Websites page doesn't need website selector -->
+{{end}} {{define "date-controls"}}
+<!-- Websites page doesn't need date controls -->
+{{end}} {{define "filters"}}
+<!-- Websites page doesn't need filters -->
+{{end}} {{define "header-buttons"}}
+<button @click="showCreateModal = true" title="Add Website" class="btn btn-sm btn-primary">
+  <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+  </svg>
+  Add Website
+</button>
+{{end}} {{define "page-scripts"}}
+<script src="/assets/js/websites.js?v={{.Version}}"></script>
+{{end}} {{define "content"}}
 
-    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+<!-- Loading State -->
+<div x-show="loading" class="loading" style="margin-top: 100px">
+  <div class="spinner"></div>
+  <div>Loading websites...</div>
+</div>
 
-    <!-- Private dashboard - not for indexing -->
-    <meta name="robots" content="noindex, nofollow" />
-
-    <title>{{.Title}} - Kaunta</title>
-    <link rel="stylesheet" href="/assets/vendor/vendor.css?v={{.Version}}" />
-    <link rel="stylesheet" href="/assets/global.css?v={{.Version}}" />
-    {{if .SelfWebsiteID}}
-    <!-- Self-tracking for dogfooding -->
-    <script async src="/k.js" data-website-id="{{.SelfWebsiteID}}"></script>
-    {{end}}
-  </head>
-  <body>
-    <div class="container" x-data="websitesDashboard()" x-init="init()" x-cloak>
-      <header class="glass card">
-        <div class="header-left">
-          <div style="display: flex; align-items: center; gap: 12px">
-            <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 48px; width: auto" />
-            <div style="line-height: 1.2">
-              <h1 style="margin: 0; margin-bottom: 2px">Kaunta (カウンタ)</h1>
-              <div class="subtitle">Website Management</div>
-            </div>
-          </div>
+<!-- Websites Grid -->
+<div x-show="!loading && !error && websites.length > 0" class="websites-grid">
+  <template x-for="website in websites" :key="website.id">
+    <div class="section glass card website-card">
+      <div class="website-header">
+        <div>
+          <h3 x-text="website.name || website.domain" class="website-name"></h3>
+          <span class="badge badge-secondary" x-text="website.domain"></span>
         </div>
-        <div class="header-controls">
-          <a
-            href="/dashboard"
-            class="btn btn-sm btn-ghost glass transition-standard"
-            title="Back to Dashboard"
+        <div class="website-actions">
+          <button
+            @click="copyTrackingCode(website)"
+            class="btn btn-sm"
+            :class="copiedId === website.id ? 'btn-primary' : 'btn-secondary'"
+            title="Copy Tracking Code"
           >
             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
               ></path>
             </svg>
-            Dashboard
-          </a>
+            <span x-text="copiedId === website.id ? 'Copied!' : 'Copy Code'"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="website-info">
+        <div class="info-row">
+          <span class="info-label">Website ID:</span>
+          <code class="info-value" x-text="website.id"></code>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Created:</span>
+          <span class="info-value" x-text="formatDate(website.created_at)"></span>
+        </div>
+      </div>
+
+      <div class="domains-section">
+        <div class="domains-header">
+          <span class="domains-label">Allowed Domains</span>
+          <span class="domains-count" x-text="website.allowed_domains?.length || 0"></span>
+        </div>
+        <div class="domains-list" x-show="expandedWebsite === website.id">
+          <template x-for="(domain, index) in website.allowed_domains" :key="index">
+            <div class="domain-item">
+              <span x-text="domain"></span>
+              <button
+                @click="removeDomain(website, domain)"
+                class="btn btn-xs btn-danger"
+                title="Remove domain"
+                :disabled="website.allowed_domains.length <= 1"
+              >
+                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  ></path>
+                </svg>
+              </button>
+            </div>
+          </template>
+          <div class="add-domain-form" x-show="addingDomainTo === website.id">
+            <input
+              type="text"
+              x-model="newDomain"
+              placeholder="example.com"
+              @keyup.enter="addDomain(website)"
+              @keyup.escape="addingDomainTo = null; newDomain = ''"
+              class="input"
+              style="flex: 1"
+            />
+            <button @click="addDomain(website)" class="btn btn-primary">Add</button>
+            <button @click="addingDomainTo = null; newDomain = ''" class="btn btn-secondary">
+              Cancel
+            </button>
+          </div>
           <button
-            @click="showCreateModal = true"
-            title="Add Website"
-            class="btn btn-sm btn-primary"
+            x-show="addingDomainTo !== website.id"
+            @click="addingDomainTo = website.id"
+            class="btn btn-secondary"
+            style="width: 100%; justify-content: center"
           >
             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -58,651 +133,300 @@
                 d="M12 4v16m8-8H4"
               ></path>
             </svg>
-            Add Website
-          </button>
-          <!-- Logout Button -->
-          <button
-            @click="logout()"
-            class="btn btn-sm btn-danger glass transition-standard"
-            title="Logout"
-          >
-            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              ></path>
-            </svg>
-            Logout
+            Add Domain
           </button>
         </div>
-      </header>
-
-      <!-- Loading State -->
-      <div x-show="loading" class="loading" style="margin-top: 100px">
-        <div class="spinner"></div>
-        <div>Loading websites...</div>
-      </div>
-
-      <!-- Websites Grid -->
-      <div x-show="!loading && !error && websites.length > 0" class="websites-grid">
-        <template x-for="website in websites" :key="website.id">
-          <div class="section glass card website-card">
-            <div class="website-header">
-              <div>
-                <h3 x-text="website.name || website.domain" class="website-name"></h3>
-                <span class="badge badge-secondary" x-text="website.domain"></span>
-              </div>
-              <div class="website-actions">
-                <button
-                  @click="copyTrackingCode(website)"
-                  class="btn btn-sm"
-                  :class="copiedId === website.id ? 'btn-primary' : 'btn-secondary'"
-                  title="Copy Tracking Code"
-                >
-                  <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                    ></path>
-                  </svg>
-                  <span x-text="copiedId === website.id ? 'Copied!' : 'Copy Code'"></span>
-                </button>
-              </div>
-            </div>
-
-            <div class="website-info">
-              <div class="info-row">
-                <span class="info-label">Website ID:</span>
-                <code class="info-value" x-text="website.id"></code>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Created:</span>
-                <span class="info-value" x-text="formatDate(website.created_at)"></span>
-              </div>
-            </div>
-
-            <div class="domains-section">
-              <div class="domains-header">
-                <span class="domains-label">Allowed Domains</span>
-                <span class="domains-count" x-text="website.allowed_domains?.length || 0"></span>
-              </div>
-              <div class="domains-list" x-show="expandedWebsite === website.id">
-                <template x-for="(domain, index) in website.allowed_domains" :key="index">
-                  <div class="domain-item">
-                    <span x-text="domain"></span>
-                    <button
-                      @click="removeDomain(website, domain)"
-                      class="btn btn-xs btn-danger"
-                      title="Remove domain"
-                      :disabled="website.allowed_domains.length <= 1"
-                    >
-                      <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M6 18L18 6M6 6l12 12"
-                        ></path>
-                      </svg>
-                    </button>
-                  </div>
-                </template>
-                <div class="add-domain-form" x-show="addingDomainTo === website.id">
-                  <input
-                    type="text"
-                    x-model="newDomain"
-                    placeholder="example.com"
-                    @keyup.enter="addDomain(website)"
-                    @keyup.escape="addingDomainTo = null; newDomain = ''"
-                    class="input focus-ring"
-                    style="flex: 1"
-                  />
-                  <button @click="addDomain(website)" class="btn btn-primary">Add</button>
-                  <button @click="addingDomainTo = null; newDomain = ''" class="btn btn-secondary">
-                    Cancel
-                  </button>
-                </div>
-                <button
-                  x-show="addingDomainTo !== website.id"
-                  @click="addingDomainTo = website.id"
-                  class="btn btn-secondary"
-                  style="width: 100%; justify-content: center"
-                >
-                  <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M12 4v16m8-8H4"
-                    ></path>
-                  </svg>
-                  Add Domain
-                </button>
-              </div>
-              <button
-                @click="expandedWebsite = expandedWebsite === website.id ? null : website.id"
-                class="btn btn-secondary"
-                style="width: 100%; justify-content: center; margin-top: var(--space-sm)"
-              >
-                <span
-                  x-text="expandedWebsite === website.id ? 'Hide Domains' : 'Manage Domains'"
-                ></span>
-                <svg
-                  class="icon-sm"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  :class="{'rotate-180': expandedWebsite === website.id}"
-                  style="transition: transform var(--transition-base)"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 9l-7 7-7-7"
-                  ></path>
-                </svg>
-              </button>
-            </div>
-          </div>
-        </template>
-      </div>
-
-      <!-- No Websites -->
-      <div
-        x-show="!loading && !error && websites.length === 0"
-        class="empty-state"
-        style="margin-top: 100px"
-      >
-        <div class="empty-state-icon">🌐</div>
-        <div class="empty-state-title">No websites yet</div>
-        <div class="empty-state-text">Add your first website to start tracking analytics.</div>
-        <button @click="showCreateModal = true" class="btn btn-primary" style="margin-top: 16px">
-          <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button
+          @click="expandedWebsite = expandedWebsite === website.id ? null : website.id"
+          class="btn btn-secondary"
+          style="width: 100%; justify-content: center; margin-top: var(--space-sm)"
+        >
+          <span x-text="expandedWebsite === website.id ? 'Hide Domains' : 'Manage Domains'"></span>
+          <svg
+            class="icon-sm"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            :class="{'rotate-180': expandedWebsite === website.id}"
+            style="transition: transform var(--transition-base)"
+          >
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
-              d="M12 4v16m8-8H4"
+              d="M19 9l-7 7-7-7"
             ></path>
           </svg>
-          Add Website
         </button>
       </div>
-
-      <!-- Error State -->
-      <div x-show="!loading && error" class="empty-state" style="margin-top: 100px">
-        <div class="empty-state-icon">⚠️</div>
-        <div class="empty-state-title">Unable to load websites</div>
-        <div class="empty-state-text" x-text="error"></div>
-        <button @click="loadWebsites()" class="btn btn-primary" style="margin-top: 16px">
-          Try Again
-        </button>
-      </div>
-
-      <!-- Create Website Modal -->
-      <div x-show="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
-        <div class="modal glass card">
-          <h2>Add New Website</h2>
-          <form @submit.prevent="createWebsite()">
-            <div class="form-group">
-              <label for="domain">Domain *</label>
-              <input
-                type="text"
-                id="domain"
-                x-model="newWebsite.domain"
-                placeholder="example.com"
-                required
-                class="input"
-              />
-              <small>Common variations (www, http/https) will be added automatically</small>
-            </div>
-            <div class="form-group">
-              <label for="name">Display Name (optional)</label>
-              <input
-                type="text"
-                id="name"
-                x-model="newWebsite.name"
-                placeholder="My Awesome Site"
-                class="input"
-              />
-            </div>
-            <div x-show="createError" class="error-message" x-text="createError"></div>
-            <div class="modal-actions">
-              <button
-                type="button"
-                @click="showCreateModal = false; createError = ''"
-                class="btn btn-ghost"
-              >
-                Cancel
-              </button>
-              <button type="submit" class="btn btn-primary" :disabled="creating">
-                <span x-show="!creating">Create Website</span>
-                <span x-show="creating">Creating...</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <!-- Toast Notification -->
-      <div
-        x-show="toast.show"
-        x-transition
-        class="toast"
-        :class="toast.type"
-        x-text="toast.message"
-      ></div>
-
-      <footer class="glass card">
-        <div
-          style="
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            margin-bottom: 16px;
-          "
-        >
-          <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 32px; width: auto" />
-          <span class="company-name">Kaunta Analytics</span>
-        </div>
-        <p>Built with Go, Fiber, Alpine.js, PostgreSQL, and Leaflet</p>
-        <p>
-          <a href="https://github.com/seuros/kaunta" class="repo-link">View on GitHub</a>
-          · <strong>v{{.Version}}</strong>
-        </p>
-      </footer>
     </div>
-    <script defer src="/assets/vendor/vendor.js?v={{.Version}}"></script>
-    <style>
-      .websites-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-        gap: var(--space-lg);
-        margin-top: var(--space-lg);
-        align-items: start;
-      }
+  </template>
+</div>
 
-      .website-card {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-lg);
-        transition:
-          transform var(--transition-base),
-          box-shadow var(--transition-base);
-      }
+<!-- No Websites -->
+<div
+  x-show="!loading && !error && websites.length === 0"
+  class="empty-state"
+  style="margin-top: 100px"
+>
+  <div class="empty-state-icon">🌐</div>
+  <div class="empty-state-title">No websites yet</div>
+  <div class="empty-state-text">Add your first website to start tracking analytics.</div>
+  <button @click="showCreateModal = true" class="btn btn-primary" style="margin-top: 16px">
+    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M12 4v16m8-8H4"
+      ></path>
+    </svg>
+    Add Website
+  </button>
+</div>
 
-      .website-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-xl);
-      }
+<!-- Error State -->
+<div x-show="!loading && error" class="empty-state" style="margin-top: 100px">
+  <div class="empty-state-icon">⚠️</div>
+  <div class="empty-state-title">Unable to load websites</div>
+  <div class="empty-state-text" x-text="error"></div>
+  <button @click="loadWebsites()" class="btn btn-primary" style="margin-top: 16px">
+    Try Again
+  </button>
+</div>
 
-      .website-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: var(--space-sm);
-      }
+<!-- Create Website Modal -->
+<div x-show="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
+  <div class="modal glass card">
+    <h2 class="modal-title">Add New Website</h2>
+    <form @submit.prevent="createWebsite()">
+      <div class="form-group">
+        <label for="domain">Domain *</label>
+        <input
+          type="text"
+          id="domain"
+          x-model="newWebsite.domain"
+          placeholder="example.com"
+          required
+          class="input"
+        />
+        <small>Common variations (www, http/https) will be added automatically</small>
+      </div>
+      <div class="form-group">
+        <label for="name">Display Name (optional)</label>
+        <input
+          type="text"
+          id="name"
+          x-model="newWebsite.name"
+          placeholder="My Awesome Site"
+          class="input"
+        />
+      </div>
+      <div x-show="createError" class="error-message" x-text="createError"></div>
+      <div class="modal-actions">
+        <button
+          type="button"
+          @click="showCreateModal = false; createError = ''"
+          class="btn btn-ghost"
+        >
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" :disabled="creating">
+          <span x-show="!creating">Create Website</span>
+          <span x-show="creating">Creating...</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
-      .website-name {
-        font-size: var(--font-lg);
-        font-weight: 600;
-        color: var(--accent-dark);
-        margin: 0 0 4px 0;
-        line-height: 1.2;
-      }
+<!-- Toast Notification -->
+<div
+  x-show="toast.show"
+  x-transition
+  class="toast"
+  :class="toast.type"
+  x-text="toast.message"
+></div>
 
-      .website-domain {
-        font-size: var(--font-base);
-        color: var(--text-secondary);
-        font-family: monospace;
-        background: var(--glass-bg);
-        padding: 4px var(--space-sm);
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--glass-border);
-      }
+<style>
+  .websites-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: var(--space-lg);
+    margin-top: var(--space-lg);
+    align-items: start;
+  }
 
-      .website-info {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-sm);
-        padding: var(--space-md);
-        background: var(--bg-accent);
-        border-radius: var(--radius-md);
-        border: 1px solid var(--glass-border);
-      }
+  .website-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    transition:
+      transform var(--transition-base),
+      box-shadow var(--transition-base);
+  }
 
-      .info-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: var(--space-sm);
-      }
+  .website-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+  }
 
-      .info-label {
-        font-size: var(--font-sm);
-        color: var(--text-secondary);
-        font-weight: 500;
-      }
+  .website-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
 
-      .info-value {
-        font-size: var(--font-sm);
-        color: var(--text-primary);
-        font-family: monospace;
-        background: var(--glass-bg);
-        padding: 2px 6px;
-        border-radius: var(--radius-sm);
-      }
+  .website-name {
+    font-size: var(--font-lg);
+    font-weight: 600;
+    color: var(--accent-dark);
+    margin: 0 0 4px 0;
+    line-height: 1.2;
+  }
 
-      .domains-section {
-        border-top: 1px solid var(--border-color);
-        padding-top: var(--space-md);
-      }
+  .website-domain {
+    font-size: var(--font-base);
+    color: var(--text-secondary);
+    font-family: monospace;
+    background: var(--glass-bg);
+    padding: 4px var(--space-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+  }
 
-      .domains-header {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        margin-bottom: var(--space-sm);
-      }
+  .website-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    background: var(--bg-accent);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+  }
 
-      .domains-label {
-        font-size: var(--font-base);
-        font-weight: 500;
-        color: var(--text-secondary);
-      }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-sm);
+  }
 
-      .domains-count {
-        background: var(--accent-color);
-        color: white;
-        padding: 2px var(--space-sm);
-        border-radius: var(--radius-sm);
-        font-size: var(--font-xs);
-        font-weight: 600;
-        min-width: 20px;
-        text-align: center;
-      }
+  .info-label {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
 
-      .domains-list {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-sm);
-        margin-bottom: var(--space-sm);
-      }
+  .info-value {
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+    font-family: monospace;
+    background: var(--glass-bg);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+  }
 
-      .domain-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--space-sm) var(--space-md);
-        background: var(--glass-bg);
-        border: 1px solid var(--glass-border);
-        border-radius: var(--radius-sm);
-        font-size: var(--font-sm);
-        font-family: monospace;
-        transition: all var(--transition-base);
-        min-height: var(--input-height-sm);
-      }
+  .domains-section {
+    border-top: 1px solid var(--border-color);
+    padding-top: var(--space-md);
+  }
 
-      .domain-item:hover {
-        background: var(--glass-bg-hover);
-        border-color: var(--accent-color);
-      }
+  .domains-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+  }
 
-      .add-domain-form {
-        display: flex;
-        gap: var(--space-sm);
-        align-items: center;
-        margin-bottom: var(--space-sm);
-      }
+  .domains-label {
+    font-size: var(--font-base);
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
 
-      .add-domain-btn {
-        width: 100%;
-        justify-content: center;
-      }
+  .domains-count {
+    background: var(--accent-color);
+    color: white;
+    padding: 2px var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+  }
 
-      .expand-btn {
-        width: 100%;
-        justify-content: center;
-        margin-top: var(--space-sm);
-      }
+  .domains-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+  }
 
-      @media (max-width: 768px) {
-        .websites-grid {
-          grid-template-columns: 1fr;
-          gap: var(--space-md);
-        }
+  .domain-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-sm);
+    font-family: monospace;
+    transition: all var(--transition-base);
+    min-height: var(--input-height-sm);
+  }
 
-        .website-header {
-          flex-direction: column;
-          align-items: stretch;
-          gap: var(--space-md);
-        }
+  .domain-item:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--accent-color);
+  }
 
-        .website-actions {
-          align-self: flex-start;
-        }
+  .add-domain-form {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+    margin-bottom: var(--space-sm);
+  }
 
-        .add-domain-form {
-          flex-direction: column;
-          align-items: stretch;
-        }
+  .add-domain-btn {
+    width: 100%;
+    justify-content: center;
+  }
 
-        .add-domain-form .btn {
-          width: 100%;
-        }
-      }
-    </style>
-    <script>
-      function websitesDashboard() {
-        return {
-          websites: [],
-          loading: true,
-          error: null,
-          showCreateModal: false,
-          creating: false,
-          createError: "",
-          newWebsite: { domain: "", name: "" },
-          expandedWebsite: null,
-          addingDomainTo: null,
-          newDomain: "",
-          copiedId: null,
-          toast: { show: false, message: "", type: "" },
+  .expand-btn {
+    width: 100%;
+    justify-content: center;
+    margin-top: var(--space-sm);
+  }
 
-          async init() {
-            await this.loadWebsites();
-          },
+  @media (max-width: 768px) {
+    .websites-grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-md);
+    }
 
-          async loadWebsites() {
-            this.loading = true;
-            this.error = null;
-            try {
-              const response = await fetch("/api/websites/list");
-              if (!response.ok) {
-                throw new Error("Failed to load websites");
-              }
-              this.websites = await response.json();
-            } catch (err) {
-              console.error("Failed to load websites:", err);
-              this.error = err.message;
-            } finally {
-              this.loading = false;
-            }
-          },
+    .website-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-md);
+    }
 
-          async createWebsite() {
-            if (!this.newWebsite.domain) return;
+    .website-actions {
+      align-self: flex-start;
+    }
 
-            this.creating = true;
-            this.createError = "";
+    .add-domain-form {
+      flex-direction: column;
+      align-items: stretch;
+    }
 
-            try {
-              const response = await fetch("/api/websites", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRF-Token": this.getCsrfToken(),
-                },
-                credentials: "include",
-                body: JSON.stringify(this.newWebsite),
-              });
+    .add-domain-form .btn {
+      width: 100%;
+    }
+  }
+</style>
 
-              const data = await response.json();
-
-              if (!response.ok) {
-                throw new Error(data.error || "Failed to create website");
-              }
-
-              this.websites.push(data);
-              this.showCreateModal = false;
-              this.newWebsite = { domain: "", name: "" };
-              this.showToast("Website created successfully!", "success");
-            } catch (err) {
-              this.createError = err.message;
-            } finally {
-              this.creating = false;
-            }
-          },
-
-          async addDomain(website) {
-            if (!this.newDomain) return;
-
-            try {
-              const response = await fetch(`/api/websites/${website.id}/domains`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRF-Token": this.getCsrfToken(),
-                },
-                credentials: "include",
-                body: JSON.stringify({ domain: this.newDomain }),
-              });
-
-              const data = await response.json();
-
-              if (!response.ok) {
-                throw new Error(data.error || "Failed to add domain");
-              }
-
-              // Update website in list
-              const index = this.websites.findIndex((w) => w.id === website.id);
-              if (index !== -1) {
-                this.websites[index] = data;
-              }
-
-              this.addingDomainTo = null;
-              this.newDomain = "";
-              this.showToast("Domain added successfully!", "success");
-            } catch (err) {
-              this.showToast(err.message, "error");
-            }
-          },
-
-          async removeDomain(website, domain) {
-            if (website.allowed_domains.length <= 1) {
-              this.showToast("Cannot remove the last domain", "error");
-              return;
-            }
-
-            try {
-              const response = await fetch(`/api/websites/${website.id}/domains`, {
-                method: "DELETE",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRF-Token": this.getCsrfToken(),
-                },
-                credentials: "include",
-                body: JSON.stringify({ domain }),
-              });
-
-              const data = await response.json();
-
-              if (!response.ok) {
-                throw new Error(data.error || "Failed to remove domain");
-              }
-
-              // Update website in list
-              const index = this.websites.findIndex((w) => w.id === website.id);
-              if (index !== -1) {
-                this.websites[index] = data;
-              }
-
-              this.showToast("Domain removed successfully!", "success");
-            } catch (err) {
-              this.showToast(err.message, "error");
-            }
-          },
-
-          copyTrackingCode(website) {
-            const code = `<script async src="/k.js" data-website-id="${website.id}"><\/script>`;
-            navigator.clipboard
-              .writeText(code)
-              .then(() => {
-                this.copiedId = website.id;
-                this.showToast("Tracking code copied to clipboard!", "success");
-                setTimeout(() => {
-                  this.copiedId = null;
-                }, 2000);
-              })
-              .catch(() => {
-                this.showToast("Failed to copy tracking code", "error");
-              });
-          },
-
-          formatDate(dateStr) {
-            if (!dateStr) return "";
-            return new Date(dateStr).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            });
-          },
-
-          showToast(message, type) {
-            this.toast = { show: true, message, type };
-            setTimeout(() => {
-              this.toast.show = false;
-            }, 3000);
-          },
-
-          getCsrfToken() {
-            const value = "; " + document.cookie;
-            const parts = value.split("; kaunta_csrf=");
-            if (parts.length === 2) return parts.pop().split(";").shift();
-            return "";
-          },
-
-          async logout() {
-            try {
-              const response = await fetch("/api/auth/logout", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRF-Token": this.getCsrfToken(),
-                },
-                credentials: "include",
-              });
-
-              if (response.ok) {
-                localStorage.removeItem("kaunta_website");
-                localStorage.removeItem("kaunta_dateRange");
-                window.location.href = "/login";
-              } else {
-                console.error("Logout failed:", await response.text());
-                alert("Logout failed. Please try again.");
-              }
-            } catch (error) {
-              console.error("Logout error:", error);
-              alert("Network error during logout. Please try again.");
-            }
-          },
-        };
-      }
-    </script>
-  </body>
-</html>
+{{end}}

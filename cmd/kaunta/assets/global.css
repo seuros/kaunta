@@ -310,7 +310,7 @@ h1 {
   border-color: transparent;
 }
 
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
   background: rgb(239 68 68 / 10%);
   border-color: rgb(239 68 68 / 30%);
   color: var(--error-color);
@@ -563,7 +563,7 @@ header .btn-primary:hover {
   box-shadow: var(--shadow-md);
 }
 
-header .btn-danger:hover {
+header .btn-danger:hover:not(:disabled) {
   background: rgb(239 68 68 / 10%);
   border-color: rgb(239 68 68 / 30%);
   color: var(--error-color);

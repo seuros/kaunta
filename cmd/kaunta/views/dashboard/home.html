@@ -1,3 +1,6 @@
+{{define "header-buttons"}}{{end}} {{define "page-scripts"}}
+<script src="/assets/js/dashboard.js?v={{.Version}}"></script>
+{{end}} {{define "content"}}
 <!-- Dashboard App -->
 <div x-show="!websitesLoading && !websitesError && selectedWebsite && websites.length > 0">
   <!-- Stats Grid -->
@@ -275,7 +278,7 @@
       </div>
     </template>
     <template x-if="!breakdownLoading && breakdownData && breakdownData.length > 0">
-      <table>
+      <table class="glass card">
         <thead>
           <tr>
             <th
@@ -360,3 +363,4 @@
   <div class="empty-state-title">Unable to load websites</div>
   <div class="empty-state-text">Check the server logs for /api/websites errors and try again.</div>
 </div>
+{{end}}

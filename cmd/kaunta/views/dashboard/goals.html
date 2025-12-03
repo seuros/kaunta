@@ -1,944 +1,506 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+{{define "alpine-data"}}goalsDashboard(){{end}} {{define "alpine-init"}}init(){{end}} {{define
+"page-subtitle"}}Goals Management{{end}} {{define "navigation"}}
+<a
+  href="/dashboard"
+  class="btn btn-sm btn-ghost glass transition-standard"
+  title="Back to Dashboard"
+>
+  <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M10 19l-7-7m0 0l7-7m-7 7h18"
+    ></path>
+  </svg>
+  Dashboard
+</a>
+{{end}} {{define "website-selector"}}
+<select
+  x-model="selectedWebsite"
+  @change="switchWebsite()"
+  x-show="websites.length > 0"
+  class="input-sm glass transition-standard focus-accent"
+>
+  <template x-for="site in websites" :key="site.id">
+    <option :value="site.id" x-text="site.name || site.domain"></option>
+  </template>
+</select>
+{{end}} {{define "date-controls"}}
+<!-- Goals page doesn't need date controls -->
+{{end}} {{define "filters"}}
+<!-- Goals page doesn't need filters -->
+{{end}} {{define "header-buttons"}}
+<button
+  @click="showCreateModal = true"
+  title="Add Goal"
+  x-show="selectedWebsite"
+  class="btn btn-sm btn-primary"
+>
+  <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+  </svg>
+  Add Goal
+</button>
+{{end}} {{define "page-scripts"}}
+<script src="/assets/js/goals.js?v={{.Version}}"></script>
+{{end}} {{define "content"}}
+<!-- Loading State -->
+<div x-show="loading" class="loading" style="margin-top: 100px">
+  <div class="spinner"></div>
+  <div>Loading goals...</div>
+</div>
 
-    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
-
-    <!-- Private dashboard - not for indexing -->
-    <meta name="robots" content="noindex, nofollow" />
-
-    <title>{{.Title}} - Kaunta</title>
-    <link rel="stylesheet" href="/assets/vendor/vendor.css?v={{.Version}}" />
-    <link rel="stylesheet" href="/assets/global.css?v={{.Version}}" />
-    {{if .SelfWebsiteID}}
-    <!-- Self-tracking for dogfooding -->
-    <script async src="/k.js" data-website-id="{{.SelfWebsiteID}}"></script>
-    {{end}}
-  </head>
-  <body>
-    <div class="container" x-data="goalsDashboard()" x-init="init()" x-cloak>
-      <header class="glass card">
-        <div class="header-left">
-          <div style="display: flex; align-items: center; gap: 12px">
-            <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 48px; width: auto" />
-            <div style="line-height: 1.2">
-              <h1 style="margin: 0; margin-bottom: 2px">Kaunta (カウンタ)</h1>
-              <div class="subtitle">Goals Management</div>
-            </div>
-          </div>
-        </div>
-        <div class="header-controls">
-          <a
-            href="/dashboard"
-            class="btn btn-sm btn-ghost glass transition-standard"
-            title="Back to Dashboard"
-          >
-            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              ></path>
-            </svg>
-            Dashboard
-          </a>
-
-          <select
-            x-model="selectedWebsite"
-            @change="switchWebsite()"
-            x-show="websites.length > 0"
-            class="input-sm glass transition-standard focus-accent"
-          >
-            <template x-for="site in websites" :key="site.id">
-              <option :value="site.id" x-text="site.name || site.domain"></option>
-            </template>
-          </select>
-
-          <button
-            @click="showCreateModal = true"
-            title="Add Goal"
-            x-show="selectedWebsite"
-            class="btn btn-sm btn-primary"
-          >
-            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              ></path>
-            </svg>
-            Add Goal
-          </button>
-
-          <!-- Logout Button -->
-          <button
-            @click="logout()"
-            class="btn btn-sm btn-danger glass transition-standard"
-            title="Logout"
-          >
-            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              ></path>
-            </svg>
-            Logout
-          </button>
-        </div>
-      </header>
-
-      <!-- Loading State -->
-      <div x-show="loading" class="loading" style="margin-top: 100px">
-        <div class="spinner"></div>
-        <div>Loading goals...</div>
-      </div>
-
-      <!-- Goals Table -->
-      <div x-show="!loading && !error && selectedWebsite" class="section glass card">
-        <div class="section-header">
-          <h2>Goals for <span x-text="getWebsiteName()"></span></h2>
-        </div>
-
-        <table x-show="goals.length > 0" class="glass card">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Value</th>
-              <th>Created</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <template x-for="goal in goals" :key="goal.id">
-              <tr>
-                <td x-text="goal.name"></td>
-                <td>
-                  <span x-text="formatType(goal.type)"></span>
-                </td>
-                <td>
-                  <code x-text="goal.value"></code>
-                </td>
-                <td x-text="formatDate(goal.created_at)"></td>
-                <td>
-                  <button @click="viewAnalytics(goal)" class="btn btn-xs btn-primary">
-                    <svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                    </svg>
-                    Analytics
-                  </button>
-                  <button @click="editGoal(goal)" class="btn btn-xs btn-ghost">Edit</button>
-                  <button @click="deleteGoal(goal)" class="btn btn-xs btn-danger">Delete</button>
-                </td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-
-        <!-- No Goals -->
-        <div x-show="goals.length === 0 && !goalsLoading" class="empty-state">
-          <div class="empty-state-icon">🎯</div>
-          <div class="empty-state-title">No goals yet</div>
-          <div class="empty-state-text">
-            Track important events like signups, purchases, or downloads.
-          </div>
-          <button @click="showCreateModal = true" class="btn btn-primary">
-            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              ></path>
-            </svg>
-            Add Your First Goal
-          </button>
-        </div>
-      </div>
-
-      <!-- No Website Selected -->
-      <div
-        x-show="!loading && !error && !selectedWebsite"
-        class="empty-state"
-        style="margin-top: 100px"
+<!-- Goals Table -->
+<div x-show="!loading && !error && selectedWebsite" class="section glass card">
+  <div class="section-header">
+    <h2>
+      <svg
+        class="icon-lg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
       >
-        <div class="empty-state-icon">🌐</div>
-        <div class="empty-state-title">No website selected</div>
-        <div class="empty-state-text">Please select a website to manage goals.</div>
+        <circle cx="12" cy="12" r="8"></circle>
+        <circle cx="12" cy="12" r="5"></circle>
+        <circle cx="12" cy="12" r="2"></circle>
+        <path d="M18 6l-6.5 6.5" />
+        <path d="M13.5 6.5L18 6l-1 5.5" />
+      </svg>
+      Goals for <span x-text="getWebsiteName()"></span>
+    </h2>
+  </div>
+
+  <table x-show="goals.length > 0" class="glass card">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Value</th>
+        <th>Created</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="goal in goals" :key="goal.id">
+        <tr>
+          <td x-text="goal.name"></td>
+          <td>
+            <span x-text="formatType(goal.type)"></span>
+          </td>
+          <td>
+            <code x-text="goal.value"></code>
+          </td>
+          <td x-text="formatDate(goal.created_at)"></td>
+          <td>
+            <button @click="viewAnalytics(goal)" class="btn btn-xs btn-primary">
+              <svg
+                class="icon-xs"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                style="width: 14px; height: 14px; display: inline-block; vertical-align: middle"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                ></path>
+              </svg>
+              Analytics
+            </button>
+            <button @click="editGoal(goal)" class="btn btn-xs btn-ghost">Edit</button>
+            <button @click="deleteGoal(goal)" class="btn btn-xs btn-danger">Delete</button>
+          </td>
+        </tr>
+      </template>
+    </tbody>
+  </table>
+
+  <!-- No Goals -->
+  <div x-show="goals.length === 0 && !goalsLoading" class="empty-state">
+    <div class="empty-state-icon">🎯</div>
+    <div class="empty-state-title">No goals yet</div>
+    <div class="empty-state-text">
+      Track important events like signups, purchases, or downloads.
+    </div>
+    <button @click="showCreateModal = true" class="btn btn-primary">
+      <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 4v16m8-8H4"
+        ></path>
+      </svg>
+      Add Your First Goal
+    </button>
+  </div>
+</div>
+
+<!-- No Website Selected -->
+<div x-show="!loading && !error && !selectedWebsite" class="empty-state" style="margin-top: 100px">
+  <div class="empty-state-icon">🌐</div>
+  <div class="empty-state-title">No website selected</div>
+  <div class="empty-state-text">Please select a website to manage goals.</div>
+</div>
+
+<!-- Error State -->
+<div x-show="!loading && error" class="empty-state" style="margin-top: 100px">
+  <div class="empty-state-icon">⚠️</div>
+  <div class="empty-state-title">Unable to load goals</div>
+  <div class="empty-state-text" x-text="error"></div>
+  <button @click="loadGoals()" class="btn btn-primary" style="margin-top: 16px">Try Again</button>
+</div>
+
+<!-- Create/Edit Goal Modal -->
+<div
+  x-show="showCreateModal || showEditModal"
+  class="modal-overlay"
+  @click.self="closeModals()"
+  x-transition
+>
+  <div class="modal glass card">
+    <h2 class="modal-title">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+        ></path>
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+        ></path>
+      </svg>
+      <span x-text="showEditModal ? 'Edit Goal' : 'Add New Goal'"></span>
+    </h2>
+    <form @submit.prevent="showEditModal ? updateGoal() : createGoal()">
+      <div class="form-group">
+        <label for="goal-name">Goal Name *</label>
+        <input
+          type="text"
+          id="goal-name"
+          x-model="goalForm.name"
+          placeholder="e.g., Newsletter Signup"
+          required
+          class="input"
+        />
       </div>
 
-      <!-- Error State -->
-      <div x-show="!loading && error" class="empty-state" style="margin-top: 100px">
-        <div class="empty-state-icon">⚠️</div>
-        <div class="empty-state-title">Unable to load goals</div>
-        <div class="empty-state-text" x-text="error"></div>
-        <button @click="loadGoals()" class="btn btn-primary" style="margin-top: 16px">
-          Try Again
+      <div class="form-group">
+        <label>Goal Type *</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input
+              type="radio"
+              x-model="goalForm.type"
+              value="page_view"
+              @change="onTypeChange()"
+              name="goal-type-radio"
+              required
+            />
+            <div class="radio-button-card">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                ></path>
+              </svg>
+              <span>Page View</span>
+              <small>Track visits to a specific URL.</small>
+            </div>
+          </label>
+          <label class="radio-label">
+            <input
+              type="radio"
+              x-model="goalForm.type"
+              value="custom_event"
+              @change="onTypeChange()"
+              name="goal-type-radio"
+              required
+            />
+            <div class="radio-button-card">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 9l4-4 4 4m0 6l-4 4-4-4"
+                ></path>
+              </svg>
+              <span>Custom Event</span>
+              <small>Track a custom named event.</small>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div x-show="goalForm.type" x-transition>
+        <div class="form-group" x-show="goalForm.type === 'page_view'">
+          <label for="goal-page-value">Page URL *</label>
+          <input
+            type="text"
+            id="goal-page-value"
+            x-model="goalForm.value"
+            placeholder="/thank-you"
+            class="input"
+          />
+          <small>The page URL visitors reach when they complete this goal (e.g. /thank-you)</small>
+        </div>
+
+        <div class="form-group" x-show="goalForm.type === 'custom_event'">
+          <label for="goal-event-value">Event Name *</label>
+          <input
+            type="text"
+            id="goal-event-value"
+            x-model="goalForm.value"
+            placeholder="e.g., signup"
+            class="input"
+          />
+          <small>The custom event name sent from your website (e.g. "signup", "purchase")</small>
+        </div>
+      </div>
+
+      <div x-show="formError" class="error-message" x-text="formError" x-transition></div>
+      <div class="modal-actions">
+        <button type="button" @click="closeModals()" class="btn btn-ghost">Cancel</button>
+        <button type="submit" class="btn btn-primary" :disabled="submitting">
+          <span x-show="!submitting" x-text="showEditModal ? 'Update Goal' : 'Create Goal'"></span>
+          <span x-show="submitting" x-text="showEditModal ? 'Updating...' : 'Creating...'"></span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Goal Analytics Modal -->
+<div
+  x-show="showAnalyticsModal"
+  class="modal-overlay"
+  @click.self="closeAnalyticsModal()"
+  x-transition
+>
+  <div class="modal glass card" style="max-width: 1200px; width: 90vw">
+    <h2 class="modal-title">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+        ></path>
+      </svg>
+      <span x-text="'Analytics: ' + (currentGoal ? currentGoal.name : '')"></span>
+    </h2>
+
+    <!-- Date Range Filter -->
+    <div class="date-range-buttons glass" style="margin-bottom: 24px">
+      <button
+        class="btn btn-xs date-btn"
+        :class="{ 'active': analyticsDateRange === '1' }"
+        @click="setAnalyticsDateRange('1')"
+      >
+        Today
+      </button>
+      <button
+        class="btn btn-xs date-btn"
+        :class="{ 'active': analyticsDateRange === '7' }"
+        @click="setAnalyticsDateRange('7')"
+      >
+        7 days
+      </button>
+      <button
+        class="btn btn-xs date-btn"
+        :class="{ 'active': analyticsDateRange === '30' }"
+        @click="setAnalyticsDateRange('30')"
+      >
+        30 days
+      </button>
+    </div>
+
+    <!-- Conversion Metrics Cards -->
+    <div
+      x-show="!analyticsLoading"
+      class="stats-grid"
+      style="
+        margin-bottom: 24px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+      "
+    >
+      <div class="stat-card glass card">
+        <div class="stat-label">Conversion Rate</div>
+        <div class="stat-value">
+          <span
+            x-text="analytics.conversion_rate ? analytics.conversion_rate.toFixed(2) + '%' : '0%'"
+          ></span>
+        </div>
+        <div class="stat-footer">
+          <span
+            x-text="analytics.unique_sessions + ' of ' + analytics.total_sessions + ' sessions'"
+          ></span>
+        </div>
+      </div>
+      <div class="stat-card glass card">
+        <div class="stat-label">Total Completions</div>
+        <div class="stat-value" x-text="analytics.completions || 0"></div>
+      </div>
+      <div class="stat-card glass card">
+        <div class="stat-label">Unique Sessions</div>
+        <div class="stat-value" x-text="analytics.unique_sessions || 0"></div>
+      </div>
+      <div class="stat-card glass card">
+        <div class="stat-label">Total Sessions</div>
+        <div class="stat-value" x-text="analytics.total_sessions || 0"></div>
+      </div>
+    </div>
+
+    <!-- Time Series Chart -->
+    <div x-show="!analyticsLoading" class="section glass card" style="margin-bottom: 24px">
+      <h3>Completions Over Time</h3>
+      <canvas id="goalChart" style="max-height: 300px"></canvas>
+    </div>
+
+    <!-- Tabbed Breakdowns -->
+    <div x-show="!analyticsLoading" class="section glass card">
+      <div
+        class="tabs"
+        style="
+          margin-bottom: 16px;
+          display: flex;
+          gap: 8px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        "
+      >
+        <button
+          class="tab-btn"
+          :class="{ 'active': analyticsTab === 'pages' }"
+          @click="setAnalyticsTab('pages')"
+          style="
+            padding: 8px 16px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+          "
+        >
+          Top Converting Pages
+        </button>
+        <button
+          class="tab-btn"
+          :class="{ 'active': analyticsTab === 'referrer' }"
+          @click="setAnalyticsTab('referrer')"
+          style="
+            padding: 8px 16px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+          "
+        >
+          Referrers
+        </button>
+        <button
+          class="tab-btn"
+          :class="{ 'active': analyticsTab === 'country' }"
+          @click="setAnalyticsTab('country')"
+          style="
+            padding: 8px 16px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+          "
+        >
+          Countries
+        </button>
+        <button
+          class="tab-btn"
+          :class="{ 'active': analyticsTab === 'device' }"
+          @click="setAnalyticsTab('device')"
+          style="
+            padding: 8px 16px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+          "
+        >
+          Devices
+        </button>
+        <button
+          class="tab-btn"
+          :class="{ 'active': analyticsTab === 'browser' }"
+          @click="setAnalyticsTab('browser')"
+          style="
+            padding: 8px 16px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+          "
+        >
+          Browsers
         </button>
       </div>
 
-      <!-- Create/Edit Goal Modal -->
-      <div
-        x-show="showCreateModal || showEditModal"
-        class="modal-overlay"
-        @click.self="closeModals()"
-        x-transition
-      >
-        <div class="modal glass card">
-          <h2 class="modal-title">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              ></path>
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-              ></path>
-            </svg>
-            <span x-text="showEditModal ? 'Edit Goal' : 'Add New Goal'"></span>
-          </h2>
-          <form @submit.prevent="showEditModal ? updateGoal() : createGoal()">
-            <div class="form-group">
-              <label for="goal-name">Goal Name *</label>
-              <div class="input-with-icon">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  ></path>
-                </svg>
-                <input
-                  type="text"
-                  id="goal-name"
-                  x-model="goalForm.name"
-                  placeholder="e.g., Newsletter Signup"
-                  required
-                  class="input"
-                />
-              </div>
-            </div>
+      <!-- Breakdown Table -->
+      <table x-show="breakdownData.length > 0" class="glass card">
+        <thead>
+          <tr>
+            <th
+              x-text="analyticsTab === 'pages' ? 'Page' : (analyticsTab.charAt(0).toUpperCase() + analyticsTab.slice(1))"
+            ></th>
+            <th>Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="item in breakdownData" :key="item.name || item.path">
+            <tr>
+              <td x-text="item.name || item.path"></td>
+              <td x-text="item.count || item.conversions"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
 
-            <div class="form-group">
-              <label>Goal Type *</label>
-              <div class="radio-group">
-                <label class="radio-label">
-                  <input
-                    type="radio"
-                    x-model="goalForm.type"
-                    value="page_view"
-                    @change="onTypeChange()"
-                    name="goal-type-radio"
-                    required
-                  />
-                  <div class="radio-button-card">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      ></path>
-                    </svg>
-                    <span>Page View</span>
-                    <small>Track visits to a specific URL.</small>
-                  </div>
-                </label>
-                <label class="radio-label">
-                  <input
-                    type="radio"
-                    x-model="goalForm.type"
-                    value="custom_event"
-                    @change="onTypeChange()"
-                    name="goal-type-radio"
-                    required
-                  />
-                  <div class="radio-button-card">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M8 9l4-4 4 4m0 6l-4 4-4-4"
-                      ></path>
-                    </svg>
-                    <span>Custom Event</span>
-                    <small>Track a custom named event.</small>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <div x-show="goalForm.type" x-transition>
-              <div class="form-group" x-show="goalForm.type === 'page_view'">
-                <label for="goal-page-value">Page URL *</label>
-                <div class="input-with-icon">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                    ></path>
-                  </svg>
-                  <input
-                    type="text"
-                    id="goal-page-value"
-                    x-model="goalForm.value"
-                    placeholder="/thank-you"
-                    class="input"
-                  />
-                </div>
-                <small
-                  >The page URL visitors reach when they complete this goal (e.g. /thank-you)</small
-                >
-              </div>
-
-              <div class="form-group" x-show="goalForm.type === 'custom_event'">
-                <label for="goal-event-value">Event Name *</label>
-                <div class="input-with-icon">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"
-                    ></path>
-                  </svg>
-                  <input
-                    type="text"
-                    id="goal-event-value"
-                    x-model="goalForm.value"
-                    placeholder="e.g., signup"
-                    class="input"
-                  />
-                </div>
-                <small
-                  >The custom event name sent from your website (e.g. "signup", "purchase")</small
-                >
-              </div>
-            </div>
-
-            <div x-show="formError" class="error-message" x-text="formError" x-transition></div>
-            <div class="modal-actions">
-              <button type="button" @click="closeModals()" class="btn btn-ghost">Cancel</button>
-              <button type="submit" class="btn btn-primary" :disabled="submitting">
-                <span
-                  x-show="!submitting"
-                  x-text="showEditModal ? 'Update Goal' : 'Create Goal'"
-                ></span>
-                <span
-                  x-show="submitting"
-                  x-text="showEditModal ? 'Updating...' : 'Creating...'"
-                ></span>
-              </button>
-            </div>
-          </form>
-        </div>
+      <div x-show="breakdownData.length === 0" class="empty-state">
+        <div class="empty-state-text">No data available for this breakdown</div>
       </div>
-
-      <!-- Goal Analytics Modal -->
-      <div
-        x-show="showAnalyticsModal"
-        class="modal-overlay"
-        @click.self="closeAnalyticsModal()"
-        x-transition
-      >
-        <div class="modal glass card" style="max-width: 1200px; width: 90vw">
-          <h2 class="modal-title">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px;">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-            </svg>
-            <span x-text="'Analytics: ' + (currentGoal ? currentGoal.name : '')"></span>
-          </h2>
-
-          <!-- Date Range Filter -->
-          <div class="date-range-buttons glass" style="margin-bottom: 24px">
-            <button class="btn btn-xs date-btn" :class="{ 'active': analyticsDateRange === '1' }" @click="setAnalyticsDateRange('1')">Today</button>
-            <button class="btn btn-xs date-btn" :class="{ 'active': analyticsDateRange === '7' }" @click="setAnalyticsDateRange('7')">7 days</button>
-            <button class="btn btn-xs date-btn" :class="{ 'active': analyticsDateRange === '30' }" @click="setAnalyticsDateRange('30')">30 days</button>
-          </div>
-
-          <!-- Conversion Metrics Cards -->
-          <div x-show="!analyticsLoading" class="stats-grid" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
-            <div class="stat-card glass card">
-              <div class="stat-label">Conversion Rate</div>
-              <div class="stat-value">
-                <span x-text="analytics.conversion_rate ? analytics.conversion_rate.toFixed(2) + '%' : '0%'"></span>
-              </div>
-              <div class="stat-footer">
-                <span x-text="analytics.unique_sessions + ' of ' + analytics.total_sessions + ' sessions'"></span>
-              </div>
-            </div>
-            <div class="stat-card glass card">
-              <div class="stat-label">Total Completions</div>
-              <div class="stat-value" x-text="analytics.completions || 0"></div>
-            </div>
-            <div class="stat-card glass card">
-              <div class="stat-label">Unique Sessions</div>
-              <div class="stat-value" x-text="analytics.unique_sessions || 0"></div>
-            </div>
-            <div class="stat-card glass card">
-              <div class="stat-label">Total Sessions</div>
-              <div class="stat-value" x-text="analytics.total_sessions || 0"></div>
-            </div>
-          </div>
-
-          <!-- Time Series Chart -->
-          <div x-show="!analyticsLoading" class="section glass card" style="margin-bottom: 24px">
-            <h3>Completions Over Time</h3>
-            <canvas id="goalChart" style="max-height: 300px"></canvas>
-          </div>
-
-          <!-- Tabbed Breakdowns -->
-          <div x-show="!analyticsLoading" class="section glass card">
-            <div class="tabs" style="margin-bottom: 16px; display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.1)">
-              <button class="tab-btn" :class="{ 'active': analyticsTab === 'pages' }" @click="setAnalyticsTab('pages')" style="padding: 8px 16px; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent">Top Converting Pages</button>
-              <button class="tab-btn" :class="{ 'active': analyticsTab === 'referrer' }" @click="setAnalyticsTab('referrer')" style="padding: 8px 16px; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent">Referrers</button>
-              <button class="tab-btn" :class="{ 'active': analyticsTab === 'country' }" @click="setAnalyticsTab('country')" style="padding: 8px 16px; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent">Countries</button>
-              <button class="tab-btn" :class="{ 'active': analyticsTab === 'device' }" @click="setAnalyticsTab('device')" style="padding: 8px 16px; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent">Devices</button>
-              <button class="tab-btn" :class="{ 'active': analyticsTab === 'browser' }" @click="setAnalyticsTab('browser')" style="padding: 8px 16px; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent">Browsers</button>
-            </div>
-
-            <!-- Breakdown Table -->
-            <table x-show="breakdownData.length > 0">
-              <thead>
-                <tr>
-                  <th x-text="analyticsTab === 'pages' ? 'Page' : (analyticsTab.charAt(0).toUpperCase() + analyticsTab.slice(1))"></th>
-                  <th>Count</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template x-for="item in breakdownData" :key="item.name || item.path">
-                  <tr>
-                    <td x-text="item.name || item.path"></td>
-                    <td x-text="item.count || item.conversions"></td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
-
-            <div x-show="breakdownData.length === 0" class="empty-state">
-              <div class="empty-state-text">No data available for this breakdown</div>
-            </div>
-          </div>
-
-          <!-- Loading State -->
-          <div x-show="analyticsLoading" class="loading" style="margin: 40px 0; text-align: center">
-            <div class="spinner"></div>
-            <div>Loading analytics...</div>
-          </div>
-
-          <!-- Close Button -->
-          <div class="modal-actions">
-            <button @click="closeAnalyticsModal()" class="btn btn-ghost">Close</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Toast Notification -->
-      <div
-        x-show="toast.show"
-        x-transition
-        class="toast"
-        :class="toast.type"
-        x-text="toast.message"
-      ></div>
-
-      <footer class="glass card">
-        <div
-          style="
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            margin-bottom: 16px;
-          "
-        >
-          <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 32px; width: auto" />
-          <span class="company-name">Kaunta Analytics</span>
-        </div>
-        <p>Built with Go, Fiber, Alpine.js, PostgreSQL, and Leaflet</p>
-        <p>
-          <a href="https://github.com/seuros/kaunta" class="repo-link">View on GitHub</a>
-          · <strong>v{{.Version}}</strong>
-        </p>
-      </footer>
     </div>
-    <script defer src="/assets/vendor/vendor.js?v={{.Version}}"></script>
-    <script>
-      function goalsDashboard() {
-        return {
-          websites: [],
-          selectedWebsite: localStorage.getItem("kaunta_website") || "",
-          goals: [],
-          loading: true,
-          goalsLoading: false,
-          error: null,
-          showCreateModal: false,
-          showEditModal: false,
-          submitting: false,
-          formError: "",
-          currentGoal: null,
-          goalForm: {
-            name: "",
-            type: "",
-            value: "",
-          },
-          toast: { show: false, message: "", type: "" },
 
-          // Analytics modal state
-          showAnalyticsModal: false,
-          analyticsLoading: false,
-          analyticsDateRange: '7',
-          analyticsTab: 'pages',
-          analytics: {
-            completions: 0,
-            unique_sessions: 0,
-            conversion_rate: 0,
-            total_sessions: 0
-          },
-          timeseriesData: [],
-          breakdownData: [],
-          goalChart: null,
+    <!-- Loading State -->
+    <div x-show="analyticsLoading" class="loading" style="margin: 40px 0; text-align: center">
+      <div class="spinner"></div>
+      <div>Loading analytics...</div>
+    </div>
 
-          async init() {
-            await this.loadWebsites();
-            if (this.selectedWebsite) {
-              await this.loadGoals();
-            }
-            this.loading = false;
-          },
+    <!-- Close Button -->
+    <div class="modal-actions">
+      <button @click="closeAnalyticsModal()" class="btn btn-ghost">Close</button>
+    </div>
+  </div>
+</div>
 
-          async loadWebsites() {
-            try {
-              const response = await fetch("/api/websites");
-              if (!response.ok) {
-                throw new Error("Failed to load websites");
-              }
-              const data = await response.json();
-              this.websites = Array.isArray(data.data)
-                ? data.data
-                : Array.isArray(data)
-                  ? data
-                  : [];
+<!-- Toast Notification -->
+<div
+  x-show="toast.show"
+  x-transition
+  class="toast"
+  :class="toast.type"
+  x-text="toast.message"
+></div>
 
-              if (!this.selectedWebsite && this.websites.length > 0) {
-                this.selectedWebsite = this.websites[0].id;
-                localStorage.setItem("kaunta_website", this.selectedWebsite);
-              }
-            } catch (err) {
-              console.error("Failed to load websites:", err);
-              this.error = err.message;
-            }
-          },
-
-          async switchWebsite() {
-            if (this.selectedWebsite) {
-              localStorage.setItem("kaunta_website", this.selectedWebsite);
-              this.goalsLoading = true;
-              await this.loadGoals();
-              this.goalsLoading = false;
-            }
-          },
-
-          async loadGoals() {
-            if (!this.selectedWebsite) return;
-
-            this.goalsLoading = true;
-            try {
-              const response = await fetch(`/api/goals/${this.selectedWebsite}`);
-              if (!response.ok) {
-                throw new Error("Failed to load goals");
-              }
-              const data = await response.json();
-              let responseData = data;
-              if (responseData === null) responseData = [];
-              this.goals = Array.isArray(responseData.data)
-                ? responseData.data
-                : Array.isArray(responseData)
-                  ? responseData
-                  : [];
-            } catch (err) {
-              console.error("Failed to load goals:", err);
-              this.error = err.message;
-              this.goals = [];
-            } finally {
-              this.goalsLoading = false;
-            }
-          },
-
-          async createGoal() {
-            if (!this.validateForm()) return;
-
-            this.submitting = true;
-            this.formError = "";
-
-            try {
-              const response = await fetch("/api/goals", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRF-Token": this.getCsrfToken(),
-                },
-                credentials: "include",
-                body: JSON.stringify({
-                  website_id: this.selectedWebsite,
-                  name: this.goalForm.name,
-                  type: this.goalForm.type,
-                  value: this.goalForm.value,
-                }),
-              });
-
-              const data = await response.json();
-
-              if (!response.ok) {
-                throw new Error(data.error || "Failed to create goal");
-              }
-
-              this.goals.push(data);
-              this.closeModals();
-              this.showToast("Goal created successfully!", "success");
-            } catch (err) {
-              this.formError = err.message;
-            } finally {
-              this.submitting = false;
-            }
-          },
-
-          editGoal(goal) {
-            this.currentGoal = goal;
-            this.goalForm = {
-              name: goal.name,
-              type: goal.type,
-              value: goal.value,
-            };
-            this.showEditModal = true;
-          },
-
-          async updateGoal() {
-            if (!this.validateForm() || !this.currentGoal) return;
-
-            this.submitting = true;
-            this.formError = "";
-
-            try {
-              const response = await fetch(`/api/goals/${this.currentGoal.id}`, {
-                method: "PUT",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRF-Token": this.getCsrfToken(),
-                },
-                credentials: "include",
-                body: JSON.stringify({
-                  name: this.goalForm.name,
-                  type: this.goalForm.type,
-                  value: this.goalForm.value,
-                }),
-              });
-
-              const data = await response.json();
-
-              if (!response.ok) {
-                throw new Error(data.error || "Failed to update goal");
-              }
-
-              const index = this.goals.findIndex((g) => g.id === this.currentGoal.id);
-              if (index !== -1) {
-                this.goals[index] = data;
-              }
-
-              this.closeModals();
-              this.showToast("Goal updated successfully!", "success");
-            } catch (err) {
-              this.formError = err.message;
-            } finally {
-              this.submitting = false;
-            }
-          },
-
-          async deleteGoal(goal) {
-            if (!confirm(`Are you sure you want to delete the goal "${goal.name}"?`)) {
-              return;
-            }
-
-            try {
-              const response = await fetch(`/api/goals/${goal.id}`, {
-                method: "DELETE",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRF-Token": this.getCsrfToken(),
-                },
-                credentials: "include",
-              });
-
-              if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || "Failed to delete goal");
-              }
-
-              this.goals = this.goals.filter((g) => g.id !== goal.id);
-              this.showToast("Goal deleted successfully!", "success");
-            } catch (err) {
-              this.showToast(err.message, "error");
-            }
-          },
-
-          validateForm() {
-            if (!this.goalForm.name.trim()) {
-              this.formError = "Goal name is required";
-              return false;
-            }
-            if (!this.goalForm.type) {
-              this.formError = "Goal type is required";
-              return false;
-            }
-            if (!this.goalForm.value.trim()) {
-              this.formError = "Goal value is required";
-              return false;
-            }
-            return true;
-          },
-
-          onTypeChange() {
-            this.goalForm.value = "";
-            this.formError = "";
-          },
-
-          closeModals() {
-            this.showCreateModal = false;
-            this.showEditModal = false;
-            this.currentGoal = null;
-            this.goalForm = { name: "", type: "", value: "" };
-            this.formError = "";
-          },
-
-          getWebsiteName() {
-            if (!this.selectedWebsite || !this.websites.length) return "";
-            const website = this.websites.find((w) => w.id === this.selectedWebsite);
-            return website ? website.name || website.domain : "";
-          },
-
-          formatType(type) {
-            return type === "page_view" ? "Page URL" : "Custom Event";
-          },
-
-          getTypeClass(type) {
-            return type === "page_view" ? "page" : "event";
-          },
-
-          formatDate(dateStr) {
-            if (!dateStr) return "";
-            return new Date(dateStr).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            });
-          },
-
-          showToast(message, type) {
-            this.toast = { show: true, message, type };
-            setTimeout(() => {
-              this.toast.show = false;
-            }, 3000);
-          },
-
-          getCsrfToken() {
-            const value = "; " + document.cookie;
-            const parts = value.split("; kaunta_csrf=");
-            if (parts.length === 2) return parts.pop().split(";").shift();
-            return "";
-          },
-
-          async logout() {
-            try {
-              const response = await fetch("/api/auth/logout", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRF-Token": this.getCsrfToken(),
-                },
-                credentials: "include",
-              });
-
-              if (response.ok) {
-                localStorage.removeItem("kaunta_website");
-                localStorage.removeItem("kaunta_dateRange");
-                window.location.href = "/login";
-              } else {
-                console.error("Logout failed:", await response.text());
-                alert("Logout failed. Please try again.");
-              }
-            } catch (error) {
-              console.error("Logout error:", error);
-              alert("Network error during logout. Please try again.");
-            }
-          },
-
-          // Analytics Modal Functions
-          async viewAnalytics(goal) {
-            this.currentGoal = goal;
-            this.showAnalyticsModal = true;
-            this.analyticsDateRange = '7';
-            this.analyticsTab = 'pages';
-            await this.loadGoalAnalytics();
-          },
-
-          async loadGoalAnalytics() {
-            if (!this.currentGoal) return;
-
-            this.analyticsLoading = true;
-
-            try {
-              // Fetch analytics and timeseries in parallel
-              const [analyticsRes, timeseriesRes] = await Promise.all([
-                fetch(`/api/dashboard/goals/${this.currentGoal.id}/analytics?days=${this.analyticsDateRange}`),
-                fetch(`/api/dashboard/goals/${this.currentGoal.id}/timeseries?days=${this.analyticsDateRange}`)
-              ]);
-
-              if (!analyticsRes.ok || !timeseriesRes.ok) {
-                throw new Error('Failed to load analytics data');
-              }
-
-              this.analytics = await analyticsRes.json();
-              this.timeseriesData = await timeseriesRes.json();
-
-              // Render chart
-              this.renderGoalChart();
-
-              // Load initial breakdown
-              await this.loadBreakdown();
-
-            } catch (err) {
-              console.error('Failed to load goal analytics:', err);
-              this.showToast('Failed to load analytics', 'error');
-            } finally {
-              this.analyticsLoading = false;
-            }
-          },
-
-          async loadBreakdown() {
-            if (!this.currentGoal) return;
-
-            try {
-              let url;
-              if (this.analyticsTab === 'pages') {
-                url = `/api/dashboard/goals/${this.currentGoal.id}/converting-pages?days=${this.analyticsDateRange}&per=10&offset=0`;
-              } else {
-                url = `/api/dashboard/goals/${this.currentGoal.id}/breakdown/${this.analyticsTab}?days=${this.analyticsDateRange}&per=10&offset=0`;
-              }
-
-              const response = await fetch(url);
-              if (!response.ok) {
-                throw new Error('Failed to load breakdown');
-              }
-
-              const data = await response.json();
-              this.breakdownData = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
-
-            } catch (err) {
-              console.error('Failed to load breakdown:', err);
-              this.breakdownData = [];
-            }
-          },
-
-          setAnalyticsDateRange(days) {
-            this.analyticsDateRange = days;
-            this.loadGoalAnalytics();
-          },
-
-          setAnalyticsTab(tab) {
-            this.analyticsTab = tab;
-            this.loadBreakdown();
-          },
-
-          renderGoalChart() {
-            // Destroy existing chart
-            if (this.goalChart) {
-              this.goalChart.destroy();
-              this.goalChart = null;
-            }
-
-            const canvas = document.getElementById('goalChart');
-            if (!canvas) return;
-
-            const ctx = canvas.getContext('2d');
-
-            // Format labels based on date range
-            const labels = this.timeseriesData.map(point => {
-              const date = new Date(point.timestamp);
-              if (this.analyticsDateRange === '1') {
-                // Hourly format for today
-                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-              } else if (this.analyticsDateRange === '7') {
-                // Date + hour for 7 days
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit' });
-              } else {
-                // Daily format for 30 days
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-              }
-            });
-
-            const values = this.timeseriesData.map(point => point.value);
-
-            this.goalChart = new Chart(ctx, {
-              type: 'line',
-              data: {
-                labels: labels,
-                datasets: [{
-                  label: 'Completions',
-                  data: values,
-                  borderColor: 'rgba(59, 130, 246, 1)',
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                  tension: 0.4,
-                  fill: true
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                  legend: {
-                    display: false
-                  }
-                },
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    ticks: {
-                      stepSize: 1
-                    }
-                  }
-                }
-              }
-            });
-          },
-
-          closeAnalyticsModal() {
-            this.showAnalyticsModal = false;
-            this.currentGoal = null;
-            if (this.goalChart) {
-              this.goalChart.destroy();
-              this.goalChart = null;
-            }
-            this.breakdownData = [];
-            this.timeseriesData = [];
-          },
-        };
-      }
-    </script>
-  </body>
-</html>
+{{end}}
