@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.2](https://github.com/seuros/kaunta/compare/v0.35.1...v0.35.2) (2025-12-03)
+
+
+### Bug Fixes
+
+* fix dashboard pages rendering ([#112](https://github.com/seuros/kaunta/issues/112)) ([343bbf5](https://github.com/seuros/kaunta/commit/343bbf56ef418b658797bcb1434b27a2ae6a5737))
+
 ## [0.35.1](https://github.com/seuros/kaunta/compare/v0.35.0...v0.35.1) (2025-12-02)
 
 
