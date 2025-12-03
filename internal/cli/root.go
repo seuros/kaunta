@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/fs"
-	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -24,8 +23,9 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/static"
-	"github.com/gofiber/template/html/v2"
 	"github.com/spf13/cobra"
+
+	"html/template"
 
 	"github.com/seuros/kaunta/internal/config"
 	"github.com/seuros/kaunta/internal/database"
@@ -133,6 +133,44 @@ var (
 	SetupTemplate         []byte
 	SetupCompleteTemplate []byte
 )
+
+// render creates an isolated template instance for each request to prevent definition clashes.
+func render(c fiber.Ctx, pagePath, layoutPath string, data fiber.Map) error {
+	viewsEmbedFS, ok := ViewsFS.(embed.FS)
+	if !ok {
+		return fmt.Errorf("ViewsFS is not an embed.FS")
+	}
+
+	layoutFile := layoutPath + ".html"
+	pageFile := pagePath + ".html"
+
+	// Read layout and template from the embedded FS
+	layoutBytes, err := viewsEmbedFS.ReadFile(layoutFile)
+	if err != nil {
+		return fmt.Errorf("could not read layout %s: %w", layoutFile, err)
+	}
+	pageBytes, err := viewsEmbedFS.ReadFile(pageFile)
+	if err != nil {
+		return fmt.Errorf("could not read page %s: %w", pageFile, err)
+	}
+
+	// Create a new template set for each request.
+	// The name of the root template must match the layout's filename.
+	tmpl, err := template.New(layoutFile).Parse(string(layoutBytes))
+	if err != nil {
+		return fmt.Errorf("could not parse layout %s: %w", layoutFile, err)
+	}
+
+	// Parse the page template into the same set.
+	_, err = tmpl.Parse(string(pageBytes))
+	if err != nil {
+		return fmt.Errorf("could not parse page %s: %w", pageFile, err)
+	}
+
+	// Set content type and execute the layout template by its name.
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return tmpl.ExecuteTemplate(c.Response().BodyWriter(), layoutFile, data)
+}
 
 // serveAnalytics runs the Kaunta server
 func serveAnalytics(
@@ -254,21 +292,12 @@ func serveAnalytics(
 		}
 	}()
 
-	// Initialize HTML template engine
-	viewsEmbedFS, ok := viewsFS.(embed.FS)
-	if !ok {
-		logging.Fatal("viewsFS is not embed.FS")
-	}
-	// Convert embed.FS to http.FileSystem using http.FS
-	httpFS := http.FS(viewsEmbedFS)
-	engine := html.NewFileSystem(httpFS, ".html")
-
-	// Create Fiber app
+	// Create Fiber app without a default template engine
 	appName := "Kaunta - Analytics without bloat"
 	if Version != "" {
 		appName = fmt.Sprintf("Kaunta v%s - Analytics without bloat", Version)
 	}
-	app := fiber.New(createFiberConfig(appName, engine))
+	app := fiber.New(createFiberConfig(appName, nil))
 
 	// Middleware
 	app.Use(recover.New())
@@ -395,9 +424,9 @@ func serveAnalytics(
 
 	// Routes
 	app.Get("/", func(c fiber.Ctx) error {
-		return c.Render("views/index", fiber.Map{
+		return render(c, "views/index", "views/layouts/base", fiber.Map{
 			"Title": "Kaunta - Analytics without bloat",
-		}, "views/layouts/base")
+		})
 	})
 	app.Get("/health", handleHealth)
 	app.Get("/up", healthcheck.New(healthcheck.Config{
@@ -465,23 +494,23 @@ func serveAnalytics(
 
 	// Login page (public)
 	app.Get("/login", func(c fiber.Ctx) error {
-		return c.Render("views/login", fiber.Map{
+		return render(c, "views/login", "views/layouts/base", fiber.Map{
 			"Title": "Login - Kaunta",
-		}, "views/layouts/base")
+		})
 	})
 
 	// Dashboard UI (protected)
 	app.Get("/dashboard", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
-		return c.Render("views/dashboard/home", fiber.Map{
+		return render(c, "views/dashboard/home", "views/layouts/dashboard", fiber.Map{
 			"Title":         "Dashboard",
 			"Version":       Version,
 			"SelfWebsiteID": config.SelfWebsiteID,
-		}, "views/layouts/dashboard")
+		})
 	})
 
 	// Map UI (protected)
 	app.Get("/dashboard/map", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
-		return c.Render("views/dashboard/map", fiber.Map{
+		return render(c, "views/dashboard/map", "views/layouts/dashboard", fiber.Map{
 			"Title":         "Map",
 			"Version":       Version,
 			"SelfWebsiteID": config.SelfWebsiteID,
@@ -490,7 +519,7 @@ func serveAnalytics(
 
 	// Campaigns UI (protected)
 	app.Get("/dashboard/campaigns", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
-		return c.Render("views/dashboard/campaigns", fiber.Map{
+		return render(c, "views/dashboard/campaigns", "views/layouts/dashboard", fiber.Map{
 			"Title":         "Campaigns",
 			"Version":       Version,
 			"SelfWebsiteID": config.SelfWebsiteID,
@@ -536,7 +565,7 @@ func serveAnalytics(
 
 	// Website Management Dashboard page (protected)
 	app.Get("/dashboard/websites", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
-		return c.Render("views/dashboard/websites", fiber.Map{
+		return render(c, "views/dashboard/websites", "views/layouts/dashboard", fiber.Map{
 			"Title":         "Websites",
 			"Version":       Version,
 			"SelfWebsiteID": config.SelfWebsiteID,
@@ -545,7 +574,7 @@ func serveAnalytics(
 
 	// Goals Management Dashboard page (proctected)
 	app.Get("/dashboard/goals", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
-		return c.Render("views/dashboard/goals", fiber.Map{
+		return render(c, "views/dashboard/goals", "views/layouts/dashboard", fiber.Map{
 			"Title":         "Goals",
 			"Version":       Version,
 			"SelfWebsiteID": config.SelfWebsiteID,

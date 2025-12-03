@@ -25,7 +25,6 @@ function dashboard() {
     realtimeSocket: null,
     realtimeReconnectTimer: null,
     realtimeRefreshTimeout: null,
-    chart: null,
     activeTab: "pages",
     breakdownData: [],
     breakdownLoading: false,
@@ -44,7 +43,6 @@ function dashboard() {
     mapLoading: false,
     mapData: null,
     mapInitialized: false,
-
     // Icon helper: Country code to flag emoji
     countryToFlag(code) {
       if (!code || code.length !== 2) return "";
@@ -54,7 +52,6 @@ function dashboard() {
         .map((char) => 127397 + char.charCodeAt(0));
       return String.fromCodePoint(...codePoints);
     },
-
     // Icon helper: Browser name to inline SVG
     browserIcon(name) {
       const icons = {
@@ -74,7 +71,6 @@ function dashboard() {
       };
       return icons[name] || "";
     },
-
     // Icon helper: OS name to inline SVG
     osIcon(name) {
       const icons = {
@@ -94,7 +90,6 @@ function dashboard() {
       };
       return icons[name] || "";
     },
-
     // Icon helper: Device type to inline SVG
     deviceIcon(type) {
       const icons = {
@@ -107,13 +102,15 @@ function dashboard() {
       };
       return icons[type?.toLowerCase()] || "";
     },
-
     async init() {
       // Load filters from URL parameters
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get("country")) this.filters.country = urlParams.get("country");
-      if (urlParams.get("browser")) this.filters.browser = urlParams.get("browser");
-      if (urlParams.get("device")) this.filters.device = urlParams.get("device");
+      if (urlParams.get("country"))
+        this.filters.country = urlParams.get("country");
+      if (urlParams.get("browser"))
+        this.filters.browser = urlParams.get("browser");
+      if (urlParams.get("device"))
+        this.filters.device = urlParams.get("device");
       if (urlParams.get("page")) this.filters.page = urlParams.get("page");
 
       await this.loadWebsites();
@@ -137,7 +134,6 @@ function dashboard() {
         this.connectRealtime();
       }
     },
-
     async loadChartAndSetupIntervals() {
       // Clear existing interval to prevent duplicates
       if (this.chartRefreshInterval) {
@@ -152,7 +148,6 @@ function dashboard() {
         }
       }, 60000);
     },
-
     async loadWebsites() {
       this.websitesLoading = true;
       this.websitesError = false;
@@ -167,7 +162,8 @@ function dashboard() {
         const sites = response_data.data || response_data;
         this.websites = Array.isArray(sites) ? sites : [];
         const hasStoredSelection =
-          this.selectedWebsite && this.websites.some((site) => site.id === this.selectedWebsite);
+          this.selectedWebsite &&
+          this.websites.some((site) => site.id === this.selectedWebsite);
         if (!hasStoredSelection && this.selectedWebsite) {
           this.selectedWebsite = "";
           localStorage.removeItem("kaunta_website");
@@ -183,7 +179,6 @@ function dashboard() {
         this.websitesLoading = false;
       }
     },
-
     async switchWebsite() {
       if (this.selectedWebsite) {
         localStorage.setItem("kaunta_website", this.selectedWebsite);
@@ -212,7 +207,6 @@ function dashboard() {
         this.connectRealtime(true);
       }
     },
-
     connectRealtime(forceReconnect = false) {
       if (
         typeof WebSocket === "undefined" ||
@@ -242,7 +236,10 @@ function dashboard() {
         socket.onmessage = (event) => {
           try {
             const payload = JSON.parse(event.data);
-            if (payload.website_id && payload.website_id === this.selectedWebsite) {
+            if (
+              payload.website_id &&
+              payload.website_id === this.selectedWebsite
+            ) {
               this.scheduleRealtimeRefresh();
             }
           } catch (error) {
@@ -252,7 +249,10 @@ function dashboard() {
 
         socket.onclose = () => {
           this.realtimeSocket = null;
-          this.realtimeReconnectTimer = setTimeout(() => this.connectRealtime(), 5000);
+          this.realtimeReconnectTimer = setTimeout(
+            () => this.connectRealtime(),
+            5000,
+          );
         };
 
         socket.onerror = () => {
@@ -260,10 +260,12 @@ function dashboard() {
         };
       } catch (error) {
         console.warn("Realtime connection error:", error);
-        this.realtimeReconnectTimer = setTimeout(() => this.connectRealtime(), 5000);
+        this.realtimeReconnectTimer = setTimeout(
+          () => this.connectRealtime(),
+          5000,
+        );
       }
     },
-
     scheduleRealtimeRefresh() {
       if (this.realtimeRefreshTimeout) {
         return;
@@ -273,7 +275,6 @@ function dashboard() {
         this.realtimeRefreshTimeout = null;
       }, 750);
     },
-
     buildFilterParams(prefix = "") {
       const params = new URLSearchParams();
       if (this.filters.country) params.set("country", this.filters.country);
@@ -283,7 +284,6 @@ function dashboard() {
       const queryString = params.toString();
       return queryString ? prefix + queryString : "";
     },
-
     async setDateRange(range) {
       this.dateRange = range;
       localStorage.setItem("kaunta_dateRange", range);
@@ -297,13 +297,12 @@ function dashboard() {
       await this.loadChart();
       await this.loadMapData();
     },
-
     async loadStats() {
       if (!this.selectedWebsite) return;
       try {
         const filterParams = this.buildFilterParams("?");
         const response = await fetch(
-          `/api/dashboard/stats/${this.selectedWebsite}${filterParams}`
+          `/api/dashboard/stats/${this.selectedWebsite}${filterParams}`,
         );
         if (response.ok) {
           this.stats = await response.json();
@@ -312,13 +311,12 @@ function dashboard() {
         console.error("Failed to load stats:", error);
       }
     },
-
     async loadTopPages() {
       if (!this.selectedWebsite) return;
       try {
         const filterParams = this.buildFilterParams("&");
         const response = await fetch(
-          `/api/dashboard/pages/${this.selectedWebsite}?limit=10${filterParams}`
+          `/api/dashboard/pages/${this.selectedWebsite}?limit=10${filterParams}`,
         );
         if (response.ok) {
           this.pages = await response.json();
@@ -329,14 +327,14 @@ function dashboard() {
         this.loading = false;
       }
     },
-
     async loadChart() {
       if (!this.selectedWebsite) return;
       try {
-        const days = this.dateRange === "1" ? 1 : this.dateRange === "7" ? 7 : 30;
+        const days =
+          this.dateRange === "1" ? 1 : this.dateRange === "7" ? 7 : 30;
         const filterParams = this.buildFilterParams("&");
         const response = await fetch(
-          `/api/dashboard/timeseries/${this.selectedWebsite}?days=${days}${filterParams}`
+          `/api/dashboard/timeseries/${this.selectedWebsite}?days=${days}${filterParams}`,
         );
         if (response.ok) {
           const data = await response.json();
@@ -357,7 +355,8 @@ function dashboard() {
                       });
                 })
               : [];
-          const values = data && data.length > 0 ? data.map((point) => point.value) : [];
+          const values =
+            data && data.length > 0 ? data.map((point) => point.value) : [];
           const ctx = document.getElementById("pageviewsChart");
           if (!ctx) {
             console.error("Canvas element pageviewsChart not found");
@@ -368,24 +367,26 @@ function dashboard() {
             return;
           }
 
+          const existingChart = ctx._chart;
+
           // Skip chart creation if no data to prevent Chart.js fill errors
           if (labels.length === 0) {
-            if (this.chart) {
-              this.chart.destroy();
-              this.chart = null;
+            if (existingChart) {
+              existingChart.destroy();
+              ctx._chart = null;
             }
             return;
           }
 
           // Update existing chart data instead of recreating (more performant)
-          if (this.chart) {
-            this.chart.data.labels = labels;
-            this.chart.data.datasets[0].data = values;
-            this.chart.update("none"); // 'none' skips animations for faster updates
+          if (existingChart) {
+            existingChart.data.labels = labels;
+            existingChart.data.datasets[0].data = values;
+            existingChart.update("none"); // 'none' skips animations for faster updates
             return;
           }
 
-          this.chart = new Chart(ctx, {
+          ctx._chart = new Chart(ctx, {
             type: "line",
             data: {
               labels: labels,
@@ -453,14 +454,13 @@ function dashboard() {
         // Try to initialize chart again after a short delay
         setTimeout(() => {
           const ctx = document.getElementById("pageviewsChart");
-          if (ctx && ctx.offsetParent !== null && !this.chart) {
+          if (ctx && ctx.offsetParent !== null && !ctx._chart) {
             console.log("Retrying chart initialization...");
             this.loadChart();
           }
         }, 100);
       }
     },
-
     async loadBreakdown() {
       if (!this.selectedWebsite || this.activeTab === "map") {
         return;
@@ -481,7 +481,7 @@ function dashboard() {
         params.set("sort_order", this.sortDirection);
         const queryString = params.toString();
         const response = await fetch(
-          `/api/dashboard/${endpoint}/${this.selectedWebsite}?${queryString}`
+          `/api/dashboard/${endpoint}/${this.selectedWebsite}?${queryString}`,
         );
         if (response.ok) {
           const result = await response.json();
@@ -490,7 +490,11 @@ function dashboard() {
           this.breakdownData = Array.isArray(data)
             ? data.map((item, index) => ({
                 ...item,
-                name: item.name || item.path || item.country_name || `Item ${index + 1}`,
+                name:
+                  item.name ||
+                  item.path ||
+                  item.country_name ||
+                  `Item ${index + 1}`,
                 count: item.count || item.views || item.visitors || 0,
               }))
             : [];
@@ -504,30 +508,29 @@ function dashboard() {
         this.breakdownLoading = false;
       }
     },
-
     async loadAvailableFilters() {
       if (!this.selectedWebsite) return;
       try {
         const countriesRes = await fetch(
-          `/api/dashboard/countries/${this.selectedWebsite}?limit=100`
+          `/api/dashboard/countries/${this.selectedWebsite}?limit=100`,
         );
         if (countriesRes.ok) {
           this.availableFilters.countries = (await countriesRes.json()).data;
         }
         const browsersRes = await fetch(
-          `/api/dashboard/browsers/${this.selectedWebsite}?limit=100`
+          `/api/dashboard/browsers/${this.selectedWebsite}?limit=100`,
         );
         if (browsersRes.ok) {
           this.availableFilters.browsers = (await browsersRes.json()).data;
         }
         const devicesRes = await fetch(
-          `/api/dashboard/devices/${this.selectedWebsite}?limit=100`
+          `/api/dashboard/devices/${this.selectedWebsite}?limit=100`,
         );
         if (devicesRes.ok) {
           this.availableFilters.devices = (await devicesRes.json()).data;
         }
         const pagesRes = await fetch(
-          `/api/dashboard/pages/${this.selectedWebsite}?limit=100`
+          `/api/dashboard/pages/${this.selectedWebsite}?limit=100`,
         );
         if (pagesRes.ok) {
           this.availableFilters.pages = (await pagesRes.json()).data;
@@ -536,7 +539,6 @@ function dashboard() {
         console.error("Failed to load filter options:", error);
       }
     },
-
     async applyFilter() {
       this.updateURL();
 
@@ -549,7 +551,6 @@ function dashboard() {
       await this.loadChart();
       await this.loadMapData();
     },
-
     clearFilters() {
       this.filters = {
         country: "",
@@ -559,7 +560,6 @@ function dashboard() {
       };
       this.applyFilter();
     },
-
     updateURL() {
       const params = new URLSearchParams();
       if (this.filters.country) params.set("country", this.filters.country);
@@ -571,13 +571,14 @@ function dashboard() {
         : window.location.pathname;
       window.history.pushState({}, "", newURL);
     },
-
     get hasActiveFilters() {
       return (
-        this.filters.country || this.filters.browser || this.filters.device || this.filters.page
+        this.filters.country ||
+        this.filters.browser ||
+        this.filters.device ||
+        this.filters.page
       );
     },
-
     async sortBy(column) {
       if (this.sortColumn === column) {
         this.sortDirection = this.sortDirection === "asc" ? "desc" : "asc";
@@ -588,23 +589,29 @@ function dashboard() {
       // Reload data with new sort order
       await this.loadBreakdown();
     },
-
     async loadMapData() {
       if (!this.selectedWebsite || this.activeTab !== "map") return;
       this.mapLoading = true;
       try {
-        const days = this.dateRange === "1" ? 1 : this.dateRange === "7" ? 7 : 30;
+        const days =
+          this.dateRange === "1" ? 1 : this.dateRange === "7" ? 7 : 30;
         const params = new URLSearchParams({ days });
-        if (this.filters.country) params.append("country", this.filters.country);
-        if (this.filters.browser) params.append("browser", this.filters.browser);
+        if (this.filters.country)
+          params.append("country", this.filters.country);
+        if (this.filters.browser)
+          params.append("browser", this.filters.browser);
         if (this.filters.device) params.append("device", this.filters.device);
         if (this.filters.page) params.append("page", this.filters.page);
-        const response = await fetch(`/api/dashboard/map/${this.selectedWebsite}?${params}`);
+        const response = await fetch(
+          `/api/dashboard/map/${this.selectedWebsite}?${params}`,
+        );
         if (response.ok) {
           this.mapData = await response.json();
           const containerExists = document.getElementById("choropleth-map");
           if (!containerExists) {
-            console.warn("Choropleth map container not found yet; will retry once rendered.");
+            console.warn(
+              "Choropleth map container not found yet; will retry once rendered.",
+            );
             return;
           }
           if (!this.mapInitialized) {
@@ -621,7 +628,6 @@ function dashboard() {
         this.mapLoading = false;
       }
     },
-
     getColorForValue(value, maxValue) {
       if (!value || value === 0) return "#e5e5e5";
       const intensity = value / maxValue;
@@ -631,25 +637,22 @@ function dashboard() {
       if (intensity < 0.8) return "#3182bd";
       return "#08519c";
     },
-
     formatTooltipText(countryName, visitors, percentage) {
       return `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-          <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px; color: #1a1a1a;">${countryName}</div>
-          <div style="font-size: 13px; color: #666666;">
-            ${visitors.toLocaleString()} visitors (${percentage.toFixed(1)}%)
-          </div>
-        </div>
-      `;
+                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                            <div style="font-weight: 500; font-size: 14px; margin-bottom: 4px; color: #1a1a1a;">${countryName}</div>
+                            <div style="font-size: 13px; color: #666666;">
+                                ${visitors.toLocaleString()} visitors (${percentage.toFixed(1)}%)
+                            </div>
+                        </div>
+                    `;
     },
-
     handleCountryClick(countryName) {
       this.filters.country = countryName;
       this.applyFilter();
       this.activeTab = "countries";
       this.loadBreakdown();
     },
-
     async initializeChoropleth() {
       try {
         const container = document.getElementById("choropleth-map");
@@ -675,10 +678,17 @@ function dashboard() {
           throw new Error(`Failed to load TopoJSON: ${response.statusText}`);
         }
         const world = await response.json();
-        const features = topojson.feature(world, world.objects.countries).features;
+        const features = topojson.feature(
+          world,
+          world.objects.countries,
+        ).features;
         const dataMap = new Map();
         let maxValue = 0;
-        if (this.mapData && this.mapData.data && Array.isArray(this.mapData.data)) {
+        if (
+          this.mapData &&
+          this.mapData.data &&
+          Array.isArray(this.mapData.data)
+        ) {
           maxValue = Math.max(...this.mapData.data.map((d) => d.visitors || 0));
           this.mapData.data.forEach((d) => {
             dataMap.set(d.country_name, {
@@ -700,7 +710,8 @@ function dashboard() {
         const getStyle = (feature) => {
           const countryName = feature.properties.name;
           const countryId = feature.id;
-          const countryData = dataMap.get(countryName) || dataMap.get(countryId);
+          const countryData =
+            dataMap.get(countryName) || dataMap.get(countryId);
           const fillColor = countryData
             ? this.getColorForValue(countryData.visitors, maxValue)
             : "#e5e5e5";
@@ -715,13 +726,20 @@ function dashboard() {
         const onEachFeature = (feature, layer) => {
           const countryName = feature.properties.name;
           const countryId = feature.id;
-          const countryData = dataMap.get(countryName) || dataMap.get(countryId);
+          const countryData =
+            dataMap.get(countryName) || dataMap.get(countryId);
           const tooltipContent = countryData
-            ? this.formatTooltipText(countryData.name, countryData.visitors, countryData.percentage)
+            ? this.formatTooltipText(
+                countryData.name,
+                countryData.visitors,
+                countryData.percentage,
+              )
             : `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                 <div style="font-weight: 500; font-size: 14px; color: #1a1a1a;">${countryName || "Unknown"}</div>
-                 <div style="font-size: 13px; color: #666666;">No visitors</div>
-               </div>`;
+                                     <div style="font-weight: 500; font-size: 14px; color: #1a1a1a;">${
+                                       countryName || "Unknown"
+                                     }</div>
+                                     <div style="font-size: 13px; color: #666666;">No visitors</div>
+                                   </div>`;
           layer.bindTooltip(tooltipContent, {
             sticky: true,
             opacity: 0.95,
@@ -768,17 +786,17 @@ function dashboard() {
           const style = document.createElement("style");
           style.id = "leaflet-custom-tooltip-style";
           style.textContent = `
-            .leaflet-custom-tooltip {
-              background: rgba(255, 255, 255, 0.95);
-              border: 1px solid #e5e7eb;
-              border-radius: 8px;
-              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-              padding: 12px;
-            }
-            .leaflet-custom-tooltip::before {
-              border-top-color: rgba(255, 255, 255, 0.95);
-            }
-          `;
+                                .leaflet-custom-tooltip {
+                                    background: rgba(255, 255, 255, 0.95);
+                                    border: 1px solid #e5e7eb;
+                                    border-radius: 8px;
+                                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                                    padding: 12px;
+                                }
+                                .leaflet-custom-tooltip::before {
+                                    border-top-color: rgba(255, 255, 255, 0.95);
+                                }
+                            `;
           document.head.appendChild(style);
         }
         this.mapInitialized = true;
@@ -787,18 +805,17 @@ function dashboard() {
         const container = document.getElementById("choropleth-map");
         if (container) {
           container.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999999;">
-              <div style="text-align: center;">
-                <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">🗺️</div>
-                <div style="font-size: 16px; font-weight: 500; color: #1f2937; margin-bottom: 8px;">Map Loading Error</div>
-                <div style="font-size: 14px;">Failed to load map data. Please try again.</div>
-              </div>
-            </div>
-          `;
+                                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999999;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">🗺️</div>
+                                        <div style="font-size: 16px; font-weight: 500; color: #1f2937; margin-bottom: 8px;">Map Loading Error</div>
+                                        <div style="font-size: 14px;">Failed to load map data. Please try again.</div>
+                                    </div>
+                                </div>
+                            `;
         }
       }
     },
-
     updateChoropleth() {
       try {
         if (!this.mapInstance || !this.geoJsonLayer) {
@@ -807,7 +824,11 @@ function dashboard() {
         }
         const dataMap = new Map();
         let maxValue = 0;
-        if (this.mapData && this.mapData.data && Array.isArray(this.mapData.data)) {
+        if (
+          this.mapData &&
+          this.mapData.data &&
+          Array.isArray(this.mapData.data)
+        ) {
           maxValue = Math.max(...this.mapData.data.map((d) => d.visitors || 0));
           this.mapData.data.forEach((d) => {
             dataMap.set(d.country_name, {
@@ -830,7 +851,8 @@ function dashboard() {
           const feature = layer.feature;
           const countryName = feature.properties.name;
           const countryId = feature.id;
-          const countryData = dataMap.get(countryName) || dataMap.get(countryId);
+          const countryData =
+            dataMap.get(countryName) || dataMap.get(countryId);
           const fillColor = countryData
             ? this.getColorForValue(countryData.visitors, maxValue)
             : "#e5e5e5";
@@ -842,11 +864,17 @@ function dashboard() {
             fillOpacity: 0.7,
           });
           const tooltipContent = countryData
-            ? this.formatTooltipText(countryData.name, countryData.visitors, countryData.percentage)
+            ? this.formatTooltipText(
+                countryData.name,
+                countryData.visitors,
+                countryData.percentage,
+              )
             : `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                 <div style="font-weight: 500; font-size: 14px; color: #1a1a1a;">${countryName || "Unknown"}</div>
-                 <div style="font-size: 13px; color: #666666;">No visitors</div>
-               </div>`;
+                                     <div style="font-weight: 500; font-size: 14px; color: #1a1a1a;">${
+                                       countryName || "Unknown"
+                                     }</div>
+                                     <div style="font-size: 13px; color: #666666;">No visitors</div>
+                                   </div>`;
           layer.setTooltipContent(tooltipContent);
         });
         console.log("Choropleth map updated successfully");
@@ -854,7 +882,6 @@ function dashboard() {
         console.error("Failed to update choropleth map:", error);
       }
     },
-
     async logout() {
       try {
         const csrfToken = this.getCsrfToken();
@@ -882,7 +909,6 @@ function dashboard() {
         alert("Network error during logout. Please try again.");
       }
     },
-
     getCsrfToken() {
       const value = "; " + document.cookie;
       const parts = value.split("; kaunta_csrf=");
