@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.3](https://github.com/seuros/kaunta/compare/v0.35.2...v0.35.3) (2025-12-04)
+
+
+### Bug Fixes
+
+* support migration from Umami v2/v3 databases ([#115](https://github.com/seuros/kaunta/issues/115)) ([33ba61e](https://github.com/seuros/kaunta/commit/33ba61e4595d13b0a8d3e1bdaf9ca4c27cd468f6))
+
 ## [0.35.2](https://github.com/seuros/kaunta/compare/v0.35.1...v0.35.2) (2025-12-03)
 
 
