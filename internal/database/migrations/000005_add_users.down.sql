@@ -1,4 +1,4 @@
--- Rollback users and authentication
+-- Rollback user and authentication (Umami-compatible schema)
 
 DROP FUNCTION IF EXISTS validate_session(VARCHAR);
 DROP FUNCTION IF EXISTS verify_password(TEXT, TEXT);
@@ -13,5 +13,5 @@ DROP INDEX IF EXISTS idx_user_sessions_user_id;
 DROP INDEX IF EXISTS idx_user_sessions_token;
 DROP TABLE IF EXISTS user_sessions;
 
-DROP INDEX IF EXISTS idx_users_username;
-DROP TABLE IF EXISTS users;
+DROP INDEX IF EXISTS idx_user_username;
+DROP TABLE IF EXISTS "user";
