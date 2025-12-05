@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.4](https://github.com/seuros/kaunta/compare/v0.35.3...v0.35.4) (2025-12-05)
+
+
+### Bug Fixes
+
+* prevent map() error on undefined timeseriesData in goals analytics ([#117](https://github.com/seuros/kaunta/issues/117)) ([9cce649](https://github.com/seuros/kaunta/commit/9cce649eef4e835b925b14f72933c2f58199f930))
+
 ## [0.35.3](https://github.com/seuros/kaunta/compare/v0.35.2...v0.35.3) (2025-12-04)
 
 
