@@ -342,7 +342,8 @@ function goalsDashboard() {
         }
 
         this.analytics = await analyticsRes.json();
-        this.timeseriesData = await timeseriesRes.json();
+        const timeseriesJson = await timeseriesRes.json();
+        this.timeseriesData = Array.isArray(timeseriesJson) ? timeseriesJson : [];
 
         this.renderGoalChart();
         await this.loadBreakdown();
@@ -403,7 +404,10 @@ function goalsDashboard() {
 
       const ctx = canvas.getContext("2d");
 
-      const labels = this.timeseriesData.map((point) => {
+      // Ensure timeseriesData is an array before mapping
+      const timeseries = Array.isArray(this.timeseriesData) ? this.timeseriesData : [];
+
+      const labels = timeseries.map((point) => {
         const date = new Date(point.timestamp);
         if (this.analyticsDateRange === "1") {
           return date.toLocaleTimeString("en-US", {
@@ -424,7 +428,7 @@ function goalsDashboard() {
         }
       });
 
-      const values = this.timeseriesData.map((point) => point.value);
+      const values = timeseries.map((point) => point.value);
 
       this.goalChart = new Chart(ctx, {
         type: "line",
