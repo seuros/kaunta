@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.0](https://github.com/seuros/kaunta/compare/v0.35.4...v0.36.0) (2025-12-05)
+
+
+### Features
+
+* add arm64 pi docs and builds ([478a3f5](https://github.com/seuros/kaunta/commit/478a3f52ffbd34fba03237c33d3a248106aa28d1))
+
 ## [0.35.4](https://github.com/seuros/kaunta/compare/v0.35.3...v0.35.4) (2025-12-05)
 
 
