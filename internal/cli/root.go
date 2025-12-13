@@ -368,6 +368,10 @@ func serveAnalytics(
 			if c.Path() == "/api/send" {
 				return true
 			}
+			// Skip for server-side ingest API (uses API key auth)
+			if strings.HasPrefix(c.Path(), "/api/ingest") {
+				return true
+			}
 			// Skip for GET requests to static assets (JS, CSS)
 			if c.Method() == "GET" {
 				path := c.Path()
@@ -470,6 +474,17 @@ func serveAnalytics(
 
 	// Pixel tracking (for email, RSS, no-JS environments)
 	app.Get("/p/:id.gif", handlers.HandlePixelTracking)
+
+	// Server-side Ingest API (for backend event ingestion)
+	// Uses API key authentication instead of session-based auth
+	app.Options("/api/ingest", func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+	app.Options("/api/ingest/batch", func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+	app.Post("/api/ingest", middleware.APIKeyAuth, handlers.HandleIngest)
+	app.Post("/api/ingest/batch", middleware.APIKeyAuth, handlers.HandleIngestBatch)
 
 	// Stats API (Plausible-inspired) - protected
 	app.Get("/api/stats/realtime/:website_id", middleware.Auth, handlers.HandleCurrentVisitors)

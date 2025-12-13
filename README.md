@@ -483,6 +483,94 @@ The pixel automatically captures:
 
 The pixel tracking shares the same session ID algorithm as JavaScript tracking, so visitors are tracked consistently across both methods.
 
+## Server-Side Ingest API
+
+For backend applications (Rails, Node, Python, etc.) that need to push analytics events programmatically, Kaunta provides a server-side ingestion API. This is useful for:
+
+- **E-commerce** - Track purchases, cart events from your backend
+- **SaaS applications** - Track user actions server-side
+- **Mobile apps** - Send events from your API server
+- **IoT devices** - Track events from any HTTP-capable device
+
+### Create an API Key
+
+```bash
+kaunta apikey create example.com --name "Rails Backend"
+
+# Output:
+# API Key: kaunta_live_284ded8452e244a23a9ea9a33e9432986fc350a8792c34a1caf2dff1cb742473
+# IMPORTANT: Save this key now. It will NOT be shown again.
+```
+
+### Send Events
+
+```bash
+# Single event
+curl -X POST https://your-kaunta-server/api/ingest \
+  -H "Authorization: Bearer kaunta_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "page_view",
+    "visitor_id": "user_123",
+    "url": "/products"
+  }'
+
+# Custom event with properties
+curl -X POST https://your-kaunta-server/api/ingest \
+  -H "Authorization: Bearer kaunta_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "purchase",
+    "visitor_id": "user_123",
+    "properties": {
+      "amount": 99.99,
+      "product_id": "SKU-123"
+    }
+  }'
+
+# Batch (up to 100 events)
+curl -X POST https://your-kaunta-server/api/ingest/batch \
+  -H "Authorization: Bearer kaunta_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "events": [
+      {"event": "page_view", "visitor_id": "v1", "url": "/page1"},
+      {"event": "click", "visitor_id": "v1", "properties": {"button": "buy"}}
+    ]
+  }'
+```
+
+### Payload Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `event` | string | Yes | Event name (e.g., `page_view`, `purchase`) |
+| `visitor_id` | string | Yes | Unique visitor identifier |
+| `url` | string | For `page_view` | Page URL |
+| `properties` | object | No | Custom event properties (max 100KB) |
+| `user_id` | string | No | Authenticated user ID |
+| `session_id` | string | No | Custom session ID |
+| `event_id` | string | No | UUID for idempotency |
+| `timestamp` | integer | No | Unix timestamp (within ±30 days) |
+| `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content` | string | No | UTM parameters |
+| `context.locale` | string | No | User locale (e.g., `en-US`) |
+| `context.screen` | string | No | Screen resolution |
+
+### API Key Management
+
+```bash
+kaunta apikey list example.com      # List keys for a website
+kaunta apikey show kaunta_live_...  # Show key details
+kaunta apikey revoke kaunta_live_...  # Revoke a key
+```
+
+### Security Notes
+
+- API keys use SHA256 hashing (secure for high-entropy tokens)
+- IP/User-Agent resolved from request headers (GDPR compliant)
+- Rate limited per key (default 1000 req/min) and per website (default 5000 req/min)
+- Idempotency support via `event_id` (7-day deduplication window)
+
 ## Umami Compatible
 
 Drop-in replacement for Umami. Works with Umami's JavaScript tracker and seamlessly migrates existing databases:

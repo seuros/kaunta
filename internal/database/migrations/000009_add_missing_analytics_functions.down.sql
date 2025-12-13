@@ -1,4 +1,0 @@
--- Rollback Migration 000009: Remove Missing Analytics Functions
-
-DROP FUNCTION IF EXISTS get_timeseries(UUID, INTEGER, VARCHAR, VARCHAR, VARCHAR, VARCHAR);
-DROP FUNCTION IF EXISTS get_dashboard_stats(UUID, INTEGER, VARCHAR, VARCHAR, VARCHAR, VARCHAR);
