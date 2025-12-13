@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/seuros/kaunta/compare/v0.36.0...v0.37.0) (2025-12-13)
+
+
+### Features
+
+* add server-side ingest API for backend event tracking ([#121](https://github.com/seuros/kaunta/issues/121)) ([6d7b1d8](https://github.com/seuros/kaunta/commit/6d7b1d86f91c6b5bfd27684554106b209c23c38b))
+
 ## [0.36.0](https://github.com/seuros/kaunta/compare/v0.35.4...v0.36.0) (2025-12-05)
 
 
