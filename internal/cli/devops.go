@@ -719,7 +719,9 @@ func RunDiagnostics(ctx context.Context, db *sql.DB) (*DiagnosticsResult, error)
 	}
 
 	// Partition count
-	_ = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'website_event_%'").Scan(&result.PartitionCount)
+	partitionQuery := `SELECT COUNT(*) FROM pg_tables
+		WHERE schemaname = 'public' AND tablename LIKE 'website_event_%'`
+	_ = db.QueryRowContext(ctx, partitionQuery).Scan(&result.PartitionCount)
 
 	// Disk usage
 	var diskUsageBytes int64
@@ -775,10 +777,10 @@ func SyncWebsitesFromFile(ctx context.Context, db *sql.DB, syncFile SyncFile, dr
 		// Check if website exists
 		var exists bool
 		var websiteID string
-		if err := tx.QueryRowContext(ctx,
-			"SELECT EXISTS(SELECT 1 FROM website WHERE LOWER(domain) = LOWER($1) AND deleted_at IS NULL), website_id FROM website WHERE LOWER(domain) = LOWER($1)",
-			ws.Domain,
-		).Scan(&exists, &websiteID); err != nil {
+		checkQuery := `SELECT EXISTS(
+			SELECT 1 FROM website WHERE LOWER(domain) = LOWER($1) AND deleted_at IS NULL
+		), website_id FROM website WHERE LOWER(domain) = LOWER($1)`
+		if err := tx.QueryRowContext(ctx, checkQuery, ws.Domain).Scan(&exists, &websiteID); err != nil {
 			stats.Errors = append(stats.Errors, fmt.Sprintf("Failed to check website %s: %v", ws.Domain, err))
 			continue
 		}

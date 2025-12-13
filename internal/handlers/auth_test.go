@@ -37,7 +37,10 @@ func stubVerifyPassword(t *testing.T, fn func(password, passwordHash string) (bo
 	})
 }
 
-func stubInsertSession(t *testing.T, fn func(sessionID uuid.UUID, userID uuid.UUID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) error) {
+func stubInsertSession(
+	t *testing.T,
+	fn func(sessionID, userID uuid.UUID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) error,
+) {
 	t.Helper()
 	original := insertSessionFunc
 	insertSessionFunc = fn
@@ -97,7 +100,9 @@ func TestHandleLoginSuccess(t *testing.T) {
 	})
 
 	insertCalled := false
-	stubInsertSession(t, func(sessionID uuid.UUID, gotUserID uuid.UUID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) error {
+	stubInsertSession(t, func(
+		sessionID, gotUserID uuid.UUID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string,
+	) error {
 		insertCalled = true
 		assert.Equal(t, userID, gotUserID)
 		assert.Equal(t, "hashed-token", tokenHash)
@@ -273,7 +278,9 @@ func TestHandleLoginInsertSessionFailure(t *testing.T) {
 	stubSessionTokenGenerator(t, func() (string, string, error) {
 		return "token", "hash", nil
 	})
-	stubInsertSession(t, func(sessionID uuid.UUID, userID uuid.UUID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string) error {
+	stubInsertSession(t, func(
+		sessionID, userID uuid.UUID, tokenHash string, expiresAt time.Time, userAgent, ipAddress string,
+	) error {
 		return errors.New("insert error")
 	})
 

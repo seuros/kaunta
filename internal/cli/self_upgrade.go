@@ -23,7 +23,9 @@ var (
 
 func setupSelfUpgrade() {
 	RootCmd.PersistentFlags().BoolVar(&selfUpgradeRequested, "self-upgrade", false, "Upgrade Kaunta to the latest release and exit")
-	RootCmd.PersistentFlags().BoolVar(&selfUpgradeCheckOnly, "self-upgrade-check", false, "Only check whether a newer Kaunta release is available")
+	RootCmd.PersistentFlags().BoolVar(
+		&selfUpgradeCheckOnly, "self-upgrade-check", false,
+		"Only check whether a newer Kaunta release is available")
 	RootCmd.PersistentFlags().BoolVar(&selfUpgradeAutoYes, "self-upgrade-yes", false, "Skip confirmation prompts when running --self-upgrade")
 
 	existingPreRun := RootCmd.PersistentPreRunE

@@ -72,7 +72,11 @@ func Deploy() error {
 	}
 
 	// Restart service
-	cmd := "systemctl stop kaunta && mv /usr/local/bin/kaunta /usr/local/bin/kaunta-old && mv /usr/local/bin/kaunta-new /usr/local/bin/kaunta && chmod +x /usr/local/bin/kaunta && systemctl start kaunta"
+	cmd := "systemctl stop kaunta && " +
+		"mv /usr/local/bin/kaunta /usr/local/bin/kaunta-old && " +
+		"mv /usr/local/bin/kaunta-new /usr/local/bin/kaunta && " +
+		"chmod +x /usr/local/bin/kaunta && " +
+		"systemctl start kaunta"
 	if err := sh.Run("ssh", server, cmd); err != nil {
 		return err
 	}

@@ -361,7 +361,10 @@ func HandleTracking(c fiber.Ctx) error {
 // upsertSession creates or updates a session
 // On INSERT: sets entry_page and exit_page to the first page visited
 // On UPDATE: only updates exit_page (entry_page remains the original landing page)
-func upsertSession(sessionID, websiteID uuid.UUID, browser, os, device, screen, language, country, region, city *string, distinctID *string, urlPath *string) error {
+func upsertSession(
+	sessionID, websiteID uuid.UUID,
+	browser, os, device, screen, language, country, region, city, distinctID, urlPath *string,
+) error {
 	query := `
 		INSERT INTO session (
 			session_id, website_id, browser, os, device, screen, language,

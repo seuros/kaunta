@@ -1312,7 +1312,9 @@ func init() {
 	statsPagesCmd.Flags().StringVarP(&pagesFormat, "format", "f", "table", "Output format (json, table, csv)")
 
 	// Breakdown command flags
-	statsBreakdownCmd.Flags().StringVarP(&breakdownDimension, "by", "b", "", "Dimension to break down by (required: country, browser, device, referrer, os)")
+	statsBreakdownCmd.Flags().StringVarP(
+		&breakdownDimension, "by", "b", "",
+		"Dimension to break down by (required: country, browser, device, referrer, os)")
 	statsBreakdownCmd.Flags().IntVarP(&breakdownDays, "days", "d", 7, "Time period in days (1-365)")
 	statsBreakdownCmd.Flags().IntVarP(&breakdownTop, "top", "t", 10, "Number of items to show (1-100)")
 	statsBreakdownCmd.Flags().StringVarP(&breakdownFormat, "format", "f", "table", "Output format (json, table, csv)")

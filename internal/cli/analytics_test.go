@@ -99,7 +99,9 @@ func TestRunStatsBreakdownJSON(t *testing.T) {
 		return "site-123", nil
 	})
 
-	stubBreakdownFetcher(t, func(ctx context.Context, db *sql.DB, websiteID string, dimension string, days int, limit int) (*BreakdownStat, error) {
+	stubBreakdownFetcher(t, func(
+		ctx context.Context, db *sql.DB, websiteID, dimension string, days, limit int,
+	) (*BreakdownStat, error) {
 		assert.Equal(t, "country", dimension)
 		return &BreakdownStat{
 			Dimension: "country",
