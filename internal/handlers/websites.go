@@ -15,19 +15,20 @@ import (
 
 // WebsiteDetail holds complete website information for API operations
 type WebsiteDetail struct {
-	WebsiteID      string    `json:"website_id"`
-	Domain         string    `json:"domain"`
-	Name           string    `json:"name"`
-	AllowedDomains []string  `json:"allowed_domains"`
-	ShareID        *string   `json:"share_id,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	WebsiteID          string    `json:"website_id"`
+	Domain             string    `json:"domain"`
+	Name               string    `json:"name"`
+	AllowedDomains     []string  `json:"allowed_domains"`
+	ShareID            *string   `json:"share_id,omitempty"`
+	PublicStatsEnabled bool      `json:"public_stats_enabled"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 // getWebsiteByID retrieves a website by website_id
 func getWebsiteByID(ctx context.Context, websiteID string) (*WebsiteDetail, error) {
 	query := `
-		SELECT website_id, domain, name, allowed_domains, share_id, created_at, updated_at
+		SELECT website_id, domain, name, allowed_domains, share_id, public_stats_enabled, created_at, updated_at
 		FROM website
 		WHERE deleted_at IS NULL AND website_id = $1
 		LIMIT 1
@@ -43,6 +44,7 @@ func getWebsiteByID(ctx context.Context, websiteID string) (*WebsiteDetail, erro
 		&website.Name,
 		&allowedDomainsJSON,
 		&shareID,
+		&website.PublicStatsEnabled,
 		&website.CreatedAt,
 		&website.UpdatedAt,
 	)
@@ -66,7 +68,7 @@ func getWebsiteByID(ctx context.Context, websiteID string) (*WebsiteDetail, erro
 // listWebsites retrieves all non-deleted websites ordered by domain
 func listWebsites(ctx context.Context) ([]*WebsiteDetail, error) {
 	query := `
-		SELECT website_id, domain, name, allowed_domains, share_id, created_at, updated_at
+		SELECT website_id, domain, name, allowed_domains, share_id, public_stats_enabled, created_at, updated_at
 		FROM website
 		WHERE deleted_at IS NULL
 		ORDER BY LOWER(domain)
@@ -90,6 +92,7 @@ func listWebsites(ctx context.Context) ([]*WebsiteDetail, error) {
 			&website.Name,
 			&allowedDomainsJSON,
 			&shareID,
+			&website.PublicStatsEnabled,
 			&website.CreatedAt,
 			&website.UpdatedAt,
 		)
@@ -148,7 +151,7 @@ func createWebsite(ctx context.Context, domain, name string, allowedDomains []st
 	query := `
 		INSERT INTO website (website_id, domain, name, allowed_domains, created_at, updated_at)
 		VALUES ($1, $2, $3, $4::jsonb, NOW(), NOW())
-		RETURNING website_id, domain, name, allowed_domains, share_id, created_at, updated_at
+		RETURNING website_id, domain, name, allowed_domains, share_id, public_stats_enabled, created_at, updated_at
 	`
 
 	var website WebsiteDetail
@@ -161,6 +164,7 @@ func createWebsite(ctx context.Context, domain, name string, allowedDomains []st
 		&website.Name,
 		&allowedDomainsResult,
 		&shareID,
+		&website.PublicStatsEnabled,
 		&website.CreatedAt,
 		&website.UpdatedAt,
 	)
@@ -198,7 +202,7 @@ func updateWebsite(ctx context.Context, domain string, name *string) (*WebsiteDe
 		UPDATE website
 		SET %s
 		WHERE website_id = $1 AND deleted_at IS NULL
-		RETURNING website_id, domain, name, allowed_domains, share_id, created_at, updated_at
+		RETURNING website_id, domain, name, allowed_domains, share_id, public_stats_enabled, created_at, updated_at
 	`, strings.Join(updates, ", "))
 
 	var updatedWebsite WebsiteDetail
@@ -211,6 +215,7 @@ func updateWebsite(ctx context.Context, domain string, name *string) (*WebsiteDe
 		&updatedWebsite.Name,
 		&allowedDomainsResult,
 		&shareID,
+		&updatedWebsite.PublicStatsEnabled,
 		&updatedWebsite.CreatedAt,
 		&updatedWebsite.UpdatedAt,
 	)
@@ -234,7 +239,7 @@ func updateWebsite(ctx context.Context, domain string, name *string) (*WebsiteDe
 // getWebsiteByDomain retrieves a website by domain (case-insensitive)
 func getWebsiteByDomain(ctx context.Context, domain string) (*WebsiteDetail, error) {
 	query := `
-		SELECT website_id, domain, name, allowed_domains, share_id, created_at, updated_at
+		SELECT website_id, domain, name, allowed_domains, share_id, public_stats_enabled, created_at, updated_at
 		FROM website
 		WHERE deleted_at IS NULL AND LOWER(domain) = LOWER($1)
 		LIMIT 1
@@ -250,6 +255,7 @@ func getWebsiteByDomain(ctx context.Context, domain string) (*WebsiteDetail, err
 		&website.Name,
 		&allowedDomainsJSON,
 		&shareID,
+		&website.PublicStatsEnabled,
 		&website.CreatedAt,
 		&website.UpdatedAt,
 	)
@@ -296,7 +302,7 @@ func addAllowedDomains(ctx context.Context, websiteDomain string, domains []stri
 		UPDATE website
 		SET allowed_domains = $1::jsonb, updated_at = NOW()
 		WHERE website_id = $2 AND deleted_at IS NULL
-		RETURNING website_id, domain, name, allowed_domains, share_id, created_at, updated_at
+		RETURNING website_id, domain, name, allowed_domains, share_id, public_stats_enabled, created_at, updated_at
 	`
 
 	var updatedWebsite WebsiteDetail
@@ -309,6 +315,7 @@ func addAllowedDomains(ctx context.Context, websiteDomain string, domains []stri
 		&updatedWebsite.Name,
 		&allowedDomainsResult,
 		&shareID,
+		&updatedWebsite.PublicStatsEnabled,
 		&updatedWebsite.CreatedAt,
 		&updatedWebsite.UpdatedAt,
 	)
@@ -360,7 +367,7 @@ func removeAllowedDomain(ctx context.Context, websiteDomain, domainToRemove stri
 		UPDATE website
 		SET allowed_domains = $1::jsonb, updated_at = NOW()
 		WHERE website_id = $2 AND deleted_at IS NULL
-		RETURNING website_id, domain, name, allowed_domains, share_id, created_at, updated_at
+		RETURNING website_id, domain, name, allowed_domains, share_id, public_stats_enabled, created_at, updated_at
 	`
 
 	var updatedWebsite WebsiteDetail
@@ -373,6 +380,7 @@ func removeAllowedDomain(ctx context.Context, websiteDomain, domainToRemove stri
 		&updatedWebsite.Name,
 		&allowedDomainsResult,
 		&shareID,
+		&updatedWebsite.PublicStatsEnabled,
 		&updatedWebsite.CreatedAt,
 		&updatedWebsite.UpdatedAt,
 	)
@@ -456,11 +464,12 @@ func HandleWebsiteShow(c fiber.Ctx) error {
 	}
 
 	return c.JSON(WebsiteDetailResponse{
-		ID:             website.WebsiteID,
-		Domain:         website.Domain,
-		Name:           website.Name,
-		AllowedDomains: website.AllowedDomains,
-		CreatedAt:      website.CreatedAt.Format(time.RFC3339),
+		ID:                 website.WebsiteID,
+		Domain:             website.Domain,
+		Name:               website.Name,
+		AllowedDomains:     website.AllowedDomains,
+		PublicStatsEnabled: website.PublicStatsEnabled,
+		CreatedAt:          website.CreatedAt.Format(time.RFC3339),
 	})
 }
 
@@ -477,11 +486,12 @@ func HandleWebsiteList(c fiber.Ctx) error {
 	result := make([]WebsiteDetailResponse, 0, len(websites))
 	for _, w := range websites {
 		result = append(result, WebsiteDetailResponse{
-			ID:             w.WebsiteID,
-			Domain:         w.Domain,
-			Name:           w.Name,
-			AllowedDomains: w.AllowedDomains,
-			CreatedAt:      w.CreatedAt.Format(time.RFC3339),
+			ID:                 w.WebsiteID,
+			Domain:             w.Domain,
+			Name:               w.Name,
+			AllowedDomains:     w.AllowedDomains,
+			PublicStatsEnabled: w.PublicStatsEnabled,
+			CreatedAt:          w.CreatedAt.Format(time.RFC3339),
 		})
 	}
 
@@ -518,11 +528,12 @@ func HandleWebsiteCreate(c fiber.Ctx) error {
 	}
 
 	return c.Status(201).JSON(WebsiteDetailResponse{
-		ID:             website.WebsiteID,
-		Domain:         website.Domain,
-		Name:           website.Name,
-		AllowedDomains: website.AllowedDomains,
-		CreatedAt:      website.CreatedAt.Format(time.RFC3339),
+		ID:                 website.WebsiteID,
+		Domain:             website.Domain,
+		Name:               website.Name,
+		AllowedDomains:     website.AllowedDomains,
+		PublicStatsEnabled: website.PublicStatsEnabled,
+		CreatedAt:          website.CreatedAt.Format(time.RFC3339),
 	})
 }
 
@@ -555,11 +566,12 @@ func HandleWebsiteUpdate(c fiber.Ctx) error {
 	}
 
 	return c.JSON(WebsiteDetailResponse{
-		ID:             website.WebsiteID,
-		Domain:         website.Domain,
-		Name:           website.Name,
-		AllowedDomains: website.AllowedDomains,
-		CreatedAt:      website.CreatedAt.Format(time.RFC3339),
+		ID:                 website.WebsiteID,
+		Domain:             website.Domain,
+		Name:               website.Name,
+		AllowedDomains:     website.AllowedDomains,
+		PublicStatsEnabled: website.PublicStatsEnabled,
+		CreatedAt:          website.CreatedAt.Format(time.RFC3339),
 	})
 }
 
@@ -596,11 +608,12 @@ func HandleAddDomain(c fiber.Ctx) error {
 	}
 
 	return c.JSON(WebsiteDetailResponse{
-		ID:             website.WebsiteID,
-		Domain:         website.Domain,
-		Name:           website.Name,
-		AllowedDomains: website.AllowedDomains,
-		CreatedAt:      website.CreatedAt.Format(time.RFC3339),
+		ID:                 website.WebsiteID,
+		Domain:             website.Domain,
+		Name:               website.Name,
+		AllowedDomains:     website.AllowedDomains,
+		PublicStatsEnabled: website.PublicStatsEnabled,
+		CreatedAt:          website.CreatedAt.Format(time.RFC3339),
 	})
 }
 
@@ -637,10 +650,79 @@ func HandleRemoveDomain(c fiber.Ctx) error {
 	}
 
 	return c.JSON(WebsiteDetailResponse{
-		ID:             website.WebsiteID,
-		Domain:         website.Domain,
-		Name:           website.Name,
-		AllowedDomains: website.AllowedDomains,
-		CreatedAt:      website.CreatedAt.Format(time.RFC3339),
+		ID:                 website.WebsiteID,
+		Domain:             website.Domain,
+		Name:               website.Name,
+		AllowedDomains:     website.AllowedDomains,
+		PublicStatsEnabled: website.PublicStatsEnabled,
+		CreatedAt:          website.CreatedAt.Format(time.RFC3339),
+	})
+}
+
+// HandleSetPublicStats enables or disables public stats for a website
+// PATCH /api/websites/:website_id/public-stats
+func HandleSetPublicStats(c fiber.Ctx) error {
+	websiteIDStr := c.Params("website_id")
+	_, err := uuid.Parse(websiteIDStr)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid website ID"})
+	}
+
+	var req struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Get website by ID first
+	existingWebsite, err := getWebsiteByID(ctx, websiteIDStr)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Update public_stats_enabled
+	query := `
+		UPDATE website
+		SET public_stats_enabled = $1, updated_at = NOW()
+		WHERE website_id = $2 AND deleted_at IS NULL
+		RETURNING website_id, domain, name, allowed_domains, share_id, public_stats_enabled, created_at, updated_at
+	`
+
+	var website WebsiteDetail
+	var allowedDomainsResult []byte
+	var shareID *string
+
+	err = database.DB.QueryRowContext(ctx, query, req.Enabled, existingWebsite.WebsiteID).Scan(
+		&website.WebsiteID,
+		&website.Domain,
+		&website.Name,
+		&allowedDomainsResult,
+		&shareID,
+		&website.PublicStatsEnabled,
+		&website.CreatedAt,
+		&website.UpdatedAt,
+	)
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to update website"})
+	}
+
+	website.ShareID = shareID
+	website.AllowedDomains = []string{}
+	if len(allowedDomainsResult) > 0 {
+		_ = json.Unmarshal(allowedDomainsResult, &website.AllowedDomains)
+	}
+
+	return c.JSON(WebsiteDetailResponse{
+		ID:                 website.WebsiteID,
+		Domain:             website.Domain,
+		Name:               website.Name,
+		AllowedDomains:     website.AllowedDomains,
+		PublicStatsEnabled: website.PublicStatsEnabled,
+		CreatedAt:          website.CreatedAt.Format(time.RFC3339),
 	})
 }

@@ -577,6 +577,13 @@ func serveAnalytics(
 	app.Put("/api/websites/:website_id", middleware.Auth, handlers.HandleWebsiteUpdate)
 	app.Post("/api/websites/:website_id/domains", middleware.Auth, handlers.HandleAddDomain)
 	app.Delete("/api/websites/:website_id/domains", middleware.Auth, handlers.HandleRemoveDomain)
+	app.Patch("/api/websites/:website_id/public-stats", middleware.Auth, handlers.HandleSetPublicStats)
+
+	// Public Stats API (no auth, opt-in per website)
+	app.Get("/api/public/stats/:website_id", handlers.HandlePublicStats)
+
+	// API Key Stats API (requires API key with stats scope)
+	app.Get("/api/v1/stats/:website_id", middleware.APIKeyAuthAny, handlers.HandleAPIStats)
 
 	// Website Management Dashboard page (protected)
 	app.Get("/dashboard/websites", middleware.AuthWithRedirect, func(c fiber.Ctx) error {

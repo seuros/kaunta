@@ -686,6 +686,59 @@ func outputSingleTable(website *WebsiteDetail) error {
 	return nil
 }
 
+var websiteEnablePublicStatsCmd = &cobra.Command{
+	Use:   "enable-public-stats <domain>",
+	Short: "Enable public stats API for a website",
+	Long: `Enable the public stats API endpoint for a website.
+
+When enabled, the endpoint GET /api/public/stats/:website_id becomes accessible
+without authentication, returning online users, total pageviews, and visitors.
+
+Example:
+  kaunta website enable-public-stats example.com`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runSetPublicStats(args[0], true)
+	},
+}
+
+var websiteDisablePublicStatsCmd = &cobra.Command{
+	Use:   "disable-public-stats <domain>",
+	Short: "Disable public stats API for a website",
+	Long: `Disable the public stats API endpoint for a website.
+
+When disabled, the endpoint GET /api/public/stats/:website_id returns 404.
+
+Example:
+  kaunta website disable-public-stats example.com`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runSetPublicStats(args[0], false)
+	},
+}
+
+func runSetPublicStats(domain string, enabled bool) error {
+	if err := database.Connect(); err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	website, err := SetPublicStatsEnabled(ctx, domain, enabled)
+	if err != nil {
+		return err
+	}
+
+	status := "disabled"
+	if enabled {
+		status = "enabled"
+	}
+
+	fmt.Printf("Public stats %s for website '%s' (ID: %s)\n", status, website.Domain, website.WebsiteID)
+	return nil
+}
+
 func init() {
 	// Add subcommands to website
 	websiteCmd.AddCommand(websiteListCmd)
@@ -697,6 +750,8 @@ func init() {
 	websiteCmd.AddCommand(websiteAddDomainCmd)
 	websiteCmd.AddCommand(websiteRemoveDomainCmd)
 	websiteCmd.AddCommand(websiteListDomainsCmd)
+	websiteCmd.AddCommand(websiteEnablePublicStatsCmd)
+	websiteCmd.AddCommand(websiteDisablePublicStatsCmd)
 	// checkWebsiteCmd added in devops.go
 
 	// List command flags

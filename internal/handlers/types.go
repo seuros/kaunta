@@ -52,11 +52,12 @@ type MapResponse struct {
 
 // WebsiteDetailResponse represents a website with its allowed domains
 type WebsiteDetailResponse struct {
-	ID             string   `json:"id"`
-	Domain         string   `json:"domain"`
-	Name           string   `json:"name"`
-	AllowedDomains []string `json:"allowed_domains"`
-	CreatedAt      string   `json:"created_at"`
+	ID                 string   `json:"id"`
+	Domain             string   `json:"domain"`
+	Name               string   `json:"name"`
+	AllowedDomains     []string `json:"allowed_domains"`
+	PublicStatsEnabled bool     `json:"public_stats_enabled"`
+	CreatedAt          string   `json:"created_at"`
 }
 
 // CreateWebsiteRequest is the payload for creating a new website

@@ -27,13 +27,19 @@ programmatically via POST /api/ingest.`,
 var apikeyCreateCmd = &cobra.Command{
 	Use:   "create <website-domain>",
 	Short: "Create a new API key for a website",
-	Long: `Create a new API key for server-side event ingestion.
+	Long: `Create a new API key for server-side event ingestion or stats access.
 
 The full API key is displayed ONCE on creation. Save it securely - it cannot be retrieved later.
 
+Available scopes:
+  ingest  - Allows pushing analytics events via POST /api/ingest (default)
+  stats   - Allows reading stats via GET /api/v1/stats/:website_id
+
 Examples:
   kaunta apikey create example.com
-  kaunta apikey create example.com --name "Rails Backend"`,
+  kaunta apikey create example.com --name "Rails Backend"
+  kaunta apikey create example.com --scope stats --name "Stats Reader"
+  kaunta apikey create example.com --scope ingest,stats --name "Full Access"`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runAPIKeyCreate(args[0])
@@ -87,6 +93,7 @@ Examples:
 // Command flags
 var (
 	apikeyName       string
+	apikeyScopes     string
 	apikeyListFormat string
 )
 
@@ -118,7 +125,20 @@ func runAPIKeyCreate(websiteDomain string) error {
 		namePtr = &apikeyName
 	}
 
-	result, err := models.GenerateAPIKey(websiteID, nil, namePtr)
+	// Parse scopes
+	var scopes []string
+	if apikeyScopes != "" {
+		for _, s := range strings.Split(apikeyScopes, ",") {
+			scopes = append(scopes, strings.TrimSpace(s))
+		}
+	}
+
+	var result *models.APIKeyCreateResult
+	if len(scopes) > 0 {
+		result, err = models.GenerateAPIKeyWithScopes(websiteID, nil, namePtr, scopes)
+	} else {
+		result, err = models.GenerateAPIKey(websiteID, nil, namePtr)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to create API key: %w", err)
 	}
@@ -375,6 +395,7 @@ func getAPIKeyByPrefix(prefix string) (*models.APIKey, error) {
 func init() {
 	// Create command flags
 	apikeyCreateCmd.Flags().StringVarP(&apikeyName, "name", "n", "", "Friendly name for the API key (e.g., 'Rails Backend')")
+	apikeyCreateCmd.Flags().StringVarP(&apikeyScopes, "scope", "s", "", "Comma-separated scopes (ingest, stats)")
 
 	// List command flags
 	apikeyListCmd.Flags().StringVarP(&apikeyListFormat, "format", "f", "table", "Output format (table, json)")

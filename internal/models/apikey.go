@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,8 +42,23 @@ const (
 	keyByteLen   = 32 // 256-bit entropy
 )
 
-// GenerateAPIKey creates a new API key for a website
+// GenerateAPIKey creates a new API key for a website with default scopes
 func GenerateAPIKey(websiteID uuid.UUID, createdBy *uuid.UUID, name *string) (*APIKeyCreateResult, error) {
+	return GenerateAPIKeyWithScopes(websiteID, createdBy, name, []string{"ingest"})
+}
+
+// GenerateAPIKeyWithScopes creates a new API key for a website with custom scopes
+func GenerateAPIKeyWithScopes(websiteID uuid.UUID, createdBy *uuid.UUID, name *string, scopes []string) (*APIKeyCreateResult, error) {
+	// Validate scopes
+	validScopes := map[string]bool{"ingest": true, "stats": true}
+	for _, scope := range scopes {
+		if !validScopes[scope] {
+			return nil, fmt.Errorf("invalid scope: %s (valid: ingest, stats)", scope)
+		}
+	}
+	if len(scopes) == 0 {
+		scopes = []string{"ingest"} // Default to ingest if none specified
+	}
 	// Generate 32 random bytes (256-bit entropy)
 	randomBytes := make([]byte, keyByteLen)
 	if _, err := rand.Read(randomBytes); err != nil {
@@ -82,8 +98,8 @@ func GenerateAPIKey(websiteID uuid.UUID, createdBy *uuid.UUID, name *string) (*A
 		keyHash,
 		keyPrefixDisplay,
 		name,
-		pq.Array([]string{"ingest"}), // Default scope
-		1000,                         // Default rate limit
+		pq.Array(scopes),
+		1000, // Default rate limit
 		now,
 	).Scan(
 		&apiKey.KeyID,

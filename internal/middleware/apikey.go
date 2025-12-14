@@ -24,6 +24,16 @@ var apiKeyValidator = validateAPIKeyFromDB
 
 // APIKeyAuth middleware validates API keys for the ingest endpoints
 func APIKeyAuth(c fiber.Ctx) error {
+	return apiKeyAuthWithScope(c, "ingest")
+}
+
+// APIKeyAuthAny validates API key without checking scope (handler checks scope)
+func APIKeyAuthAny(c fiber.Ctx) error {
+	return apiKeyAuthWithScope(c, "")
+}
+
+// apiKeyAuthWithScope validates API key, optionally checking for specific scope
+func apiKeyAuthWithScope(c fiber.Ctx, requiredScope string) error {
 	// Extract key from Authorization header (Bearer token)
 	key := extractAPIKey(c)
 	if key == "" {
@@ -62,10 +72,10 @@ func APIKeyAuth(c fiber.Ctx) error {
 		})
 	}
 
-	// Check scope
-	if !apiKey.HasScope("ingest") {
+	// Check scope if required
+	if requiredScope != "" && !apiKey.HasScope(requiredScope) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "API key does not have ingest permission",
+			"error": "API key does not have " + requiredScope + " permission",
 		})
 	}
 

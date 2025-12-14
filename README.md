@@ -571,6 +571,25 @@ kaunta apikey revoke kaunta_live_...  # Revoke a key
 - Rate limited per key (default 1000 req/min) and per website (default 5000 req/min)
 - Idempotency support via `event_id` (7-day deduplication window)
 
+## Public Stats API
+
+Expose real-time stats (online users, pageviews, visitors) via API for widgets and dashboards.
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `GET /api/v1/stats/:website_id` | API key (`stats` scope) | Always available |
+| `GET /api/public/stats/:website_id` | None | Opt-in per website |
+
+```bash
+# Create API key with stats scope
+kaunta apikey create example.com --scope stats --name "Stats Widget"
+
+# Enable public stats (no auth required)
+kaunta website enable-public-stats example.com
+```
+
+See [PUBLIC_STATS.md](PUBLIC_STATS.md) for full documentation and Astro integration examples.
+
 ## Umami Compatible
 
 Drop-in replacement for Umami. Works with Umami's JavaScript tracker and seamlessly migrates existing databases:

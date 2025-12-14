@@ -56,3 +56,4 @@ playwright/.cache/
 log/
 /.local/
 .playwright-mcp/
+.dictator/

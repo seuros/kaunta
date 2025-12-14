@@ -142,6 +142,43 @@ function websitesDashboard() {
       }
     },
 
+    async togglePublicStats(website, enabled) {
+      try {
+        const response = await fetch(`/api/websites/${website.id}/public-stats`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": this.getCsrfToken(),
+          },
+          credentials: "include",
+          body: JSON.stringify({ enabled }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to update public stats");
+        }
+
+        // Update local state
+        const index = this.websites.findIndex((w) => w.id === website.id);
+        if (index !== -1) {
+          this.websites[index].public_stats_enabled = enabled;
+        }
+
+        this.showToast(
+          enabled ? "Public stats enabled" : "Public stats disabled",
+          "success"
+        );
+      } catch (err) {
+        // Revert checkbox on error
+        const index = this.websites.findIndex((w) => w.id === website.id);
+        if (index !== -1) {
+          this.websites[index].public_stats_enabled = !enabled;
+        }
+        this.showToast(err.message, "error");
+      }
+    },
+
     copyTrackingCode(website) {
       const code = `<script async src="/k.js" data-website-id="${website.id}"></script>`;
       navigator.clipboard
