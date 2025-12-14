@@ -49,6 +49,7 @@ build: ## Build the kaunta binary
 	else \
 		echo "$(YELLOW)Warning: Neither Bun nor Deno found, skipping frontend build$(NC)"; \
 	fi
+	@go generate ./internal/database
 	@CGO_ENABLED=0 go build -v -ldflags="-w -s" -o kaunta ./cmd/kaunta
 	@echo "$(GREEN)Build complete: ./kaunta$(NC)"
 
