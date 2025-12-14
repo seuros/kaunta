@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.38.0](https://github.com/seuros/kaunta/compare/v0.37.0...v0.38.0) (2025-12-14)
+
+
+### Features
+
+* add public stats API with dashboard toggle ([#120](https://github.com/seuros/kaunta/issues/120)) ([5af613a](https://github.com/seuros/kaunta/commit/5af613a8e0a63944227acea788912bac34ffa85e))
+
+
+### Bug Fixes
+
+* auto-regenerate migration version during build ([97d6608](https://github.com/seuros/kaunta/commit/97d6608edf765e4a82db3153c1b600b4bdd70c68))
+
 ## [0.37.0](https://github.com/seuros/kaunta/compare/v0.36.0...v0.37.0) (2025-12-13)
 
 
