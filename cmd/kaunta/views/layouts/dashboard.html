@@ -18,7 +18,17 @@
     {{end}}
   </head>
   <body>
-    <div class="container" x-data="{{block "alpine-data" .}}dashboard(){{end}}" x-init="{{block "alpine-init" .}}init(){{end}}" x-cloak>
+    <!-- Datastar-powered dashboard layout -->
+    <div class="container"
+         id="dashboard-container"
+         data-signals="{
+           websites: [],
+           selectedWebsite: localStorage.getItem('kaunta_website') || '',
+           dateRange: localStorage.getItem('kaunta_dateRange') || '1',
+           filters: { country: '', browser: '', device: '', page: '' },
+           hasActiveFilters: false,
+           loading: false
+         }">
       <header class="glass card">
         <div class="header-left">
           <div style="display: flex; align-items: center; gap: 12px">
@@ -49,100 +59,57 @@
           </a>
           {{end}}
 
-          <!-- Website Selector (show if needed) -->
+          <!-- Website Selector (Datastar) -->
           {{block "website-selector" .}}
-          <select
-            x-model="selectedWebsite"
-            @change="switchWebsite()"
-            x-show="websites.length > 0"
-            class="input-sm glass transition-standard focus-accent"
-          >
-            <template x-for="site in websites" :key="site.id">
-              <option :value="site.id" x-text="site.name || site.domain"></option>
-            </template>
-          </select>
+          <div id="website-selector-container" data-show="$websites.length > 0">
+            <!-- Selector populated via SSE from child page -->
+          </div>
           {{end}}
 
-          <!-- Date Range Buttons (show if needed) -->
+          <!-- Date Range Buttons (Datastar) -->
           {{block "date-controls" .}}
           <div class="date-range-buttons glass">
             <button
               class="btn btn-xs date-btn transition-standard"
-              :class="{ 'active': dateRange === '1' }"
-              @click="setDateRange('1')"
+              data-class:active="$dateRange === '1'"
+              data-on:click="$dateRange = '1'; localStorage.setItem('kaunta_dateRange', '1'); @get('/api/dashboard/stats-ds?website=' + $selectedWebsite + '&dateRange=1')"
             >
               Today
             </button>
             <button
               class="btn btn-xs date-btn transition-standard"
-              :class="{ 'active': dateRange === '7' }"
-              @click="setDateRange('7')"
+              data-class:active="$dateRange === '7'"
+              data-on:click="$dateRange = '7'; localStorage.setItem('kaunta_dateRange', '7'); @get('/api/dashboard/stats-ds?website=' + $selectedWebsite + '&dateRange=7')"
             >
               7 days
             </button>
             <button
               class="btn btn-xs date-btn transition-standard"
-              :class="{ 'active': dateRange === '30' }"
-              @click="setDateRange('30')"
+              data-class:active="$dateRange === '30'"
+              data-on:click="$dateRange = '30'; localStorage.setItem('kaunta_dateRange', '30'); @get('/api/dashboard/stats-ds?website=' + $selectedWebsite + '&dateRange=30')"
             >
               30 days
             </button>
           </div>
           {{end}}
 
-          <!-- Filters (show if needed) -->
+          <!-- Filters (Datastar) -->
           {{block "filters" .}}
-          <div class="filters" x-show="selectedWebsite">
-            <select x-model="filters.country" @change="applyFilter()">
-              <option value="">All Countries</option>
-              <template x-for="(country, index) in availableFilters.countries" :key="index">
-                <option
-                  :value="country.name"
-                  x-text="`${country.name} (${country.count})`"
-                ></option>
-              </template>
-            </select>
-            <select x-model="filters.browser" @change="applyFilter()">
-              <option value="">All Browsers</option>
-              <template x-for="(browser, index) in availableFilters.browsers" :key="index">
-                <option
-                  :value="browser.name"
-                  x-text="`${browser.name} (${browser.count})`"
-                ></option>
-              </template>
-            </select>
-            <select x-model="filters.device" @change="applyFilter()">
-              <option value="">All Devices</option>
-              <template x-for="(device, index) in availableFilters.devices" :key="index">
-                <option :value="device.name" x-text="`${device.name} (${device.count})`"></option>
-              </template>
-            </select>
-            <select x-model="filters.page" @change="applyFilter()">
-              <option value="">All Pages</option>
-              <template x-for="(page, index) in availableFilters.pages" :key="index">
-                <option :value="page.path" x-text="`${page.path} (${page.views})`"></option>
-              </template>
-            </select>
-            <button class="btn btn-sm btn-ghost" x-show="hasActiveFilters" @click="clearFilters()">
-              <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                ></path>
-              </svg>
-              Clear Filters
-            </button>
+          <div class="filters" id="filters-container" data-show="$selectedWebsite">
+            <!-- Filters populated via SSE -->
           </div>
           {{end}}
 
           <!-- Page-specific buttons go here -->
           {{block "header-buttons" .}}{{end}}
 
-          <!-- Logout button (show by default, can be hidden) -->
+          <!-- Logout button (Datastar) -->
           {{block "logout-button" .}}
-          <button @click="logout()" class="btn btn-sm btn-danger" title="Logout">
+          <button
+            data-on:click="@post('/api/auth/logout-ds')"
+            class="btn btn-sm btn-danger"
+            title="Logout"
+          >
             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
@@ -164,7 +131,7 @@
           <img src="/assets/kaunta.svg" alt="Kaunta" style="height: 32px; width: auto" />
           <span class="company-name">Kaunta Analytics</span>
         </div>
-        <p>Built with Go, Fiber, Alpine.js, PostgreSQL, and Leaflet</p>
+        <p>Built with Go, Fiber, Datastar, PostgreSQL, and Leaflet</p>
         <p>
           <a href="https://github.com/seuros/kaunta" class="repo-link">View on GitHub</a>
           · <strong>v{{.Version}}</strong>
@@ -172,6 +139,9 @@
       </footer>
     </div>
 
+    <!-- Datastar - hypermedia framework for SSE-driven UI -->
+    <script type="module" src="/assets/vendor/datastar.js?v={{.Version}}"></script>
+    <!-- Vendor bundle (Chart.js, Leaflet, topojson) -->
     <script defer src="/assets/vendor/vendor.js?v={{.Version}}"></script>
     {{block "page-scripts" .}}{{end}}
   </body>

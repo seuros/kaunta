@@ -81,6 +81,7 @@ It provides real-time analytics and a clean dashboard interface.`,
 				TrackerScript,
 				VendorJS,
 				VendorCSS,
+				DatastarJS,
 				CountriesGeoJSON,
 				ViewsFS,
 			)
@@ -96,6 +97,7 @@ func Execute(
 	trackerScript,
 	vendorJS,
 	vendorCSS,
+	datastarJS,
 	countriesGeoJSON []byte,
 	viewsFS interface{},
 	setupTemplate,
@@ -106,6 +108,7 @@ func Execute(
 	TrackerScript = trackerScript
 	VendorJS = vendorJS
 	VendorCSS = vendorCSS
+	DatastarJS = datastarJS
 	CountriesGeoJSON = countriesGeoJSON
 	ViewsFS = viewsFS
 	SetupTemplate = setupTemplate
@@ -128,6 +131,7 @@ var (
 	TrackerScript         []byte
 	VendorJS              []byte
 	VendorCSS             []byte
+	DatastarJS            []byte
 	CountriesGeoJSON      []byte
 	ViewsFS               interface{} // embed.FS for template views
 	SetupTemplate         []byte
@@ -175,7 +179,7 @@ func render(c fiber.Ctx, pagePath, layoutPath string, data fiber.Map) error {
 // serveAnalytics runs the Kaunta server
 func serveAnalytics(
 	assetsFS interface{},
-	trackerScript, vendorJS, vendorCSS, countriesGeoJSON []byte,
+	trackerScript, vendorJS, vendorCSS, datastarJS, countriesGeoJSON []byte,
 	viewsFS interface{},
 ) error {
 	// Ensure logger is flushed on exit
@@ -401,6 +405,9 @@ func serveAnalytics(
 		case "vendor.css":
 			c.Set("Content-Type", "text/css; charset=utf-8")
 			return c.Send(vendorCSS)
+		case "datastar.js":
+			c.Set("Content-Type", "application/javascript; charset=utf-8")
+			return c.Send(datastarJS)
 		default:
 			return c.Status(404).SendString("Not found")
 		}
@@ -506,6 +513,7 @@ func serveAnalytics(
 	})
 
 	app.Post("/api/auth/login", loginLimiter, handlers.HandleLogin)
+	app.Get("/api/auth/login-ds", loginLimiter, handlers.HandleLoginDatastar) // Datastar SSE login
 
 	// Login page (public)
 	app.Get("/login", func(c fiber.Ctx) error {
@@ -543,6 +551,7 @@ func serveAnalytics(
 
 	// Protected API endpoints
 	app.Post("/api/auth/logout", middleware.Auth, handlers.HandleLogout)
+	app.Post("/api/auth/logout-ds", middleware.Auth, handlers.HandleLogoutDatastar) // Datastar SSE logout
 	app.Get("/api/auth/me", middleware.Auth, handlers.HandleMe)
 
 	// Dashboard API endpoints (protected)
@@ -558,6 +567,26 @@ func serveAnalytics(
 	app.Get("/api/dashboard/cities/:website_id", middleware.Auth, handlers.HandleTopCities)
 	app.Get("/api/dashboard/regions/:website_id", middleware.Auth, handlers.HandleTopRegions)
 	app.Get("/api/dashboard/map/:website_id", middleware.Auth, handlers.HandleMapData)
+
+	// Datastar SSE dashboard endpoints (query param based)
+	app.Get("/api/dashboard/init-ds", middleware.Auth, handlers.HandleDashboardInitDS)
+	app.Get("/api/dashboard/stats-ds", middleware.Auth, handlers.HandleDashboardStatsDS)
+	app.Get("/api/dashboard/timeseries-ds", middleware.Auth, handlers.HandleTimeSeriesDS)
+	app.Get("/api/dashboard/chart-ds", middleware.Auth, handlers.HandleTimeSeriesDS) // Alias for timeseries
+	app.Get("/api/dashboard/breakdown-ds", middleware.Auth, handlers.HandleBreakdownDS)
+	app.Get("/api/dashboard/map-ds", middleware.Auth, handlers.HandleMapDataDS)
+	app.Get("/api/dashboard/realtime-ds", middleware.Auth, handlers.HandleRealtimeVisitorsDS)
+	app.Get("/api/dashboard/campaigns-init-ds", middleware.Auth, handlers.HandleCampaignsInitDS)
+	app.Get("/api/dashboard/campaigns-ds", middleware.Auth, handlers.HandleCampaignsDS)
+	app.Get("/api/dashboard/websites-init-ds", middleware.Auth, handlers.HandleWebsitesInitDS)
+	app.Post("/api/dashboard/websites-create-ds", middleware.Auth, handlers.HandleWebsitesCreateDS)
+	app.Get("/api/dashboard/map-init-ds", middleware.Auth, handlers.HandleMapInitDS)
+	app.Get("/api/dashboard/goals-ds", middleware.Auth, handlers.HandleGoalsDS)
+	app.Post("/api/dashboard/goals-ds", middleware.Auth, handlers.HandleGoalsCreateDS)
+	app.Put("/api/dashboard/goals-ds/:id", middleware.Auth, handlers.HandleGoalsUpdateDS)
+	app.Delete("/api/dashboard/goals-ds/:id", middleware.Auth, handlers.HandleGoalsDeleteDS)
+	app.Get("/api/dashboard/goals-ds/:id/analytics", middleware.Auth, handlers.HandleGoalsAnalyticsDS)
+	app.Get("/api/dashboard/goals-ds/:id/breakdown/:type", middleware.Auth, handlers.HandleGoalsBreakdownDS)
 
 	// UTM Campaign Parameter endpoints (protected)
 	app.Get("/api/dashboard/utm-source/:website_id", middleware.Auth, handlers.HandleUTMSource)

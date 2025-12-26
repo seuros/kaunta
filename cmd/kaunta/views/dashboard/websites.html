@@ -1,5 +1,6 @@
-{{define "alpine-data"}}websitesDashboard(){{end}} {{define "alpine-init"}}init(){{end}} {{define
-"page-subtitle"}}Website Management{{end}} {{define "navigation"}}
+{{define "page-subtitle"}}Website Management{{end}}
+
+{{define "navigation"}}
 <a
   href="/dashboard"
   class="btn btn-sm btn-ghost glass transition-standard"
@@ -15,250 +16,172 @@
   </svg>
   Dashboard
 </a>
-{{end}} {{define "website-selector"}}
+{{end}}
+
+{{define "website-selector"}}
 <!-- Websites page doesn't need website selector -->
-{{end}} {{define "date-controls"}}
+{{end}}
+
+{{define "date-controls"}}
 <!-- Websites page doesn't need date controls -->
-{{end}} {{define "filters"}}
+{{end}}
+
+{{define "filters"}}
 <!-- Websites page doesn't need filters -->
-{{end}} {{define "header-buttons"}}
-<button @click="showCreateModal = true" title="Add Website" class="btn btn-sm btn-primary">
+{{end}}
+
+{{define "header-buttons"}}
+<button
+  data-on:click="$showCreateModal = true"
+  title="Add Website"
+  class="btn btn-sm btn-primary"
+>
   <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
   </svg>
   Add Website
 </button>
-{{end}} {{define "page-scripts"}}
-<script src="/assets/js/websites.js?v={{.Version}}"></script>
-{{end}} {{define "content"}}
+{{end}}
 
-<!-- Loading State -->
-<div x-show="loading" class="loading" style="margin-top: 100px">
-  <div class="spinner"></div>
-  <div>Loading websites...</div>
-</div>
+{{define "page-scripts"}}
+<script src="/assets/js/websites-ds.js?v={{.Version}}"></script>
+{{end}}
 
-<!-- Websites Grid -->
-<div x-show="!loading && !error && websites.length > 0" class="websites-grid">
-  <template x-for="website in websites" :key="website.id">
-    <div class="section glass card website-card">
-      <div class="website-header">
-        <div>
-          <h3 x-text="website.name || website.domain" class="website-name"></h3>
-          <span class="badge badge-secondary" x-text="website.domain"></span>
-        </div>
-        <div class="website-actions">
-          <button
-            @click="copyTrackingCode(website)"
-            class="btn btn-sm"
-            :class="copiedId === website.id ? 'btn-primary' : 'btn-secondary'"
-            title="Copy Tracking Code"
-          >
-            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-              ></path>
-            </svg>
-            <span x-text="copiedId === website.id ? 'Copied!' : 'Copy Code'"></span>
-          </button>
-        </div>
-      </div>
-
-      <div class="website-info">
-        <div class="info-row">
-          <span class="info-label">Website ID:</span>
-          <code class="info-value" x-text="website.id"></code>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Created:</span>
-          <span class="info-value" x-text="formatDate(website.created_at)"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Public Stats:</span>
-          <label class="toggle-switch">
-            <input
-              type="checkbox"
-              :checked="website.public_stats_enabled"
-              @change="togglePublicStats(website, $event.target.checked)"
-            />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="domains-section">
-        <div class="domains-header">
-          <span class="domains-label">Allowed Domains</span>
-          <span class="domains-count" x-text="website.allowed_domains?.length || 0"></span>
-        </div>
-        <div class="domains-list" x-show="expandedWebsite === website.id">
-          <template x-for="(domain, index) in website.allowed_domains" :key="index">
-            <div class="domain-item">
-              <span x-text="domain"></span>
-              <button
-                @click="removeDomain(website, domain)"
-                class="btn btn-xs btn-danger"
-                title="Remove domain"
-                :disabled="website.allowed_domains.length <= 1"
-              >
-                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  ></path>
-                </svg>
-              </button>
-            </div>
-          </template>
-          <div class="add-domain-form" x-show="addingDomainTo === website.id">
-            <input
-              type="text"
-              x-model="newDomain"
-              placeholder="example.com"
-              @keyup.enter="addDomain(website)"
-              @keyup.escape="addingDomainTo = null; newDomain = ''"
-              class="input"
-              style="flex: 1"
-            />
-            <button @click="addDomain(website)" class="btn btn-primary">Add</button>
-            <button @click="addingDomainTo = null; newDomain = ''" class="btn btn-secondary">
-              Cancel
-            </button>
-          </div>
-          <button
-            x-show="addingDomainTo !== website.id"
-            @click="addingDomainTo = website.id"
-            class="btn btn-secondary"
-            style="width: 100%; justify-content: center"
-          >
-            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              ></path>
-            </svg>
-            Add Domain
-          </button>
-        </div>
-        <button
-          @click="expandedWebsite = expandedWebsite === website.id ? null : website.id"
-          class="btn btn-secondary"
-          style="width: 100%; justify-content: center; margin-top: var(--space-sm)"
-        >
-          <span x-text="expandedWebsite === website.id ? 'Hide Domains' : 'Manage Domains'"></span>
-          <svg
-            class="icon-sm"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            :class="{'rotate-180': expandedWebsite === website.id}"
-            style="transition: transform var(--transition-base)"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 9l-7 7-7-7"
-            ></path>
-          </svg>
-        </button>
-      </div>
-    </div>
-  </template>
-</div>
-
-<!-- No Websites -->
+{{define "content"}}
+<!-- Websites Page Container with Datastar Signals -->
 <div
-  x-show="!loading && !error && websites.length === 0"
-  class="empty-state"
-  style="margin-top: 100px"
+  id="websites-page"
+  data-signals="{
+    loading: true,
+    error: '',
+    websites: [],
+    showCreateModal: false,
+    newWebsite: { domain: '', name: '' },
+    expandedWebsite: null,
+    addingDomainTo: null,
+    newDomain: '',
+    copiedId: null,
+    creating: false,
+    createError: '',
+    toast: { show: false, message: '', type: '' }
+  }"
+  data-on:load="@get('/api/dashboard/websites-init-ds')"
 >
-  <div class="empty-state-icon">🌐</div>
-  <div class="empty-state-title">No websites yet</div>
-  <div class="empty-state-text">Add your first website to start tracking analytics.</div>
-  <button @click="showCreateModal = true" class="btn btn-primary" style="margin-top: 16px">
-    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M12 4v16m8-8H4"
-      ></path>
-    </svg>
-    Add Website
-  </button>
-</div>
-
-<!-- Error State -->
-<div x-show="!loading && error" class="empty-state" style="margin-top: 100px">
-  <div class="empty-state-icon">⚠️</div>
-  <div class="empty-state-title">Unable to load websites</div>
-  <div class="empty-state-text" x-text="error"></div>
-  <button @click="loadWebsites()" class="btn btn-primary" style="margin-top: 16px">
-    Try Again
-  </button>
-</div>
-
-<!-- Create Website Modal -->
-<div x-show="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
-  <div class="modal glass card">
-    <h2 class="modal-title">Add New Website</h2>
-    <form @submit.prevent="createWebsite()">
-      <div class="form-group">
-        <label for="domain">Domain *</label>
-        <input
-          type="text"
-          id="domain"
-          x-model="newWebsite.domain"
-          placeholder="example.com"
-          required
-          class="input"
-        />
-        <small>Common variations (www, http/https) will be added automatically</small>
-      </div>
-      <div class="form-group">
-        <label for="name">Display Name (optional)</label>
-        <input
-          type="text"
-          id="name"
-          x-model="newWebsite.name"
-          placeholder="My Awesome Site"
-          class="input"
-        />
-      </div>
-      <div x-show="createError" class="error-message" x-text="createError"></div>
-      <div class="modal-actions">
-        <button
-          type="button"
-          @click="showCreateModal = false; createError = ''"
-          class="btn btn-ghost"
-        >
-          Cancel
-        </button>
-        <button type="submit" class="btn btn-primary" :disabled="creating">
-          <span x-show="!creating">Create Website</span>
-          <span x-show="creating">Creating...</span>
-        </button>
-      </div>
-    </form>
+  <!-- Loading State -->
+  <div data-show="$loading" class="loading" style="margin-top: 100px">
+    <div class="spinner"></div>
+    <div>Loading websites...</div>
   </div>
-</div>
 
-<!-- Toast Notification -->
-<div
-  x-show="toast.show"
-  x-transition
-  class="toast"
-  :class="toast.type"
-  x-text="toast.message"
-></div>
+  <!-- Websites Grid Container - populated via SSE -->
+  <div
+    id="websites-grid-container"
+    data-show="!$loading && !$error && $websites.length > 0"
+    class="websites-grid"
+  >
+    <!-- Website cards rendered server-side via SSE -->
+  </div>
+
+  <!-- No Websites Empty State -->
+  <div
+    data-show="!$loading && !$error && $websites.length === 0"
+    class="empty-state"
+    style="margin-top: 100px"
+  >
+    <div class="empty-state-icon">&#127760;</div>
+    <div class="empty-state-title">No websites yet</div>
+    <div class="empty-state-text">Add your first website to start tracking analytics.</div>
+    <button
+      data-on:click="$showCreateModal = true"
+      class="btn btn-primary"
+      style="margin-top: 16px"
+    >
+      <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 4v16m8-8H4"
+        ></path>
+      </svg>
+      Add Website
+    </button>
+  </div>
+
+  <!-- Error State -->
+  <div data-show="!$loading && $error" class="empty-state" style="margin-top: 100px">
+    <div class="empty-state-icon">&#9888;&#65039;</div>
+    <div class="empty-state-title">Unable to load websites</div>
+    <div class="empty-state-text" data-text="$error"></div>
+    <button
+      data-on:click="@get('/api/dashboard/websites-init-ds')"
+      class="btn btn-primary"
+      style="margin-top: 16px"
+    >
+      Try Again
+    </button>
+  </div>
+
+  <!-- Create Website Modal -->
+  <div
+    data-show="$showCreateModal"
+    class="modal-overlay"
+    data-on:click__self="$showCreateModal = false"
+  >
+    <div class="modal glass card">
+      <h2 class="modal-title">Add New Website</h2>
+      <form data-on:submit__prevent="@post('/api/dashboard/websites-create-ds')">
+        <div class="form-group">
+          <label for="domain">Domain *</label>
+          <input
+            type="text"
+            id="domain"
+            name="domain"
+            data-bind:newWebsite.domain
+            placeholder="example.com"
+            required
+            class="input"
+          />
+          <small>Common variations (www, http/https) will be added automatically</small>
+        </div>
+        <div class="form-group">
+          <label for="name">Display Name (optional)</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            data-bind:newWebsite.name
+            placeholder="My Awesome Site"
+            class="input"
+          />
+        </div>
+        <div data-show="$createError" class="error-message" data-text="$createError"></div>
+        <div class="modal-actions">
+          <button
+            type="button"
+            data-on:click="$showCreateModal = false; $createError = ''"
+            class="btn btn-ghost"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" data-attr:disabled="$creating">
+            <span data-show="!$creating">Create Website</span>
+            <span data-show="$creating">Creating...</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div
+    data-show="$toast.show"
+    class="toast"
+    data-class:success="$toast.type === 'success'"
+    data-class:error="$toast.type === 'error'"
+    data-text="$toast.message"
+  ></div>
+</div>
 
 <style>
   .websites-grid {

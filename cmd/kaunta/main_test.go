@@ -20,6 +20,7 @@ func TestRunPassesEmbeddedAssetsToCLI(t *testing.T) {
 		gotTracker []byte,
 		gotVendorJS []byte,
 		gotVendorCSS []byte,
+		gotDatastarJS []byte,
 		gotGeoJSON []byte,
 		gotViewsFS interface{},
 		gotSetup []byte,
@@ -31,6 +32,7 @@ func TestRunPassesEmbeddedAssetsToCLI(t *testing.T) {
 		assert.Equal(t, trackerScript, gotTracker)
 		assert.Equal(t, vendorJS, gotVendorJS)
 		assert.Equal(t, vendorCSS, gotVendorCSS)
+		assert.Equal(t, datastarJS, gotDatastarJS)
 		assert.Equal(t, countriesGeoJSON, gotGeoJSON)
 		assert.NotNil(t, gotViewsFS)
 		assert.Equal(t, setupTemplate, gotSetup)
@@ -52,6 +54,7 @@ func TestRunPropagatesExecuteError(t *testing.T) {
 		tracker []byte,
 		vendorJSBytes []byte,
 		vendorCSSBytes []byte,
+		datastarJSBytes []byte,
 		geoJSON []byte,
 		viewsFS interface{},
 		setup []byte,

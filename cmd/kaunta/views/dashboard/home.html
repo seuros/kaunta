@@ -1,366 +1,332 @@
 {{define "header-buttons"}}{{end}} {{define "page-scripts"}}
-<script src="/assets/js/dashboard.js?v={{.Version}}"></script>
+<script src="/assets/js/dashboard-ds.js?v={{.Version}}"></script>
 {{end}} {{define "content"}}
-<!-- Dashboard App -->
-<div x-show="!websitesLoading && !websitesError && selectedWebsite && websites.length > 0">
-  <!-- Stats Grid -->
-  <div class="stats-grid">
-    <div class="stat-card glass card">
-      <div class="stat-header">
-        <div class="stat-icon green glass icon-xl">
-          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-            <path
-              fill-rule="evenodd"
-              d="M8.338 5.59a1 1 0 01.946.62l1.285 3.855h4.062l1.285-3.855a1 1 0 01.946-.62c2.167.642 3.75 2.864 3.75 5.41 0 2.546-1.583 4.768-3.75 5.41a1 1 0 01-.946-.62l-1.285-3.855h-4.062l-1.285 3.855a1 1 0 01-.946.62c-2.167-.642-3.75-2.864-3.75-5.41 0-2.546 1.583-4.768 3.75-5.41zM12 8a4 4 0 100 8 4 4 0 000-8z"
-              clip-rule="evenodd"
-            ></path>
-          </svg>
+<!-- Dashboard App (Datastar) -->
+<div id="dashboard-home"
+     data-signals="{
+       websitesLoading: true,
+       websitesError: false,
+       websites: [],
+       selectedWebsite: '',
+       stats: { current_visitors: 0, today_pageviews: 0, today_visitors: 0, today_bounce_rate: '0%' },
+       activeTab: 'pages',
+       breakdownLoading: false,
+       breakdownData: [],
+       sortColumn: 'count',
+       sortDirection: 'desc',
+       chartData: { labels: [], values: [] }
+     }"
+     data-on:load="@get('/api/dashboard/init-ds')">
+
+  <!-- Dashboard content - shown when loaded -->
+  <div data-show="!$websitesLoading && !$websitesError && $selectedWebsite && $websites.length > 0">
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card glass card">
+        <div class="stat-header">
+          <div class="stat-icon green glass icon-xl">
+            <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              <path
+                fill-rule="evenodd"
+                d="M8.338 5.59a1 1 0 01.946.62l1.285 3.855h4.062l1.285-3.855a1 1 0 01.946-.62c2.167.642 3.75 2.864 3.75 5.41 0 2.546-1.583 4.768-3.75 5.41a1 1 0 01-.946-.62l-1.285-3.855h-4.062l-1.285 3.855a1 1 0 01-.946.62c-2.167-.642-3.75-2.864-3.75-5.41 0-2.546 1.583-4.768 3.75-5.41zM12 8a4 4 0 100 8 4 4 0 000-8z"
+                clip-rule="evenodd"
+              ></path>
+            </svg>
+          </div>
+          <div class="stat-label">Current Visitors</div>
         </div>
-        <div class="stat-label">Current Visitors</div>
+        <div class="stat-value live">
+          <span class="pulse"></span><span id="stat-current-visitors" data-text="$stats.current_visitors"></span>
+        </div>
+        <div class="progress-container">
+          <div
+            class="progress-bar"
+            id="progress-current-visitors"
+            data-attr:style="'width: ' + Math.min($stats.current_visitors * 5, 100) + '%'"
+          ></div>
+        </div>
       </div>
-      <div class="stat-value live">
-        <span class="pulse"></span><span x-text="stats.current_visitors"></span>
+      <div class="stat-card glass card">
+        <div class="stat-header">
+          <div class="stat-icon blue glass icon-xl">
+            <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              ></path>
+            </svg>
+          </div>
+          <div class="stat-label">Pageviews</div>
+        </div>
+        <div class="stat-value" id="stat-pageviews" data-text="$stats.today_pageviews"></div>
+        <div class="progress-container">
+          <div
+            class="progress-bar"
+            id="progress-pageviews"
+            data-attr:style="'width: ' + Math.min($stats.today_pageviews / 100, 100) + '%'"
+          ></div>
+        </div>
       </div>
-      <div class="progress-container">
-        <div
-          class="progress-bar"
-          :style="{ width: Math.min(stats.current_visitors * 5, 100) + '%' }"
-        ></div>
+      <div class="stat-card glass card">
+        <div class="stat-header">
+          <div class="stat-icon purple glass icon-xl">
+            <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                fill-rule="evenodd"
+                d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                clip-rule="evenodd"
+              ></path>
+            </svg>
+          </div>
+          <div class="stat-label">Visitors</div>
+        </div>
+        <div class="stat-value" id="stat-visitors" data-text="$stats.today_visitors"></div>
+        <div class="progress-container">
+          <div
+            class="progress-bar"
+            id="progress-visitors"
+            data-attr:style="'width: ' + Math.min($stats.today_visitors / 100, 100) + '%'"
+          ></div>
+        </div>
+      </div>
+      <div class="stat-card glass card">
+        <div class="stat-header">
+          <div class="stat-icon orange glass icon-xl">
+            <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              ></path>
+            </svg>
+          </div>
+          <div class="stat-label">Bounce Rate</div>
+        </div>
+        <div class="stat-value" id="stat-bounce-rate" data-text="$stats.today_bounce_rate"></div>
+        <div class="progress-container">
+          <div
+            class="progress-bar"
+            id="progress-bounce-rate"
+            data-attr:style="'width: ' + $stats.today_bounce_rate.replace('%', '') + '%'"
+          ></div>
+        </div>
       </div>
     </div>
-    <div class="stat-card glass card">
-      <div class="stat-header">
-        <div class="stat-icon blue glass icon-xl">
+
+    <!-- Pageviews Chart -->
+    <div class="section glass card" id="chart-section"
+         data-intersects="@get('/api/dashboard/chart-ds?website=' + $selectedWebsite)">
+      <div class="section-header">
+        <h2>
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+          Pageviews Over Time
+        </h2>
+      </div>
+      <div style="position: relative; height: 300px">
+        <canvas id="pageviewsChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Breakdowns with Tabs -->
+    <div class="section glass card">
+      <div class="tabs">
+        <button
+          class="tab transition-standard"
+          data-class:active="$activeTab === 'pages'"
+          data-on:click="$activeTab = 'pages'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+        >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             ></path>
           </svg>
-        </div>
-        <div class="stat-label">Pageviews</div>
-      </div>
-      <div class="stat-value" x-text="stats.today_pageviews"></div>
-      <div class="progress-container">
-        <div
-          class="progress-bar"
-          :style="{ width: Math.min(stats.today_pageviews / 100, 100) + '%' }"
-        ></div>
-      </div>
-    </div>
-    <div class="stat-card glass card">
-      <div class="stat-header">
-        <div class="stat-icon purple glass icon-xl">
+          Pages
+        </button>
+        <button
+          class="tab transition-standard"
+          data-class:active="$activeTab === 'referrers'"
+          data-on:click="$activeTab = 'referrers'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+        >
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.658 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+            ></path>
+          </svg>
+          Referrers
+        </button>
+        <button
+          class="tab transition-standard"
+          data-class:active="$activeTab === 'browsers'"
+          data-on:click="$activeTab = 'browsers'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+        >
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V5z"></path>
+          </svg>
+          Browsers
+        </button>
+        <button
+          class="tab transition-standard"
+          data-class:active="$activeTab === 'devices'"
+          data-on:click="$activeTab = 'devices'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+        >
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+            ></path>
+          </svg>
+          Devices
+        </button>
+        <button
+          class="tab transition-standard"
+          data-class:active="$activeTab === 'os'"
+          data-on:click="$activeTab = 'os'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+        >
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+            ></path>
+          </svg>
+          OS
+        </button>
+        <button
+          class="tab transition-standard"
+          data-class:active="$activeTab === 'countries'"
+          data-on:click="$activeTab = 'countries'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+        >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
               fill-rule="evenodd"
-              d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+              d="M5.05 4.05a7 7 0 119.9 9.9L12 18.9l-7.95-7.95zm1.414 1.415a5 5 0 117.07 7.07L12 16.57l-5.536-5.536z"
               clip-rule="evenodd"
             ></path>
           </svg>
-        </div>
-        <div class="stat-label">Visitors</div>
-      </div>
-      <div class="stat-value" x-text="stats.today_visitors"></div>
-      <div class="progress-container">
-        <div
-          class="progress-bar"
-          :style="{ width: Math.min(stats.today_visitors / 100, 100) + '%' }"
-        ></div>
-      </div>
-    </div>
-    <div class="stat-card glass card">
-      <div class="stat-header">
-        <div class="stat-icon orange glass icon-xl">
+          Countries
+        </button>
+        <button
+          class="tab transition-standard"
+          data-class:active="$activeTab === 'cities'"
+          data-on:click="$activeTab = 'cities'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+        >
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
+          </svg>
+          Cities
+        </button>
+        <button
+          class="tab transition-standard"
+          data-class:active="$activeTab === 'regions'"
+          data-on:click="$activeTab = 'regions'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+        >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
-              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM9 12a3 3 0 11-6 0 3 3 0 016 0zM9 18a3 3 0 11-6 0 3 3 0 016 0zM15 6a3 3 0 11-6 0 3 3 0 016 0zM15 12a3 3 0 11-6 0 3 3 0 016 0zM15 18a3 3 0 11-6 0 3 3 0 016 0z"
             ></path>
           </svg>
-        </div>
-        <div class="stat-label">Bounce Rate</div>
-      </div>
-      <div class="stat-value" x-text="stats.today_bounce_rate"></div>
-      <div class="progress-container">
-        <div
-          class="progress-bar"
-          :style="{ width: stats.today_bounce_rate.replace('%', '') }"
-        ></div>
-      </div>
-    </div>
-  </div>
-  <!-- Pageviews Chart -->
-  <div class="section glass card" x-intersect.once="loadChartAndSetupIntervals()">
-    <div class="section-header">
-      <h2>
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-        </svg>
-        Pageviews Over Time
-      </h2>
-    </div>
-    <div style="position: relative; height: 300px">
-      <canvas id="pageviewsChart"></canvas>
-    </div>
-  </div>
-  <!-- Breakdowns with Tabs -->
-  <div class="section glass card">
-    <div class="tabs">
-      <button
-        class="tab transition-standard"
-        :class="{ 'active': activeTab === 'pages' }"
-        @click="activeTab = 'pages'; await loadBreakdown()"
-      >
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          ></path>
-        </svg>
-        Pages
-      </button>
-      <button
-        class="tab transition-standard"
-        :class="{ 'active': activeTab === 'referrers' }"
-        @click="activeTab = 'referrers'; await loadBreakdown()"
-      >
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path
-            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.658 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-          ></path>
-        </svg>
-        Referrers
-      </button>
-      <button
-        class="tab transition-standard"
-        :class="{ 'active': activeTab === 'browsers' }"
-        @click="activeTab = 'browsers'; await loadBreakdown()"
-      >
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V5z"></path>
-        </svg>
-        Browsers
-      </button>
-      <button
-        class="tab transition-standard"
-        :class="{ 'active': activeTab === 'devices' }"
-        @click="activeTab = 'devices'; await loadBreakdown()"
-      >
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path
-            d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-          ></path>
-        </svg>
-        Devices
-      </button>
-      <button
-        class="tab transition-standard"
-        :class="{ 'active': activeTab === 'os' }"
-        @click="activeTab = 'os'; await loadBreakdown()"
-      >
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path
-            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-          ></path>
-        </svg>
-        OS
-      </button>
-      <button
-        class="tab transition-standard"
-        :class="{ 'active': activeTab === 'countries' }"
-        @click="activeTab = 'countries'; await loadBreakdown()"
-      >
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path
-            fill-rule="evenodd"
-            d="M5.05 4.05a7 7 0 119.9 9.9L12 18.9l-7.95-7.95zm1.414 1.415a5 5 0 117.07 7.07L12 16.57l-5.536-5.536z"
-            clip-rule="evenodd"
-          ></path>
-        </svg>
-        Countries
-      </button>
-      <button
-        class="tab transition-standard"
-        :class="{ 'active': activeTab === 'cities' }"
-        @click="activeTab = 'cities'; await loadBreakdown()"
-      >
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
-        </svg>
-        Cities
-      </button>
-      <button
-        class="tab transition-standard"
-        :class="{ 'active': activeTab === 'regions' }"
-        @click="activeTab = 'regions'; await loadBreakdown()"
-      >
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path
-            d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM9 12a3 3 0 11-6 0 3 3 0 016 0zM9 18a3 3 0 11-6 0 3 3 0 016 0zM15 6a3 3 0 11-6 0 3 3 0 016 0zM15 12a3 3 0 11-6 0 3 3 0 016 0zM15 18a3 3 0 11-6 0 3 3 0 016 0z"
-          ></path>
-        </svg>
-        Regions
-      </button>
-      <button
-        class="tab transition-standard"
-        :class="{ 'active': activeTab === 'entry-pages' }"
-        @click="activeTab = 'entry-pages'; await loadBreakdown()"
-      >
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path
-            d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
-          ></path>
-        </svg>
-        Entry
-      </button>
-      <button
-        class="tab transition-standard"
-        :class="{ 'active': activeTab === 'exit-pages' }"
-        @click="activeTab = 'exit-pages'; await loadBreakdown()"
-      >
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path
-            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-          ></path>
-        </svg>
-        Exit
-      </button>
-      <a href="/dashboard/campaigns" class="tab transition-standard" style="text-decoration: none">
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path
-            d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
-          ></path>
-        </svg>
-        Campaigns
-      </a>
-      <a href="/dashboard/map" class="tab transition-standard" style="text-decoration: none">
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path
-            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7.5l6.553-3.776A1 1 0 0117 5.618v10.764a1 1 0 01-1.447.894L9 16.5l-6.553 3.776z"
-          ></path>
-        </svg>
-        Map
-      </a>
-      <a href="/dashboard/websites" class="tab transition-standard" style="text-decoration: none">
-        <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
+          Regions
+        </button>
+        <button
+          class="tab transition-standard"
+          data-class:active="$activeTab === 'entry-pages'"
+          data-on:click="$activeTab = 'entry-pages'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+        >
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+            ></path>
+          </svg>
+          Entry
+        </button>
+        <button
+          class="tab transition-standard"
+          data-class:active="$activeTab === 'exit-pages'"
+          data-on:click="$activeTab = 'exit-pages'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+        >
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+            ></path>
+          </svg>
+          Exit
+        </button>
+        <a href="/dashboard/campaigns" class="tab transition-standard" style="text-decoration: none">
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
+            ></path>
+          </svg>
+          Campaigns
+        </a>
+        <a href="/dashboard/map" class="tab transition-standard" style="text-decoration: none">
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7.5l6.553-3.776A1 1 0 0117 5.618v10.764a1 1 0 01-1.447.894L9 16.5l-6.553 3.776z"
+            ></path>
+          </svg>
+          Map
+        </a>
+        <a href="/dashboard/websites" class="tab transition-standard" style="text-decoration: none">
+          <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9-9a9 9 0 00-9 9m9-9v18"
+            ></path>
+          </svg>
+          Websites
+        </a>
+        <a href="/dashboard/goals" class="tab transition-standard" style="text-decoration: none">
+          <svg
+            class="icon-lg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
             stroke-linecap="round"
             stroke-linejoin="round"
-            stroke-width="2"
-            d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9-9a9 9 0 00-9 9m9-9v18"
-          ></path>
-        </svg>
-        Websites
-      </a>
-      <a href="/dashboard/goals" class="tab transition-standard" style="text-decoration: none">
-        <svg
-          class="icon-lg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <circle cx="12" cy="12" r="8"></circle>
-          <circle cx="12" cy="12" r="5"></circle>
-          <circle cx="12" cy="12" r="2"></circle>
-          <path d="M18 6l-6.5 6.5" />
-          <path d="M13.5 6.5L18 6l-1 5.5" />
-        </svg>
-        Goals
-      </a>
-    </div>
-    <template x-if="breakdownLoading">
-      <div class="loading">
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="8"></circle>
+            <circle cx="12" cy="12" r="5"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <path d="M18 6l-6.5 6.5" />
+            <path d="M13.5 6.5L18 6l-1 5.5" />
+          </svg>
+          Goals
+        </a>
+      </div>
+
+      <!-- Breakdown Loading State -->
+      <div data-show="$breakdownLoading" class="loading">
         <div class="spinner"></div>
         <div>Loading data...</div>
       </div>
-    </template>
-    <template x-if="!breakdownLoading && breakdownData && breakdownData.length > 0">
-      <table class="glass card">
-        <thead>
-          <tr>
-            <th
-              @click="sortBy('name')"
-              style="cursor: pointer; user-select: none"
-              class="sortable-header"
-            >
-              <span
-                x-text="activeTab === 'pages' ? 'Page Path' : activeTab === 'referrers' ? 'Referrer' : activeTab === 'browsers' ? 'Browser' : activeTab === 'devices' ? 'Device' : activeTab === 'os' ? 'Operating System' : activeTab === 'countries' ? 'Country' : activeTab === 'cities' ? 'City' : activeTab === 'regions' ? 'Region' : activeTab === 'entry-pages' ? 'Entry Page' : activeTab === 'exit-pages' ? 'Exit Page' : 'Name'"
-              ></span>
-              <span
-                x-show="sortColumn === 'name'"
-                x-text="sortDirection === 'asc' ? ' ↑' : ' ↓'"
-                style="opacity: 0.7"
-              ></span>
-            </th>
-            <th
-              @click="sortBy('count')"
-              style="text-align: right; cursor: pointer; user-select: none"
-              class="sortable-header"
-            >
-              <span>Count</span>
-              <span
-                x-show="sortColumn === 'count'"
-                x-text="sortDirection === 'asc' ? ' ↑' : ' ↓'"
-                style="opacity: 0.7"
-              ></span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <template x-for="(item, index) in breakdownData" :key="index">
-            <tr>
-              <td style="display: flex; align-items: center; gap: 8px">
-                <!-- Country flags (emoji) -->
-                <span
-                  x-show="activeTab === 'countries' && item.code"
-                  x-text="countryToFlag(item.code)"
-                  style="font-size: 1.2em"
-                ></span>
-                <!-- Browser icons -->
-                <span
-                  x-show="activeTab === 'browsers'"
-                  x-html="browserIcon(item.name)"
-                  class="breakdown-icon"
-                ></span>
-                <!-- OS icons -->
-                <span
-                  x-show="activeTab === 'os'"
-                  x-html="osIcon(item.name)"
-                  class="breakdown-icon"
-                ></span>
-                <!-- Device icons -->
-                <span
-                  x-show="activeTab === 'devices'"
-                  x-html="deviceIcon(item.name)"
-                  class="breakdown-icon"
-                ></span>
-                <span x-text="item.name"></span>
-              </td>
-              <td
-                style="text-align: right; font-weight: 500; color: var(--accent-color)"
-                x-text="item.count.toLocaleString()"
-              ></td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
-    </template>
-    <template x-if="!breakdownLoading && (!breakdownData || breakdownData.length === 0)">
-      <div class="empty-state">
+
+      <!-- Breakdown Table - rendered via SSE into this container -->
+      <div id="breakdown-table-container" data-show="!$breakdownLoading && $breakdownData.length > 0">
+        <!-- Table content will be patched via SSE PatchElements -->
+      </div>
+
+      <!-- Empty State -->
+      <div data-show="!$breakdownLoading && $breakdownData.length === 0" class="empty-state">
         <div class="empty-state-icon">📊</div>
         <div class="empty-state-title">No data yet</div>
         <div class="empty-state-text">Start tracking to see breakdown data</div>
       </div>
-    </template>
+    </div>
   </div>
-</div>
-<!-- Websites Load Error -->
-<div x-show="!websitesLoading && websitesError" class="empty-state" style="margin-top: 100px">
-  <div class="empty-state-icon">⚠️</div>
-  <div class="empty-state-title">Unable to load websites</div>
-  <div class="empty-state-text">Check the server logs for /api/websites errors and try again.</div>
+
+  <!-- Loading State -->
+  <div data-show="$websitesLoading" class="loading" style="margin-top: 100px">
+    <div class="spinner"></div>
+    <div>Loading dashboard...</div>
+  </div>
+
+  <!-- Websites Load Error -->
+  <div data-show="!$websitesLoading && $websitesError" class="empty-state" style="margin-top: 100px">
+    <div class="empty-state-icon">⚠️</div>
+    <div class="empty-state-title">Unable to load websites</div>
+    <div class="empty-state-text">Check the server logs for /api/websites errors and try again.</div>
+  </div>
 </div>
 {{end}}

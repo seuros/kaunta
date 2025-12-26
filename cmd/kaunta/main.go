@@ -24,6 +24,9 @@ var vendorJS []byte
 //go:embed assets/dist/vendor.css
 var vendorCSS []byte
 
+//go:embed assets/vendor/datastar.js
+var datastarJS []byte
+
 //go:embed assets/data/countries-110m.json
 var countriesGeoJSON []byte
 
@@ -46,6 +49,7 @@ func run() error {
 		trackerScript,
 		vendorJS,
 		vendorCSS,
+		datastarJS,
 		countriesGeoJSON,
 		viewsFS,
 		setupTemplate,
