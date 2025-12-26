@@ -1020,7 +1020,7 @@ func loginPageHTML() string {
           <span class="company-name">Kaunta Analytics</span>
         </div>
         <p>
-          Built with Go, Fiber, Alpine.js, PostgreSQL, and Leaflet
+          Built with Go, Fiber, Datastar, PostgreSQL, and Leaflet
         </p>
         <p>
           <a href="https://github.com/seuros/kaunta" class="repo-link">View on GitHub</a>

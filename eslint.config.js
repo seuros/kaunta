@@ -9,8 +9,6 @@ export default [
       sourceType: "script",
       globals: {
         ...globals.browser,
-        // Alpine.js
-        Alpine: "readonly",
         // Chart.js
         Chart: "readonly",
         // Leaflet
