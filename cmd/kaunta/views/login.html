@@ -16,7 +16,7 @@
   <div class="error" data-class:show="$error" data-text="$error"></div>
 
   <!-- Login form with Datastar bindings -->
-  <form data-on:submit__prevent="$loading = true; $error = ''; @get('/api/auth/login-ds')">
+  <form data-on:submit__prevent="$loading = true; $error = ''; @get('/api/auth/login')">
     <div class="form-group">
       <label for="username">Username</label>
       <input

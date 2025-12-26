@@ -72,21 +72,21 @@
             <button
               class="btn btn-xs date-btn transition-standard"
               data-class:active="$dateRange === '1'"
-              data-on:click="$dateRange = '1'; localStorage.setItem('kaunta_dateRange', '1'); @get('/api/dashboard/stats-ds?website=' + $selectedWebsite + '&dateRange=1')"
+              data-on:click="$dateRange = '1'; localStorage.setItem('kaunta_dateRange', '1'); @get('/api/dashboard/stats?website=' + $selectedWebsite + '&dateRange=1')"
             >
               Today
             </button>
             <button
               class="btn btn-xs date-btn transition-standard"
               data-class:active="$dateRange === '7'"
-              data-on:click="$dateRange = '7'; localStorage.setItem('kaunta_dateRange', '7'); @get('/api/dashboard/stats-ds?website=' + $selectedWebsite + '&dateRange=7')"
+              data-on:click="$dateRange = '7'; localStorage.setItem('kaunta_dateRange', '7'); @get('/api/dashboard/stats?website=' + $selectedWebsite + '&dateRange=7')"
             >
               7 days
             </button>
             <button
               class="btn btn-xs date-btn transition-standard"
               data-class:active="$dateRange === '30'"
-              data-on:click="$dateRange = '30'; localStorage.setItem('kaunta_dateRange', '30'); @get('/api/dashboard/stats-ds?website=' + $selectedWebsite + '&dateRange=30')"
+              data-on:click="$dateRange = '30'; localStorage.setItem('kaunta_dateRange', '30'); @get('/api/dashboard/stats?website=' + $selectedWebsite + '&dateRange=30')"
             >
               30 days
             </button>
@@ -106,7 +106,7 @@
           <!-- Logout button (Datastar) -->
           {{block "logout-button" .}}
           <button
-            data-on:click="@post('/api/auth/logout-ds')"
+            data-on:click="@post('/api/auth/logout')"
             class="btn btn-sm btn-danger"
             title="Logout"
           >

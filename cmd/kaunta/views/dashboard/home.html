@@ -16,7 +16,7 @@
        sortDirection: 'desc',
        chartData: { labels: [], values: [] }
      }"
-     data-on:load="@get('/api/dashboard/init-ds')">
+     data-on:load="@get('/api/dashboard/init')">
 
   <!-- Dashboard content - shown when loaded -->
   <div data-show="!$websitesLoading && !$websitesError && $selectedWebsite && $websites.length > 0">
@@ -113,7 +113,7 @@
 
     <!-- Pageviews Chart -->
     <div class="section glass card" id="chart-section"
-         data-intersects="@get('/api/dashboard/chart-ds?website=' + $selectedWebsite)">
+         data-intersects="@get('/api/dashboard/chart?website=' + $selectedWebsite)">
       <div class="section-header">
         <h2>
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
@@ -133,7 +133,7 @@
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'pages'"
-          data-on:click="$activeTab = 'pages'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="$activeTab = 'pages'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -145,7 +145,7 @@
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'referrers'"
-          data-on:click="$activeTab = 'referrers'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="$activeTab = 'referrers'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -157,7 +157,7 @@
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'browsers'"
-          data-on:click="$activeTab = 'browsers'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="$activeTab = 'browsers'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V5z"></path>
@@ -167,7 +167,7 @@
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'devices'"
-          data-on:click="$activeTab = 'devices'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="$activeTab = 'devices'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -179,7 +179,7 @@
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'os'"
-          data-on:click="$activeTab = 'os'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="$activeTab = 'os'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -191,7 +191,7 @@
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'countries'"
-          data-on:click="$activeTab = 'countries'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="$activeTab = 'countries'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -205,7 +205,7 @@
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'cities'"
-          data-on:click="$activeTab = 'cities'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="$activeTab = 'cities'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
@@ -215,7 +215,7 @@
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'regions'"
-          data-on:click="$activeTab = 'regions'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="$activeTab = 'regions'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -227,7 +227,7 @@
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'entry-pages'"
-          data-on:click="$activeTab = 'entry-pages'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="$activeTab = 'entry-pages'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -239,7 +239,7 @@
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'exit-pages'"
-          data-on:click="$activeTab = 'exit-pages'; @get('/api/dashboard/breakdown-ds?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="$activeTab = 'exit-pages'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path

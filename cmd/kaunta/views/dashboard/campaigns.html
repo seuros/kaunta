@@ -23,7 +23,7 @@
   <select
     class="btn btn-sm"
     data-bind:selectedWebsite
-    data-on:change="localStorage.setItem('kaunta_website', $selectedWebsite); @get('/api/dashboard/campaigns-ds?website=' + $selectedWebsite)"
+    data-on:change="localStorage.setItem('kaunta_website', $selectedWebsite); @get('/api/dashboard/campaigns?website=' + $selectedWebsite)"
     data-show="$websites.length > 1"
   >
     <template data-for="site in $websites">
@@ -86,7 +86,7 @@
       content: { column: 'count', direction: 'desc' }
     }
   }"
-  data-on:load="@get('/api/dashboard/campaigns-init-ds')"
+  data-on:load="@get('/api/dashboard/campaigns-init')"
 >
 
   <!-- Campaign Data Section -->

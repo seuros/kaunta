@@ -512,8 +512,8 @@ func serveAnalytics(
 		},
 	})
 
-	app.Post("/api/auth/login", loginLimiter, handlers.HandleLogin)
-	app.Get("/api/auth/login-ds", loginLimiter, handlers.HandleLoginDatastar) // Datastar SSE login
+	app.Post("/api/auth/login", loginLimiter, handlers.HandleLogin)        // JSON login (fallback)
+	app.Get("/api/auth/login", loginLimiter, handlers.HandleLoginDatastar) // Datastar SSE login
 
 	// Login page (public)
 	app.Get("/login", func(c fiber.Ctx) error {
@@ -550,8 +550,7 @@ func serveAnalytics(
 	})
 
 	// Protected API endpoints
-	app.Post("/api/auth/logout", middleware.Auth, handlers.HandleLogout)
-	app.Post("/api/auth/logout-ds", middleware.Auth, handlers.HandleLogoutDatastar) // Datastar SSE logout
+	app.Post("/api/auth/logout", middleware.Auth, handlers.HandleLogoutDatastar) // Datastar SSE logout
 	app.Get("/api/auth/me", middleware.Auth, handlers.HandleMe)
 
 	// Dashboard API endpoints (protected)
@@ -569,24 +568,24 @@ func serveAnalytics(
 	app.Get("/api/dashboard/map/:website_id", middleware.Auth, handlers.HandleMapData)
 
 	// Datastar SSE dashboard endpoints (query param based)
-	app.Get("/api/dashboard/init-ds", middleware.Auth, handlers.HandleDashboardInitDS)
-	app.Get("/api/dashboard/stats-ds", middleware.Auth, handlers.HandleDashboardStatsDS)
-	app.Get("/api/dashboard/timeseries-ds", middleware.Auth, handlers.HandleTimeSeriesDS)
-	app.Get("/api/dashboard/chart-ds", middleware.Auth, handlers.HandleTimeSeriesDS) // Alias for timeseries
-	app.Get("/api/dashboard/breakdown-ds", middleware.Auth, handlers.HandleBreakdownDS)
-	app.Get("/api/dashboard/map-ds", middleware.Auth, handlers.HandleMapDataDS)
-	app.Get("/api/dashboard/realtime-ds", middleware.Auth, handlers.HandleRealtimeVisitorsDS)
-	app.Get("/api/dashboard/campaigns-init-ds", middleware.Auth, handlers.HandleCampaignsInitDS)
-	app.Get("/api/dashboard/campaigns-ds", middleware.Auth, handlers.HandleCampaignsDS)
-	app.Get("/api/dashboard/websites-init-ds", middleware.Auth, handlers.HandleWebsitesInitDS)
-	app.Post("/api/dashboard/websites-create-ds", middleware.Auth, handlers.HandleWebsitesCreateDS)
-	app.Get("/api/dashboard/map-init-ds", middleware.Auth, handlers.HandleMapInitDS)
-	app.Get("/api/dashboard/goals-ds", middleware.Auth, handlers.HandleGoalsDS)
-	app.Post("/api/dashboard/goals-ds", middleware.Auth, handlers.HandleGoalsCreateDS)
-	app.Put("/api/dashboard/goals-ds/:id", middleware.Auth, handlers.HandleGoalsUpdateDS)
-	app.Delete("/api/dashboard/goals-ds/:id", middleware.Auth, handlers.HandleGoalsDeleteDS)
-	app.Get("/api/dashboard/goals-ds/:id/analytics", middleware.Auth, handlers.HandleGoalsAnalyticsDS)
-	app.Get("/api/dashboard/goals-ds/:id/breakdown/:type", middleware.Auth, handlers.HandleGoalsBreakdownDS)
+	app.Get("/api/dashboard/init", middleware.Auth, handlers.HandleDashboardInitDS)
+	app.Get("/api/dashboard/stats", middleware.Auth, handlers.HandleDashboardStatsDS)
+	app.Get("/api/dashboard/timeseries", middleware.Auth, handlers.HandleTimeSeriesDS)
+	app.Get("/api/dashboard/chart", middleware.Auth, handlers.HandleTimeSeriesDS) // Alias for timeseries
+	app.Get("/api/dashboard/breakdown", middleware.Auth, handlers.HandleBreakdownDS)
+	app.Get("/api/dashboard/map", middleware.Auth, handlers.HandleMapDataDS)
+	app.Get("/api/dashboard/realtime", middleware.Auth, handlers.HandleRealtimeVisitorsDS)
+	app.Get("/api/dashboard/campaigns-init", middleware.Auth, handlers.HandleCampaignsInitDS)
+	app.Get("/api/dashboard/campaigns", middleware.Auth, handlers.HandleCampaignsDS)
+	app.Get("/api/dashboard/websites-init", middleware.Auth, handlers.HandleWebsitesInitDS)
+	app.Post("/api/dashboard/websites-create", middleware.Auth, handlers.HandleWebsitesCreateDS)
+	app.Get("/api/dashboard/map-init", middleware.Auth, handlers.HandleMapInitDS)
+	app.Get("/api/dashboard/goals", middleware.Auth, handlers.HandleGoalsDS)
+	app.Post("/api/dashboard/goals", middleware.Auth, handlers.HandleGoalsCreateDS)
+	app.Put("/api/dashboard/goals/:id", middleware.Auth, handlers.HandleGoalsUpdateDS)
+	app.Delete("/api/dashboard/goals/:id", middleware.Auth, handlers.HandleGoalsDeleteDS)
+	app.Get("/api/dashboard/goals/:id/analytics", middleware.Auth, handlers.HandleGoalsAnalyticsDS)
+	app.Get("/api/dashboard/goals/:id/breakdown/:type", middleware.Auth, handlers.HandleGoalsBreakdownDS)
 
 	// UTM Campaign Parameter endpoints (protected)
 	app.Get("/api/dashboard/utm-source/:website_id", middleware.Auth, handlers.HandleUTMSource)

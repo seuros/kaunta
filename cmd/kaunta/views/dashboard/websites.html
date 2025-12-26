@@ -65,7 +65,7 @@
     createError: '',
     toast: { show: false, message: '', type: '' }
   }"
-  data-on:load="@get('/api/dashboard/websites-init-ds')"
+  data-on:load="@get('/api/dashboard/websites-init')"
 >
   <!-- Loading State -->
   <div data-show="$loading" class="loading" style="margin-top: 100px">
@@ -114,7 +114,7 @@
     <div class="empty-state-title">Unable to load websites</div>
     <div class="empty-state-text" data-text="$error"></div>
     <button
-      data-on:click="@get('/api/dashboard/websites-init-ds')"
+      data-on:click="@get('/api/dashboard/websites-init')"
       class="btn btn-primary"
       style="margin-top: 16px"
     >
@@ -130,7 +130,7 @@
   >
     <div class="modal glass card">
       <h2 class="modal-title">Add New Website</h2>
-      <form data-on:submit__prevent="@post('/api/dashboard/websites-create-ds')">
+      <form data-on:submit__prevent="@post('/api/dashboard/websites-create')">
         <div class="form-group">
           <label for="domain">Domain *</label>
           <input

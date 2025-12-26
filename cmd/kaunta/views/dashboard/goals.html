@@ -73,7 +73,7 @@
        analytics: { completions: 0, unique_sessions: 0, conversion_rate: 0, total_sessions: 0 },
        breakdownData: []
      }"
-     data-on:load="@get('/api/dashboard/goals-ds')">
+     data-on:load="@get('/api/dashboard/goals')">
 
   <!-- Loading State -->
   <div data-show="$goalsLoading" class="loading" style="margin-top: 100px">
@@ -177,7 +177,7 @@
     </div>
     <div class="empty-state-title">Unable to load goals</div>
     <div class="empty-state-text" data-text="$goalsError"></div>
-    <button data-on:click="@get('/api/dashboard/goals-ds')" class="btn btn-primary" style="margin-top: 16px">
+    <button data-on:click="@get('/api/dashboard/goals')" class="btn btn-primary" style="margin-top: 16px">
       Try Again
     </button>
   </div>
@@ -207,7 +207,7 @@
         <span data-show="$showEditModal">Edit Goal</span>
         <span data-show="$showCreateModal">Add New Goal</span>
       </h2>
-      <form data-on:submit__prevent="$showEditModal ? @put('/api/dashboard/goals-ds/' + $currentGoal.id) : @post('/api/dashboard/goals-ds')">
+      <form data-on:submit__prevent="$showEditModal ? @put('/api/dashboard/goals/' + $currentGoal.id) : @post('/api/dashboard/goals')">
         <div class="form-group">
           <label for="goal-name">Goal Name *</label>
           <input
@@ -343,21 +343,21 @@
         <button
           class="btn btn-xs date-btn"
           data-class:active="$analyticsDateRange === '1'"
-          data-on:click="$analyticsDateRange = '1'; @get('/api/dashboard/goals-ds/' + $currentGoal.id + '/analytics?days=1')"
+          data-on:click="$analyticsDateRange = '1'; @get('/api/dashboard/goals/' + $currentGoal.id + '/analytics?days=1')"
         >
           Today
         </button>
         <button
           class="btn btn-xs date-btn"
           data-class:active="$analyticsDateRange === '7'"
-          data-on:click="$analyticsDateRange = '7'; @get('/api/dashboard/goals-ds/' + $currentGoal.id + '/analytics?days=7')"
+          data-on:click="$analyticsDateRange = '7'; @get('/api/dashboard/goals/' + $currentGoal.id + '/analytics?days=7')"
         >
           7 days
         </button>
         <button
           class="btn btn-xs date-btn"
           data-class:active="$analyticsDateRange === '30'"
-          data-on:click="$analyticsDateRange = '30'; @get('/api/dashboard/goals-ds/' + $currentGoal.id + '/analytics?days=30')"
+          data-on:click="$analyticsDateRange = '30'; @get('/api/dashboard/goals/' + $currentGoal.id + '/analytics?days=30')"
         >
           30 days
         </button>
@@ -418,7 +418,7 @@
           <button
             class="tab-btn"
             data-class:active="$analyticsTab === 'pages'"
-            data-on:click="$analyticsTab = 'pages'; @get('/api/dashboard/goals-ds/' + $currentGoal.id + '/breakdown/pages?days=' + $analyticsDateRange)"
+            data-on:click="$analyticsTab = 'pages'; @get('/api/dashboard/goals/' + $currentGoal.id + '/breakdown/pages?days=' + $analyticsDateRange)"
             style="
               padding: 8px 16px;
               background: none;
@@ -432,7 +432,7 @@
           <button
             class="tab-btn"
             data-class:active="$analyticsTab === 'referrer'"
-            data-on:click="$analyticsTab = 'referrer'; @get('/api/dashboard/goals-ds/' + $currentGoal.id + '/breakdown/referrer?days=' + $analyticsDateRange)"
+            data-on:click="$analyticsTab = 'referrer'; @get('/api/dashboard/goals/' + $currentGoal.id + '/breakdown/referrer?days=' + $analyticsDateRange)"
             style="
               padding: 8px 16px;
               background: none;
@@ -446,7 +446,7 @@
           <button
             class="tab-btn"
             data-class:active="$analyticsTab === 'country'"
-            data-on:click="$analyticsTab = 'country'; @get('/api/dashboard/goals-ds/' + $currentGoal.id + '/breakdown/country?days=' + $analyticsDateRange)"
+            data-on:click="$analyticsTab = 'country'; @get('/api/dashboard/goals/' + $currentGoal.id + '/breakdown/country?days=' + $analyticsDateRange)"
             style="
               padding: 8px 16px;
               background: none;
@@ -460,7 +460,7 @@
           <button
             class="tab-btn"
             data-class:active="$analyticsTab === 'device'"
-            data-on:click="$analyticsTab = 'device'; @get('/api/dashboard/goals-ds/' + $currentGoal.id + '/breakdown/device?days=' + $analyticsDateRange)"
+            data-on:click="$analyticsTab = 'device'; @get('/api/dashboard/goals/' + $currentGoal.id + '/breakdown/device?days=' + $analyticsDateRange)"
             style="
               padding: 8px 16px;
               background: none;
@@ -474,7 +474,7 @@
           <button
             class="tab-btn"
             data-class:active="$analyticsTab === 'browser'"
-            data-on:click="$analyticsTab = 'browser'; @get('/api/dashboard/goals-ds/' + $currentGoal.id + '/breakdown/browser?days=' + $analyticsDateRange)"
+            data-on:click="$analyticsTab = 'browser'; @get('/api/dashboard/goals/' + $currentGoal.id + '/breakdown/browser?days=' + $analyticsDateRange)"
             style="
               padding: 8px 16px;
               background: none;
