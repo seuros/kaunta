@@ -512,8 +512,8 @@ func serveAnalytics(
 		},
 	})
 
-	app.Post("/api/auth/login", loginLimiter, handlers.HandleLogin)        // JSON login (fallback)
-	app.Get("/api/auth/login", loginLimiter, handlers.HandleLoginDatastar) // Datastar SSE login
+	app.Post("/api/auth/login", loginLimiter, handlers.HandleLogin)   // JSON login (fallback)
+	app.Get("/api/auth/login", loginLimiter, handlers.HandleLoginSSE) // Datastar SSE login
 
 	// Login page (public)
 	app.Get("/login", func(c fiber.Ctx) error {
@@ -550,53 +550,29 @@ func serveAnalytics(
 	})
 
 	// Protected API endpoints
-	app.Post("/api/auth/logout", middleware.Auth, handlers.HandleLogoutDatastar) // Datastar SSE logout
+	app.Post("/api/auth/logout", middleware.Auth, handlers.HandleLogoutSSE) // Datastar SSE logout
 	app.Get("/api/auth/me", middleware.Auth, handlers.HandleMe)
 
-	// Dashboard API endpoints (protected)
+	// Dashboard API endpoints (protected, SSE-based)
 	app.Get("/api/websites", middleware.Auth, handlers.HandleWebsites)
-	app.Get("/api/dashboard/stats/:website_id", middleware.Auth, handlers.HandleDashboardStats)
-	app.Get("/api/dashboard/pages/:website_id", middleware.Auth, handlers.HandleTopPages)
-	app.Get("/api/dashboard/timeseries/:website_id", middleware.Auth, handlers.HandleTimeSeries)
-	app.Get("/api/dashboard/referrers/:website_id", middleware.Auth, handlers.HandleTopReferrers)
-	app.Get("/api/dashboard/browsers/:website_id", middleware.Auth, handlers.HandleTopBrowsers)
-	app.Get("/api/dashboard/devices/:website_id", middleware.Auth, handlers.HandleTopDevices)
-	app.Get("/api/dashboard/os/:website_id", middleware.Auth, handlers.HandleTopOS)
-	app.Get("/api/dashboard/countries/:website_id", middleware.Auth, handlers.HandleTopCountries)
-	app.Get("/api/dashboard/cities/:website_id", middleware.Auth, handlers.HandleTopCities)
-	app.Get("/api/dashboard/regions/:website_id", middleware.Auth, handlers.HandleTopRegions)
-	app.Get("/api/dashboard/map/:website_id", middleware.Auth, handlers.HandleMapData)
-
-	// Datastar SSE dashboard endpoints (query param based)
-	app.Get("/api/dashboard/init", middleware.Auth, handlers.HandleDashboardInitDS)
-	app.Get("/api/dashboard/stats", middleware.Auth, handlers.HandleDashboardStatsDS)
-	app.Get("/api/dashboard/timeseries", middleware.Auth, handlers.HandleTimeSeriesDS)
-	app.Get("/api/dashboard/chart", middleware.Auth, handlers.HandleTimeSeriesDS) // Alias for timeseries
-	app.Get("/api/dashboard/breakdown", middleware.Auth, handlers.HandleBreakdownDS)
-	app.Get("/api/dashboard/map", middleware.Auth, handlers.HandleMapDataDS)
-	app.Get("/api/dashboard/realtime", middleware.Auth, handlers.HandleRealtimeVisitorsDS)
-	app.Get("/api/dashboard/campaigns-init", middleware.Auth, handlers.HandleCampaignsInitDS)
-	app.Get("/api/dashboard/campaigns", middleware.Auth, handlers.HandleCampaignsDS)
-	app.Get("/api/dashboard/websites-init", middleware.Auth, handlers.HandleWebsitesInitDS)
-	app.Post("/api/dashboard/websites-create", middleware.Auth, handlers.HandleWebsitesCreateDS)
-	app.Get("/api/dashboard/map-init", middleware.Auth, handlers.HandleMapInitDS)
-	app.Get("/api/dashboard/goals", middleware.Auth, handlers.HandleGoalsDS)
-	app.Post("/api/dashboard/goals", middleware.Auth, handlers.HandleGoalsCreateDS)
-	app.Put("/api/dashboard/goals/:id", middleware.Auth, handlers.HandleGoalsUpdateDS)
-	app.Delete("/api/dashboard/goals/:id", middleware.Auth, handlers.HandleGoalsDeleteDS)
-	app.Get("/api/dashboard/goals/:id/analytics", middleware.Auth, handlers.HandleGoalsAnalyticsDS)
-	app.Get("/api/dashboard/goals/:id/breakdown/:type", middleware.Auth, handlers.HandleGoalsBreakdownDS)
-
-	// UTM Campaign Parameter endpoints (protected)
-	app.Get("/api/dashboard/utm-source/:website_id", middleware.Auth, handlers.HandleUTMSource)
-	app.Get("/api/dashboard/utm-medium/:website_id", middleware.Auth, handlers.HandleUTMMedium)
-	app.Get("/api/dashboard/utm-campaign/:website_id", middleware.Auth, handlers.HandleUTMCampaign)
-	app.Get("/api/dashboard/utm-term/:website_id", middleware.Auth, handlers.HandleUTMTerm)
-	app.Get("/api/dashboard/utm-content/:website_id", middleware.Auth, handlers.HandleUTMContent)
-
-	// Entry/Exit Page endpoints (protected)
-	app.Get("/api/dashboard/entry-pages/:website_id", middleware.Auth, handlers.HandleEntryPages)
-	app.Get("/api/dashboard/exit-pages/:website_id", middleware.Auth, handlers.HandleExitPages)
+	app.Get("/api/dashboard/init", middleware.Auth, handlers.HandleDashboardInit)
+	app.Get("/api/dashboard/stats", middleware.Auth, handlers.HandleDashboardStats)
+	app.Get("/api/dashboard/timeseries", middleware.Auth, handlers.HandleTimeSeries)
+	app.Get("/api/dashboard/chart", middleware.Auth, handlers.HandleTimeSeries) // Alias for timeseries
+	app.Get("/api/dashboard/breakdown", middleware.Auth, handlers.HandleBreakdown)
+	app.Get("/api/dashboard/map", middleware.Auth, handlers.HandleMapData)
+	app.Get("/api/dashboard/realtime", middleware.Auth, handlers.HandleRealtimeVisitors)
+	app.Get("/api/dashboard/campaigns-init", middleware.Auth, handlers.HandleCampaignsInit)
+	app.Get("/api/dashboard/campaigns", middleware.Auth, handlers.HandleCampaigns)
+	app.Get("/api/dashboard/websites-init", middleware.Auth, handlers.HandleWebsitesInit)
+	app.Post("/api/dashboard/websites-create", middleware.Auth, handlers.HandleWebsitesCreate)
+	app.Get("/api/dashboard/map-init", middleware.Auth, handlers.HandleMapInit)
+	app.Get("/api/dashboard/goals", middleware.Auth, handlers.HandleGoals)
+	app.Post("/api/dashboard/goals", middleware.Auth, handlers.HandleGoalsCreate)
+	app.Put("/api/dashboard/goals/:id", middleware.Auth, handlers.HandleGoalsUpdate)
+	app.Delete("/api/dashboard/goals/:id", middleware.Auth, handlers.HandleGoalsDelete)
+	app.Get("/api/dashboard/goals/:id/analytics", middleware.Auth, handlers.HandleGoalsAnalytics)
+	app.Get("/api/dashboard/goals/:id/breakdown/:type", middleware.Auth, handlers.HandleGoalsBreakdown)
 
 	// Website Management API (protected)
 	app.Get("/api/websites/list", middleware.Auth, handlers.HandleWebsiteList)
@@ -630,18 +606,6 @@ func serveAnalytics(
 			"SelfWebsiteID": config.SelfWebsiteID,
 		})
 	})
-
-	// Goals API (protected)
-	app.Get("/api/goals/:website_id", middleware.Auth, handlers.HandleGoalList)
-	app.Post("/api/goals", middleware.Auth, handlers.HandleGoalCreate)
-	app.Put("/api/goals/:id", middleware.Auth, handlers.HandleGoalUpdate)
-	app.Delete("/api/goals/:id", middleware.Auth, handlers.HandleGoalDelete)
-
-	// Goal Analytics API (protected)
-	app.Get("/api/dashboard/goals/:goal_id/analytics", middleware.Auth, handlers.HandleGoalAnalytics)
-	app.Get("/api/dashboard/goals/:goal_id/timeseries", middleware.Auth, handlers.HandleGoalTimeSeries)
-	app.Get("/api/dashboard/goals/:goal_id/breakdown/:dimension", middleware.Auth, handlers.HandleGoalBreakdown)
-	app.Get("/api/dashboard/goals/:goal_id/converting-pages", middleware.Auth, handlers.HandleGoalConvertingPages)
 
 	// Start server
 	port := getEnv("PORT", "3000")

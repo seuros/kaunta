@@ -19,9 +19,9 @@ type WebsiteInfo struct {
 	Domain string `json:"domain"`
 }
 
-// HandleDashboardInitDS initializes the dashboard with websites list and initial data
+// HandleDashboardInit initializes the dashboard with websites list and initial data
 // GET /api/dashboard/init-ds
-func HandleDashboardInitDS(c fiber.Ctx) error {
+func HandleDashboardInit(c fiber.Ctx) error {
 	// Get user from context
 	user := middleware.GetUser(c)
 	if user == nil {
@@ -126,9 +126,9 @@ func HandleDashboardInitDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleDashboardStatsDS returns dashboard stats via Datastar SSE
+// HandleDashboardStats returns dashboard stats via Datastar SSE
 // GET /api/dashboard/stats-ds?website_id=...&country=...&browser=...&device=...&page=...
-func HandleDashboardStatsDS(c fiber.Ctx) error {
+func HandleDashboardStats(c fiber.Ctx) error {
 	// Extract all context values BEFORE entering stream
 	websiteIDStr := c.Query("website_id")
 	country := c.Query("country")
@@ -225,10 +225,10 @@ func HandleDashboardStatsDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleTimeSeriesDS returns time series data via Datastar SSE
+// HandleTimeSeries returns time series data via Datastar SSE
 // GET /api/dashboard/timeseries-ds?website_id=...&days=7&country=...&browser=...&device=...&page=...
 // Also supports: website (alias for website_id)
-func HandleTimeSeriesDS(c fiber.Ctx) error {
+func HandleTimeSeries(c fiber.Ctx) error {
 	// Extract all context values BEFORE entering stream
 	// Support both website_id and website params
 	websiteIDStr := c.Query("website_id")
@@ -337,10 +337,10 @@ func HandleTimeSeriesDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleBreakdownDS returns breakdown data via Datastar SSE
+// HandleBreakdown returns breakdown data via Datastar SSE
 // GET /api/dashboard/breakdown-ds?website_id=...&type=pages|referrers|browsers|devices|countries|cities|regions|os|utm_source|utm_medium|utm_campaign|utm_term|utm_content|entry_page|exit_page
 // Also supports: website (alias for website_id), tab (alias for type)
-func HandleBreakdownDS(c fiber.Ctx) error {
+func HandleBreakdown(c fiber.Ctx) error {
 	// Extract all context values BEFORE entering stream
 	// Support both website_id and website params
 	websiteIDStr := c.Query("website_id")
@@ -575,9 +575,9 @@ func HandleBreakdownDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleMapDataDS returns map data via Datastar SSE
+// HandleMapData returns map data via Datastar SSE
 // GET /api/dashboard/map-ds?website_id=...&days=7&country=...&browser=...&device=...&page=...
-func HandleMapDataDS(c fiber.Ctx) error {
+func HandleMapData(c fiber.Ctx) error {
 	// Extract all context values BEFORE entering stream
 	websiteIDStr := c.Query("website_id")
 	days := min(max(fiber.Query[int](c, "days", 7), 1), 90)
@@ -689,9 +689,9 @@ func HandleMapDataDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleRealtimeVisitorsDS returns current visitors count via Datastar SSE
+// HandleRealtimeVisitors returns current visitors count via Datastar SSE
 // GET /api/dashboard/realtime-ds?website_id=...
-func HandleRealtimeVisitorsDS(c fiber.Ctx) error {
+func HandleRealtimeVisitors(c fiber.Ctx) error {
 	// Extract all context values BEFORE entering stream
 	websiteIDStr := c.Query("website_id")
 
@@ -754,9 +754,9 @@ func HandleRealtimeVisitorsDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleCampaignsInitDS initializes the campaigns page with websites list
+// HandleCampaignsInit initializes the campaigns page with websites list
 // GET /api/dashboard/campaigns-init-ds
-func HandleCampaignsInitDS(c fiber.Ctx) error {
+func HandleCampaignsInit(c fiber.Ctx) error {
 	// Get user from context
 	user := middleware.GetUser(c)
 	if user == nil {
@@ -838,9 +838,9 @@ func HandleCampaignsInitDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleCampaignsDS handles campaign data requests via Datastar SSE
+// HandleCampaigns handles campaign data requests via Datastar SSE
 // GET /api/dashboard/campaigns-ds?website=...&dimension=...&sort_by=...&sort_order=...
-func HandleCampaignsDS(c fiber.Ctx) error {
+func HandleCampaigns(c fiber.Ctx) error {
 	websiteID := c.Query("website")
 	dimension := c.Query("dimension")
 	sortBy := c.Query("sort_by", "count")
@@ -1008,9 +1008,9 @@ func formatNumber(n int) string {
 	return fmt.Sprintf("%d,%03d", n/1000, n%1000)
 }
 
-// HandleWebsitesInitDS initializes the websites management page
+// HandleWebsitesInit initializes the websites management page
 // GET /api/dashboard/websites-init-ds
-func HandleWebsitesInitDS(c fiber.Ctx) error {
+func HandleWebsitesInit(c fiber.Ctx) error {
 	// Get user from context
 	user := middleware.GetUser(c)
 	if user == nil {
@@ -1121,9 +1121,9 @@ func HandleWebsitesInitDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleWebsitesCreateDS creates a new website via Datastar SSE
+// HandleWebsitesCreate creates a new website via Datastar SSE
 // POST /api/dashboard/websites-create-ds
-func HandleWebsitesCreateDS(c fiber.Ctx) error {
+func HandleWebsitesCreate(c fiber.Ctx) error {
 	// Extract form data BEFORE streaming
 	domain := c.FormValue("domain")
 	name := c.FormValue("name")
@@ -1206,9 +1206,9 @@ func HandleWebsitesCreateDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleMapInitDS initializes the map page with website selection
+// HandleMapInit initializes the map page with website selection
 // GET /api/dashboard/map-init-ds
-func HandleMapInitDS(c fiber.Ctx) error {
+func HandleMapInit(c fiber.Ctx) error {
 	// Get user from context
 	user := middleware.GetUser(c)
 	if user == nil {
@@ -1321,9 +1321,9 @@ func HandleMapInitDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleGoalsDS returns goals list for a website via Datastar SSE
+// HandleGoals returns goals list for a website via Datastar SSE
 // GET /api/dashboard/goals-ds?website=...
-func HandleGoalsDS(c fiber.Ctx) error {
+func HandleGoals(c fiber.Ctx) error {
 	websiteID := c.Query("website")
 
 	// Set SSE headers
@@ -1406,9 +1406,9 @@ func HandleGoalsDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleGoalsCreateDS creates a new goal via Datastar SSE
+// HandleGoalsCreate creates a new goal via Datastar SSE
 // POST /api/dashboard/goals-ds
-func HandleGoalsCreateDS(c fiber.Ctx) error {
+func HandleGoalsCreate(c fiber.Ctx) error {
 	// Extract form data
 	websiteID := c.FormValue("website_id")
 	name := c.FormValue("name")
@@ -1483,9 +1483,9 @@ func HandleGoalsCreateDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleGoalsUpdateDS updates a goal via Datastar SSE
+// HandleGoalsUpdate updates a goal via Datastar SSE
 // PUT /api/dashboard/goals-ds/:id
-func HandleGoalsUpdateDS(c fiber.Ctx) error {
+func HandleGoalsUpdate(c fiber.Ctx) error {
 	goalID := c.Params("id")
 
 	// Extract form data
@@ -1557,9 +1557,9 @@ func HandleGoalsUpdateDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleGoalsDeleteDS deletes a goal via Datastar SSE
+// HandleGoalsDelete deletes a goal via Datastar SSE
 // DELETE /api/dashboard/goals-ds/:id
-func HandleGoalsDeleteDS(c fiber.Ctx) error {
+func HandleGoalsDelete(c fiber.Ctx) error {
 	goalID := c.Params("id")
 
 	// Set SSE headers
@@ -1606,9 +1606,9 @@ func HandleGoalsDeleteDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleGoalsAnalyticsDS returns analytics for a specific goal via Datastar SSE
+// HandleGoalsAnalytics returns analytics for a specific goal via Datastar SSE
 // GET /api/dashboard/goals-ds/:id/analytics?days=7
-func HandleGoalsAnalyticsDS(c fiber.Ctx) error {
+func HandleGoalsAnalytics(c fiber.Ctx) error {
 	goalID := c.Params("id")
 	days := fiber.Query[int](c, "days", 7)
 
@@ -1682,9 +1682,9 @@ func HandleGoalsAnalyticsDS(c fiber.Ctx) error {
 	})
 }
 
-// HandleGoalsBreakdownDS returns breakdown data for a goal via Datastar SSE
+// HandleGoalsBreakdown returns breakdown data for a goal via Datastar SSE
 // GET /api/dashboard/goals-ds/:id/breakdown/:type?days=7
-func HandleGoalsBreakdownDS(c fiber.Ctx) error {
+func HandleGoalsBreakdown(c fiber.Ctx) error {
 	goalID := c.Params("id")
 	breakdownType := c.Params("type")
 	days := fiber.Query[int](c, "days", 7)

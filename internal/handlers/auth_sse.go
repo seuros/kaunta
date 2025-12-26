@@ -22,9 +22,9 @@ type DatastarLoginRequest struct {
 	Password string `json:"password"`
 }
 
-// HandleLoginDatastar handles login via Datastar SSE
+// HandleLoginSSE handles login via Datastar SSE
 // GET /api/auth/login-ds?datastar={signals}
-func HandleLoginDatastar(c fiber.Ctx) error {
+func HandleLoginSSE(c fiber.Ctx) error {
 	// Extract all context values BEFORE entering stream (fiber context invalid inside stream callback)
 	signalsJSON := c.Query("datastar")
 	userAgent := c.Get("User-Agent")
@@ -133,9 +133,9 @@ func HandleLoginDatastar(c fiber.Ctx) error {
 	})
 }
 
-// HandleLogoutDatastar handles logout via Datastar SSE
+// HandleLogoutSSE handles logout via Datastar SSE
 // POST /api/auth/logout-ds
-func HandleLogoutDatastar(c fiber.Ctx) error {
+func HandleLogoutSSE(c fiber.Ctx) error {
 	// Get user from context
 	user := middleware.GetUser(c)
 	if user == nil {

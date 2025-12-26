@@ -58,15 +58,6 @@ func stubSessionTokenGenerator(t *testing.T, fn func() (string, string, error)) 
 	})
 }
 
-func stubDeleteSession(t *testing.T, fn func(sessionID uuid.UUID) error) {
-	t.Helper()
-	original := deleteSessionFunc
-	deleteSessionFunc = fn
-	t.Cleanup(func() {
-		deleteSessionFunc = original
-	})
-}
-
 func stubFetchUserDetails(t *testing.T, fn func(userID uuid.UUID) (sql.NullString, time.Time, error)) {
 	t.Helper()
 	original := fetchUserDetailsFunc
@@ -288,74 +279,6 @@ func TestHandleLoginInsertSessionFailure(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"demo","password":"secret"}`))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-}
-
-func TestHandleLogoutSuccess(t *testing.T) {
-	sessionID := uuid.New()
-	stubDeleteSession(t, func(id uuid.UUID) error {
-		assert.Equal(t, sessionID, id)
-		return nil
-	})
-
-	app := fiber.New()
-	app.Use(func(c fiber.Ctx) error {
-		c.Locals("user", &middleware.UserContext{
-			UserID:    uuid.New(),
-			SessionID: sessionID,
-			Username:  "demo",
-		})
-		return c.Next()
-	})
-	app.Post("/api/auth/logout", HandleLogout)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	assert.Contains(t, string(body), "Logout successful")
-
-	found := false
-	for _, c := range resp.Cookies() {
-		if c.Name == "kaunta_session" {
-			found = true
-			assert.Equal(t, "", c.Value)
-			break
-		}
-	}
-	assert.True(t, found, "logout should clear cookie")
-}
-
-func TestHandleLogoutUnauthenticated(t *testing.T) {
-	app := fiber.New()
-	app.Post("/api/auth/logout", HandleLogout)
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-}
-
-func TestHandleLogoutDeleteError(t *testing.T) {
-	stubDeleteSession(t, func(id uuid.UUID) error {
-		return errors.New("db error")
-	})
-
-	app := fiber.New()
-	app.Use(func(c fiber.Ctx) error {
-		c.Locals("user", &middleware.UserContext{
-			UserID:    uuid.New(),
-			SessionID: uuid.New(),
-		})
-		return c.Next()
-	})
-	app.Post("/api/auth/logout", HandleLogout)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
