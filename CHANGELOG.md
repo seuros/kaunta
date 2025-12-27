@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.0](https://github.com/seuros/kaunta/compare/v0.38.0...v0.50.0) (2025-12-27)
+
+
+### Features
+
+* replace Alpine.js with Datastar for SSE-driven dashboard ([#124](https://github.com/seuros/kaunta/issues/124)) ([080ae70](https://github.com/seuros/kaunta/commit/080ae70908e29fb0303fafecd3a8f6690b205de7))
+
 ## [0.38.0](https://github.com/seuros/kaunta/compare/v0.37.0...v0.38.0) (2025-12-14)
 
 
