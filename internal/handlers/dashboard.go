@@ -338,7 +338,8 @@ func HandleTimeSeries(c fiber.Ctx) error {
 }
 
 // HandleBreakdown returns breakdown data via Datastar SSE
-// GET /api/dashboard/breakdown-ds?website_id=...&type=pages|referrers|browsers|devices|countries|cities|regions|os|utm_source|utm_medium|utm_campaign|utm_term|utm_content|entry_page|exit_page
+// GET /api/dashboard/breakdown?website_id=...&type=pages|referrers|browsers|devices|...
+// Supports: countries|cities|regions|os|utm_source|utm_medium|utm_campaign|utm_term|utm_content
 // Also supports: website (alias for website_id), tab (alias for type)
 func HandleBreakdown(c fiber.Ctx) error {
 	// Extract all context values BEFORE entering stream
@@ -966,19 +967,17 @@ func buildUTMTableHTML(dimension string, items []BreakdownItem, sortBy, sortOrde
 	return fmt.Sprintf(`<table class="glass card">
 		<thead>
 			<tr>
-				<th
-					data-on:click="@get('/api/dashboard/campaigns-ds?website=' + $selectedWebsite + '&dimension=%s&sort_by=name&sort_order=' + ($sort.%s.column === 'name' && $sort.%s.direction === 'desc' ? 'asc' : 'desc'))"
-					style="cursor: pointer; user-select: none"
-					class="sortable-header"
-				>
+				<th data-on:click="@get('/api/dashboard/campaigns?website=' + $selectedWebsite +
+					'&dimension=%s&sort_by=name&sort_order=' +
+					($sort.%s.column === 'name' && $sort.%s.direction === 'desc' ? 'asc' : 'desc'))"
+					style="cursor: pointer; user-select: none" class="sortable-header">
 					<span>%s</span>
 					<span style="opacity: 0.7">%s</span>
 				</th>
-				<th
-					data-on:click="@get('/api/dashboard/campaigns-ds?website=' + $selectedWebsite + '&dimension=%s&sort_by=count&sort_order=' + ($sort.%s.column === 'count' && $sort.%s.direction === 'desc' ? 'asc' : 'desc'))"
-					style="text-align: right; cursor: pointer; user-select: none"
-					class="sortable-header"
-				>
+				<th data-on:click="@get('/api/dashboard/campaigns?website=' + $selectedWebsite +
+					'&dimension=%s&sort_by=count&sort_order=' +
+					($sort.%s.column === 'count' && $sort.%s.direction === 'desc' ? 'asc' : 'desc'))"
+					style="text-align: right; cursor: pointer; user-select: none" class="sortable-header">
 					<span>Count</span>
 					<span style="opacity: 0.7">%s</span>
 				</th>
@@ -1090,7 +1089,16 @@ func HandleWebsitesInit(c fiber.Ctx) error {
 		} else {
 			var cardsHTML string
 			for _, ws := range websites {
-				trackingCode := fmt.Sprintf(`&lt;script defer src=&quot;%s/k.js&quot; data-website-id=&quot;%s&quot;&gt;&lt;/script&gt;`, "{{.BaseURL}}", ws.ID)
+				tpl := `&lt;script defer src=&quot;%s/k.js&quot; ` +
+					`data-website-id=&quot;%s&quot;&gt;&lt;/script&gt;`
+				trackingCode := fmt.Sprintf(tpl, "{{.BaseURL}}", ws.ID)
+				copyJS := `navigator.clipboard.writeText(` +
+					`document.getElementById('code-%s').textContent` +
+					`.replace(/&lt;/g,'<').replace(/&gt;/g,'>')` +
+					`.replace(/&amp;/g,'&').replace(/&quot;/g,'\"'));` +
+					` $toastMessage = 'Copied!'; $showToast = true;` +
+					` setTimeout(() => $showToast = false, 2000)`
+				copyBtn := fmt.Sprintf(copyJS, ws.ID)
 				cardsHTML += fmt.Sprintf(`
 					<div class="glass card website-card">
 						<div class="website-header">
@@ -1101,7 +1109,7 @@ func HandleWebsitesInit(c fiber.Ctx) error {
 							<label>Tracking Code:</label>
 							<div class="code-wrapper">
 								<code class="tracking-code" id="code-%s">%s</code>
-								<button class="btn btn-xs btn-ghost copy-btn" data-on:click="navigator.clipboard.writeText(document.getElementById('code-%s').textContent.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'\"')); $toastMessage = 'Copied!'; $showToast = true; setTimeout(() => $showToast = false, 2000)">
+								<button class="btn btn-xs btn-ghost copy-btn" data-on:click="%s">
 									Copy
 								</button>
 							</div>
@@ -1110,7 +1118,7 @@ func HandleWebsitesInit(c fiber.Ctx) error {
 							<a href="/dashboard?website=%s" class="btn btn-xs btn-primary">View Analytics</a>
 						</div>
 					</div>
-				`, escapeHTML(ws.Name), escapeHTML(ws.Domain), ws.ID, trackingCode, ws.ID, ws.ID)
+				`, escapeHTML(ws.Name), escapeHTML(ws.Domain), ws.ID, trackingCode, copyBtn, ws.ID)
 			}
 			_ = sse.PatchElements("#websites-grid-container", cardsHTML)
 		}
