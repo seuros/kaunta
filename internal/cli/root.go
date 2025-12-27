@@ -81,7 +81,6 @@ It provides real-time analytics and a clean dashboard interface.`,
 				TrackerScript,
 				VendorJS,
 				VendorCSS,
-				DatastarJS,
 				CountriesGeoJSON,
 				ViewsFS,
 			)
@@ -97,7 +96,6 @@ func Execute(
 	trackerScript,
 	vendorJS,
 	vendorCSS,
-	datastarJS,
 	countriesGeoJSON []byte,
 	viewsFS interface{},
 	setupTemplate,
@@ -108,7 +106,6 @@ func Execute(
 	TrackerScript = trackerScript
 	VendorJS = vendorJS
 	VendorCSS = vendorCSS
-	DatastarJS = datastarJS
 	CountriesGeoJSON = countriesGeoJSON
 	ViewsFS = viewsFS
 	SetupTemplate = setupTemplate
@@ -131,7 +128,6 @@ var (
 	TrackerScript         []byte
 	VendorJS              []byte
 	VendorCSS             []byte
-	DatastarJS            []byte
 	CountriesGeoJSON      []byte
 	ViewsFS               interface{} // embed.FS for template views
 	SetupTemplate         []byte
@@ -179,7 +175,7 @@ func render(c fiber.Ctx, pagePath, layoutPath string, data fiber.Map) error {
 // serveAnalytics runs the Kaunta server
 func serveAnalytics(
 	assetsFS interface{},
-	trackerScript, vendorJS, vendorCSS, datastarJS, countriesGeoJSON []byte,
+	trackerScript, vendorJS, vendorCSS, countriesGeoJSON []byte,
 	viewsFS interface{},
 ) error {
 	// Ensure logger is flushed on exit
@@ -405,9 +401,6 @@ func serveAnalytics(
 		case "vendor.css":
 			c.Set("Content-Type", "text/css; charset=utf-8")
 			return c.Send(vendorCSS)
-		case "datastar.js":
-			c.Set("Content-Type", "application/javascript; charset=utf-8")
-			return c.Send(datastarJS)
 		default:
 			return c.Status(404).SendString("Not found")
 		}

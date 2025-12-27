@@ -25,7 +25,6 @@ Example:
 			TrackerScript,
 			VendorJS,
 			VendorCSS,
-			DatastarJS,
 			CountriesGeoJSON,
 			ViewsFS,
 		)
