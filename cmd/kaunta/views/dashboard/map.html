@@ -1,5 +1,4 @@
-{{define "alpine-data"}}mapDashboard(){{end}} {{define "alpine-init"}}init(){{end}} {{define
-"page-subtitle"}}Visitor Map{{end}} {{define "navigation"}}
+{{define "page-subtitle"}}Visitor Map{{end}} {{define "navigation"}}
 <a
   href="/dashboard"
   class="btn btn-sm btn-ghost glass transition-standard"
@@ -16,82 +15,97 @@
   Dashboard
 </a>
 {{end}} {{define "website-selector"}}
-<button x-show="selectedWebsite" class="btn btn-sm" style="cursor: default; pointer-events: none">
-  <template x-for="site in websites" :key="site.id">
-    <span x-show="site.id === selectedWebsite" x-text="site.name || site.domain"></span>
-  </template>
-</button>
+<div id="website-selector-container" data-show="$websites.length > 0">
+  <!-- Selector populated via SSE -->
+</div>
 {{end}} {{define "header-buttons"}}
 <!-- Map page doesn't need header buttons -->
 {{end}} {{define "page-scripts"}}
 <script src="/assets/js/map.js?v={{.Version}}"></script>
 {{end}} {{define "content"}}
 
-<!-- Map Section -->
-<div x-show="!websitesLoading && !websitesError && selectedWebsite && websites.length > 0">
-  <div class="section glass card">
-    <div class="section-header">
-      <h2>
-        <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-          <path
-            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7.5l6.553-3.776A1 1 0 0117 5.618v10.764a1 1 0 01-1.447.894L9 16.5l-6.553 3.776z"
-          ></path>
-        </svg>
-        Visitor Map
-      </h2>
-    </div>
+<!-- Map Dashboard (Datastar) -->
+<div id="map-dashboard"
+     data-signals="{
+       websitesLoading: true,
+       websitesError: false,
+       websites: [],
+       selectedWebsite: localStorage.getItem('kaunta_website') || '',
+       mapLoading: false,
+       mapData: null
+     }"
+     data-on:load="@get('/api/dashboard/map-init')">
 
-    <!-- Loading indicator for map -->
-    <template x-if="mapLoading">
-      <div class="loading">
+  <!-- Map Section -->
+  <div data-show="!$websitesLoading && !$websitesError && $selectedWebsite && $websites.length > 0">
+    <div class="section glass card">
+      <div class="section-header">
+        <h2>
+          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7.5l6.553-3.776A1 1 0 0117 5.618v10.764a1 1 0 01-1.447.894L9 16.5l-6.553 3.776z"
+            ></path>
+          </svg>
+          Visitor Map
+        </h2>
+      </div>
+
+      <!-- Loading indicator for map -->
+      <div data-show="$mapLoading" class="loading">
         <div class="spinner"></div>
         <div>Loading map data...</div>
       </div>
-    </template>
 
-    <!-- Map container -->
-    <div
-      style="
-        height: 600px;
-        border-radius: 8px;
-        overflow: hidden;
-        background: var(--bg-secondary);
-        margin-top: 24px;
-        position: relative;
-      "
-    >
-      <div id="choropleth-map" style="width: 100%; height: 100%"></div>
+      <!-- Map container -->
+      <div
+        style="
+          height: 600px;
+          border-radius: 8px;
+          overflow: hidden;
+          background: var(--bg-secondary);
+          margin-top: 24px;
+          position: relative;
+        "
+      >
+        <div id="choropleth-map" style="width: 100%; height: 100%"></div>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- No Website Selected -->
-<div
-  x-show="!websitesLoading && !websitesError && !selectedWebsite && websites.length > 0"
-  class="empty-state"
-  style="margin-top: 100px"
->
-  <div class="empty-state-icon">🌐</div>
-  <div class="empty-state-title">Select a Website</div>
-  <div class="empty-state-text">Choose a website from the dropdown above to view visitor map</div>
-</div>
+  <!-- Loading State -->
+  <div data-show="$websitesLoading" class="loading" style="margin-top: 100px">
+    <div class="spinner"></div>
+    <div>Loading map...</div>
+  </div>
 
-<!-- No Websites at All -->
-<div
-  x-show="!websitesLoading && !websitesError && websites.length === 0"
-  class="empty-state"
-  style="margin-top: 100px"
->
-  <div class="empty-state-icon">🛰️</div>
-  <div class="empty-state-title">No websites found</div>
-  <div class="empty-state-text">Add a website in Kaunta to get started.</div>
-</div>
+  <!-- No Website Selected -->
+  <div
+    data-show="!$websitesLoading && !$websitesError && !$selectedWebsite && $websites.length > 0"
+    class="empty-state"
+    style="margin-top: 100px"
+  >
+    <div class="empty-state-icon">🌐</div>
+    <div class="empty-state-title">Select a Website</div>
+    <div class="empty-state-text">Choose a website from the dropdown above to view visitor map</div>
+  </div>
 
-<!-- Websites Load Error -->
-<div x-show="!websitesLoading && websitesError" class="empty-state" style="margin-top: 100px">
-  <div class="empty-state-icon">⚠️</div>
-  <div class="empty-state-title">Unable to load websites</div>
-  <div class="empty-state-text">Check the server logs for /api/websites errors and try again.</div>
+  <!-- No Websites at All -->
+  <div
+    data-show="!$websitesLoading && !$websitesError && $websites.length === 0"
+    class="empty-state"
+    style="margin-top: 100px"
+  >
+    <div class="empty-state-icon">🛰️</div>
+    <div class="empty-state-title">No websites found</div>
+    <div class="empty-state-text">Add a website in Kaunta to get started.</div>
+  </div>
+
+  <!-- Websites Load Error -->
+  <div data-show="!$websitesLoading && $websitesError" class="empty-state" style="margin-top: 100px">
+    <div class="empty-state-icon">⚠️</div>
+    <div class="empty-state-title">Unable to load websites</div>
+    <div class="empty-state-text">Check the server logs for /api/websites errors and try again.</div>
+  </div>
 </div>
 
 {{end}}

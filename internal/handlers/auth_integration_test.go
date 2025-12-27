@@ -163,7 +163,7 @@ func TestAuthIntegration_ProtectedRouteAuthorization(t *testing.T) {
 func newIntegrationAuthApp() *fiber.App {
 	app := fiber.New()
 	app.Post("/api/auth/login", HandleLogin)
-	app.Post("/api/auth/logout", middleware.Auth, HandleLogout)
+	app.Post("/api/auth/logout", middleware.Auth, HandleLogoutSSE)
 	app.Get("/api/auth/me", middleware.Auth, HandleMe)
 	app.Get("/protected", middleware.Auth, func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"ok": true})

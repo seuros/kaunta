@@ -7,8 +7,6 @@
   },
   "imports": {
     "esbuild": "npm:esbuild@0.20.0",
-    "alpinejs": "npm:alpinejs@^3.15.1",
-    "@alpinejs/intersect": "npm:@alpinejs/intersect@^3.15.1",
     "chart.js": "npm:chart.js@4.5.1",
     "chart.js/auto": "npm:chart.js@4.5.1/auto",
     "leaflet": "npm:leaflet@1.9.4",

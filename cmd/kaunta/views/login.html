@@ -7,81 +7,43 @@
   <p class="subtitle">Analytics without bloat</p>
 </div>
 
-<div class="login-card glass card card-lg">
+<!-- Datastar-powered login form -->
+<div class="login-card glass card card-lg"
+     data-signals="{ username: '', password: '', error: '', loading: false }">
   <h2>Login to Dashboard</h2>
-  <div id="error" class="error"></div>
-  <form id="loginForm">
+
+  <!-- Error display -->
+  <div class="error" data-class:show="$error" data-text="$error"></div>
+
+  <!-- Login form with Datastar bindings -->
+  <form data-on:submit__prevent="$loading = true; $error = ''; @get('/api/auth/login')">
     <div class="form-group">
       <label for="username">Username</label>
-      <input type="text" id="username" name="username" required autocomplete="username" />
+      <input
+        type="text"
+        id="username"
+        data-bind:username
+        required
+        autocomplete="username"
+        data-attr:disabled="$loading"
+      />
     </div>
     <div class="form-group">
       <label for="password">Password</label>
       <input
         type="password"
         id="password"
-        name="password"
+        data-bind:password
         required
         autocomplete="current-password"
+        data-attr:disabled="$loading"
       />
     </div>
-    <button type="submit" id="submitBtn" class="btn btn-primary">
-      <span>🔐</span>
-      Login
+    <button type="submit" class="btn btn-primary" data-attr:disabled="$loading">
+      <span data-show="!$loading">🔐</span>
+      <span data-show="$loading">⏳</span>
+      <span data-text="$loading ? 'Logging in...' : 'Login'"></span>
     </button>
   </form>
 </div>
-
-<script>
-  const form = document.getElementById("loginForm");
-  const errorDiv = document.getElementById("error");
-  const submitBtn = document.getElementById("submitBtn");
-
-  // Read CSRF token from cookie
-  function getCsrfToken() {
-    const value = "; " + document.cookie;
-    const parts = value.split("; kaunta_csrf=");
-    if (parts.length === 2) return parts.pop().split(";").shift();
-    return "";
-  }
-  const csrfToken = getCsrfToken();
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
-
-    errorDiv.classList.remove("show");
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = "<span>⏳</span> Logging in...";
-
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken,
-        },
-        credentials: "include",
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        window.location.href = "/dashboard";
-      } else {
-        errorDiv.textContent = data.error || "Login failed";
-        errorDiv.classList.add("show");
-      }
-    } catch (error) {
-      errorDiv.textContent = "Network error. Please try again.";
-      errorDiv.classList.add("show");
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = "<span>🔐</span> Login";
-    }
-  });
-</script>
 {{end}}

@@ -10,14 +10,11 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/csrf"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/seuros/kaunta/internal/database"
-	"github.com/seuros/kaunta/internal/logging"
 	"github.com/seuros/kaunta/internal/middleware"
-	"go.uber.org/zap"
 )
 
 type LoginRequest struct {
@@ -159,55 +156,6 @@ func HandleLogin(c fiber.Ctx) error {
 	}
 
 	return c.JSON(response)
-}
-
-// HandleLogout invalidates the current session
-func HandleLogout(c fiber.Ctx) error {
-	// Get user from context
-	user := middleware.GetUser(c)
-	if user == nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Not authenticated",
-		})
-	}
-
-	// Delete CSRF token (GoFiber v3 best practice)
-	handler := csrf.HandlerFromContext(c)
-	if handler != nil {
-		if err := handler.DeleteToken(c); err != nil {
-			// Log but don't fail logout
-			logging.L().Warn("failed to delete CSRF token", zap.Error(err))
-		}
-	}
-
-	// Delete session from database
-	if err := deleteSessionFunc(user.SessionID); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to logout",
-		})
-	}
-
-	// Clear session cookie
-	secure := secureCookiesEnabled()
-	sameSite := "Lax"
-	if secure {
-		sameSite = "None"
-	}
-
-	c.Cookie(&fiber.Cookie{
-		Name:     "kaunta_session",
-		Value:    "",
-		Expires:  time.Now().Add(-1 * time.Hour),
-		HTTPOnly: true,
-		Secure:   secure,
-		SameSite: sameSite,
-		Path:     "/",
-	})
-
-	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "Logout successful",
-	})
 }
 
 // HandleMe returns current user info

@@ -1,155 +1,126 @@
 /**
- * Kaunta Campaigns Dashboard Alpine.js Component
- * UTM campaign tracking and analytics state management
+ * Kaunta Campaigns Dashboard - Datastar Edition
+ * Minimal JS for initialization and sort helpers
+ * Data flows via SSE signals from the server
  */
-// eslint-disable-next-line no-unused-vars
-function campaignsDashboard() {
-  return {
-    websites: [],
-    websitesLoading: true,
-    websitesError: false,
-    selectedWebsite: localStorage.getItem("kaunta_website") || "",
-    initialized: false,
-    data: {
-      source: [],
-      medium: [],
-      campaign: [],
-      term: [],
-      content: [],
-    },
-    loading: {
-      source: false,
-      medium: false,
-      campaign: false,
-      term: false,
-      content: false,
-    },
-    sort: {
-      source: { column: "count", direction: "desc" },
-      medium: { column: "count", direction: "desc" },
-      campaign: { column: "count", direction: "desc" },
-      term: { column: "count", direction: "desc" },
-      content: { column: "count", direction: "desc" },
-    },
 
-    async init() {
-      if (this.initialized) return;
-      this.initialized = true;
-      await this.loadWebsites();
-    },
+// Initialize campaigns page
+window.campaignsInit = function() {
+  // Nothing to do - Datastar handles the SSE init via data-on:load
+  console.log('Campaigns Datastar page initialized');
+};
 
-    async loadWebsites() {
-      this.websitesLoading = true;
-      this.websitesError = false;
-      try {
-        const response = await fetch("/api/websites");
-        if (!response.ok) {
-          this.websitesError = true;
-          return;
-        }
-        const response_data = await response.json();
-        const sites = response_data.data || response_data;
-        this.websites = Array.isArray(sites) ? sites : [];
-        const hasStoredSelection =
-          this.selectedWebsite &&
-          this.websites.some((site) => site.id === this.selectedWebsite);
-        if (!hasStoredSelection && this.selectedWebsite) {
-          this.selectedWebsite = "";
-          localStorage.removeItem("kaunta_website");
-        }
-        if (!this.selectedWebsite && this.websites.length > 0) {
-          this.selectedWebsite = this.websites[0].id;
-          localStorage.setItem("kaunta_website", this.selectedWebsite);
-        }
+// Sort handler - called from SSE-rendered HTML onclick
+window.campaignsSortBy = function(dimension, column) {
+  // Get current sort state from Datastar signals
+  const container = document.getElementById('campaigns-container');
+  if (!container || !container._dsSignals) {
+    console.error('Cannot access Datastar signals');
+    return;
+  }
 
-        // Load UTM data after website is determined
-        if (this.selectedWebsite) {
-          await this.loadAllUTMData();
-        }
-      } catch (error) {
-        console.error("Failed to load websites:", error);
-        this.websitesError = true;
-      } finally {
-        this.websitesLoading = false;
-      }
-    },
+  const signals = container._dsSignals;
+  const sort = signals.sort || {};
+  const currentSort = sort[dimension] || { column: 'count', direction: 'desc' };
 
-    async loadAllUTMData() {
-      // Load all UTM dimensions in parallel
-      await Promise.all([
-        this.loadUTMData("source"),
-        this.loadUTMData("medium"),
-        this.loadUTMData("campaign"),
-        this.loadUTMData("term"),
-        this.loadUTMData("content"),
-      ]);
-    },
+  // Toggle direction if same column, otherwise default to desc
+  let newDirection = 'desc';
+  if (currentSort.column === column) {
+    newDirection = currentSort.direction === 'asc' ? 'desc' : 'asc';
+  }
 
-    async loadUTMData(dimension) {
-      if (!this.selectedWebsite) return;
-      this.loading[dimension] = true;
-      try {
-        const sortState = this.sort[dimension];
-        const params = new URLSearchParams({
-          sort_by: sortState.column,
-          sort_order: sortState.direction,
-        });
-        const response = await fetch(
-          `/api/dashboard/utm-${dimension}/${this.selectedWebsite}?${params}`,
-        );
-        if (response.ok) {
-          const result = await response.json();
-          this.data[dimension] = result.data || [];
-        }
-      } catch (error) {
-        console.error(`Failed to load UTM ${dimension}:`, error);
-      } finally {
-        this.loading[dimension] = false;
-      }
-    },
+  // Update signals
+  const newSort = { ...sort };
+  newSort[dimension] = { column: column, direction: newDirection };
 
-    async sortBy(dimension, column) {
-      const sortState = this.sort[dimension];
-      if (sortState.column === column) {
-        sortState.direction = sortState.direction === "asc" ? "desc" : "asc";
-      } else {
-        sortState.column = column;
-        sortState.direction = "desc";
-      }
-      await this.loadUTMData(dimension);
-    },
+  // Dispatch custom event for Datastar to pick up
+  container.dispatchEvent(new CustomEvent('campaigns:sort', {
+    detail: { dimension, column, direction: newDirection }
+  }));
 
-    async logout() {
-      try {
-        const csrfToken = this.getCsrfToken();
-        const response = await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": csrfToken,
-          },
-          credentials: "include",
-        });
+  // Trigger SSE fetch with new sort params
+  const website = signals.selectedWebsite;
+  if (website) {
+    const url = `/api/dashboard/campaigns-ds?website=${website}&dimension=${dimension}&sort_by=${column}&sort_order=${newDirection}`;
+    // Use Datastar's fetch mechanism
+    window.dispatchEvent(new CustomEvent('datastar:fetch', {
+      detail: { url, method: 'GET' }
+    }));
+  }
+};
 
-        if (response.ok) {
-          localStorage.removeItem("kaunta_website");
-          localStorage.removeItem("kaunta_dateRange");
-          window.location.href = "/login";
-        } else {
-          console.error("Logout failed:", await response.text());
-          alert("Logout failed. Please try again.");
-        }
-      } catch (error) {
-        console.error("Logout error:", error);
-        alert("Network error during logout. Please try again.");
-      }
-    },
+// Generate table HTML for a UTM dimension (called from Go handler via ExecuteScript)
+window.renderUTMTable = function(dimension, data, sortColumn, sortDirection) {
+  const container = document.getElementById(`utm-${dimension}-table`);
+  if (!container) {
+    console.error(`Container utm-${dimension}-table not found`);
+    return;
+  }
 
-    getCsrfToken() {
-      const value = "; " + document.cookie;
-      const parts = value.split("; kaunta_csrf=");
-      if (parts.length === 2) return parts.pop().split(";").shift();
-      return "";
-    },
-  };
+  if (!data || data.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state-mini">
+        <div>[=]</div>
+        <div>No UTM ${dimension} data yet</div>
+      </div>
+    `;
+    return;
+  }
+
+  const nameLabel = dimension.charAt(0).toUpperCase() + dimension.slice(1);
+  const nameArrow = sortColumn === 'name' ? (sortDirection === 'asc' ? ' [^]' : ' [v]') : '';
+  const countArrow = sortColumn === 'count' ? (sortDirection === 'asc' ? ' [^]' : ' [v]') : '';
+
+  let rows = '';
+  for (const item of data) {
+    const count = typeof item.count === 'number' ? item.count.toLocaleString() : item.count;
+    rows += `<tr>
+      <td>${escapeHtml(item.name)}</td>
+      <td style="text-align: right; font-weight: 500; color: var(--accent-color)">${count}</td>
+    </tr>`;
+  }
+
+  container.innerHTML = `
+    <table class="glass card">
+      <thead>
+        <tr>
+          <th
+            onclick="campaignsSortBy('${dimension}', 'name')"
+            style="cursor: pointer; user-select: none"
+            class="sortable-header"
+          >
+            <span>${nameLabel}</span>
+            <span style="opacity: 0.7">${nameArrow}</span>
+          </th>
+          <th
+            onclick="campaignsSortBy('${dimension}', 'count')"
+            style="text-align: right; cursor: pointer; user-select: none"
+            class="sortable-header"
+          >
+            <span>Count</span>
+            <span style="opacity: 0.7">${countArrow}</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+};
+
+// Helper to escape HTML
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
+
+// Get CSRF token from cookie
+window.getCsrfToken = function() {
+  const value = '; ' + document.cookie;
+  const parts = value.split('; kaunta_csrf=');
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return '';
+};

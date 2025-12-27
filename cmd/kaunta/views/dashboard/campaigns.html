@@ -1,5 +1,6 @@
-{{define "alpine-data"}}campaignsDashboard(){{end}} {{define "alpine-init"}}init(){{end}} {{define
-"page-subtitle"}}Campaign Analytics{{end}} {{define "navigation"}}
+{{define "page-subtitle"}}Campaign Analytics{{end}}
+
+{{define "navigation"}}
 <a
   href="/dashboard"
   class="btn btn-sm btn-ghost glass transition-standard"
@@ -15,403 +16,241 @@
   </svg>
   Dashboard
 </a>
-{{end}} {{define "website-selector"}}
-<button x-show="selectedWebsite" class="btn btn-sm" style="cursor: default; pointer-events: none">
-  <template x-for="site in websites" :key="site.id">
-    <span x-show="site.id === selectedWebsite" x-text="site.name || site.domain"></span>
-  </template>
-</button>
-{{end}} {{define "date-controls"}}
-<!-- Campaigns page doesn't need date controls -->
-{{end}} {{define "filters"}}
-<!-- Campaigns page doesn't need filters -->
-{{end}} {{define "header-buttons"}}
-<!-- Campaigns page doesn't need header buttons -->
-{{end}} {{define "page-scripts"}}
-<script src="/assets/js/campaigns.js?v={{.Version}}"></script>
-{{end}} {{define "content"}}
+{{end}}
 
-<!-- Campaign Data Section -->
-<div x-show="!websitesLoading && !websitesError && selectedWebsite && websites.length > 0">
-  <!-- UTM Dimensions Grid - 2 columns on large screens -->
-  <div
-    class="utm-grid"
-    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px"
+{{define "website-selector"}}
+<div id="website-selector-container" data-show="$websites.length > 0">
+  <select
+    class="btn btn-sm"
+    data-bind:selectedWebsite
+    data-on:change="localStorage.setItem('kaunta_website', $selectedWebsite); @get('/api/dashboard/campaigns?website=' + $selectedWebsite)"
+    data-show="$websites.length > 1"
   >
-    <!-- UTM Source -->
-    <div class="section glass card">
-      <div class="section-header">
-        <h2>
-          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
-            ></path>
-          </svg>
-          Source
-        </h2>
-      </div>
-      <template x-if="loading.source">
-        <div class="loading">
-          <div class="spinner"></div>
-          <div>Loading...</div>
-        </div>
-      </template>
-      <template x-if="!loading.source && data.source && data.source.length > 0">
-        <table class="glass card">
-          <thead>
-            <tr>
-              <th
-                @click="sortBy('source', 'name')"
-                style="cursor: pointer; user-select: none"
-                class="sortable-header"
-              >
-                <span>Source</span>
-                <span
-                  x-show="sort.source.column === 'name'"
-                  x-text="sort.source.direction === 'asc' ? ' ↑' : ' ↓'"
-                  style="opacity: 0.7"
-                ></span>
-              </th>
-              <th
-                @click="sortBy('source', 'count')"
-                style="text-align: right; cursor: pointer; user-select: none"
-                class="sortable-header"
-              >
-                <span>Count</span>
-                <span
-                  x-show="sort.source.column === 'count'"
-                  x-text="sort.source.direction === 'asc' ? ' ↑' : ' ↓'"
-                  style="opacity: 0.7"
-                ></span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <template x-for="(item, index) in data.source" :key="index">
-              <tr>
-                <td x-text="item.name"></td>
-                <td
-                  style="text-align: right; font-weight: 500; color: var(--accent-color)"
-                  x-text="item.count.toLocaleString()"
-                ></td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-      </template>
-      <template x-if="!loading.source && (!data.source || data.source.length === 0)">
-        <div class="empty-state-mini">
-          <div>📊</div>
-          <div>No UTM source data yet</div>
-        </div>
-      </template>
-    </div>
+    <template data-for="site in $websites">
+      <option data-attr:value="site.id" data-text="site.name || site.domain"></option>
+    </template>
+  </select>
+  <span
+    class="btn btn-sm"
+    style="cursor: default; pointer-events: none"
+    data-show="$websites.length === 1"
+    data-text="$websites[0]?.name || $websites[0]?.domain"
+  ></span>
+</div>
+{{end}}
 
-    <!-- UTM Medium -->
-    <div class="section glass card">
-      <div class="section-header">
-        <h2>
-          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
-            ></path>
-          </svg>
-          Medium
-        </h2>
-      </div>
-      <template x-if="loading.medium">
-        <div class="loading">
-          <div class="spinner"></div>
-          <div>Loading...</div>
-        </div>
-      </template>
-      <template x-if="!loading.medium && data.medium && data.medium.length > 0">
-        <table class="class card">
-          <thead>
-            <tr>
-              <th
-                @click="sortBy('medium', 'name')"
-                style="cursor: pointer; user-select: none"
-                class="sortable-header"
-              >
-                <span>Medium</span>
-                <span
-                  x-show="sort.medium.column === 'name'"
-                  x-text="sort.medium.direction === 'asc' ? ' ↑' : ' ↓'"
-                  style="opacity: 0.7"
-                ></span>
-              </th>
-              <th
-                @click="sortBy('medium', 'count')"
-                style="text-align: right; cursor: pointer; user-select: none"
-                class="sortable-header"
-              >
-                <span>Count</span>
-                <span
-                  x-show="sort.medium.column === 'count'"
-                  x-text="sort.medium.direction === 'asc' ? ' ↑' : ' ↓'"
-                  style="opacity: 0.7"
-                ></span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <template x-for="(item, index) in data.medium" :key="index">
-              <tr>
-                <td x-text="item.name"></td>
-                <td
-                  style="text-align: right; font-weight: 500; color: var(--accent-color)"
-                  x-text="item.count.toLocaleString()"
-                ></td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-      </template>
-      <template x-if="!loading.medium && (!data.medium || data.medium.length === 0)">
-        <div class="empty-state-mini">
-          <div>📊</div>
-          <div>No UTM medium data yet</div>
-        </div>
-      </template>
-    </div>
+{{define "date-controls"}}
+<!-- Campaigns page doesn't need date controls -->
+{{end}}
 
-    <!-- UTM Campaign -->
-    <div class="section glass card">
-      <div class="section-header">
-        <h2>
-          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
-            ></path>
-          </svg>
-          Campaign
-        </h2>
-      </div>
-      <template x-if="loading.campaign">
-        <div class="loading">
-          <div class="spinner"></div>
-          <div>Loading...</div>
-        </div>
-      </template>
-      <template x-if="!loading.campaign && data.campaign && data.campaign.length > 0">
-        <table class="glass card">
-          <thead>
-            <tr>
-              <th
-                @click="sortBy('campaign', 'name')"
-                style="cursor: pointer; user-select: none"
-                class="sortable-header"
-              >
-                <span>Campaign</span>
-                <span
-                  x-show="sort.campaign.column === 'name'"
-                  x-text="sort.campaign.direction === 'asc' ? ' ↑' : ' ↓'"
-                  style="opacity: 0.7"
-                ></span>
-              </th>
-              <th
-                @click="sortBy('campaign', 'count')"
-                style="text-align: right; cursor: pointer; user-select: none"
-                class="sortable-header"
-              >
-                <span>Count</span>
-                <span
-                  x-show="sort.campaign.column === 'count'"
-                  x-text="sort.campaign.direction === 'asc' ? ' ↑' : ' ↓'"
-                  style="opacity: 0.7"
-                ></span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <template x-for="(item, index) in data.campaign" :key="index">
-              <tr>
-                <td x-text="item.name"></td>
-                <td
-                  style="text-align: right; font-weight: 500; color: var(--accent-color)"
-                  x-text="item.count.toLocaleString()"
-                ></td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-      </template>
-      <template x-if="!loading.campaign && (!data.campaign || data.campaign.length === 0)">
-        <div class="empty-state-mini">
-          <div>📊</div>
-          <div>No UTM campaign data yet</div>
-        </div>
-      </template>
-    </div>
+{{define "filters"}}
+<!-- Campaigns page doesn't need filters -->
+{{end}}
 
-    <!-- UTM Term -->
-    <div class="section glass card">
-      <div class="section-header">
-        <h2>
-          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
-            ></path>
-          </svg>
-          Term
-        </h2>
-      </div>
-      <template x-if="loading.term">
-        <div class="loading">
-          <div class="spinner"></div>
-          <div>Loading...</div>
-        </div>
-      </template>
-      <template x-if="!loading.term && data.term && data.term.length > 0">
-        <table class="glass card">
-          <thead>
-            <tr>
-              <th
-                @click="sortBy('term', 'name')"
-                style="cursor: pointer; user-select: none"
-                class="sortable-header"
-              >
-                <span>Term</span>
-                <span
-                  x-show="sort.term.column === 'name'"
-                  x-text="sort.term.direction === 'asc' ? ' ↑' : ' ↓'"
-                  style="opacity: 0.7"
-                ></span>
-              </th>
-              <th
-                @click="sortBy('term', 'count')"
-                style="text-align: right; cursor: pointer; user-select: none"
-                class="sortable-header"
-              >
-                <span>Count</span>
-                <span
-                  x-show="sort.term.column === 'count'"
-                  x-text="sort.term.direction === 'asc' ? ' ↑' : ' ↓'"
-                  style="opacity: 0.7"
-                ></span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <template x-for="(item, index) in data.term" :key="index">
-              <tr>
-                <td x-text="item.name"></td>
-                <td
-                  style="text-align: right; font-weight: 500; color: var(--accent-color)"
-                  x-text="item.count.toLocaleString()"
-                ></td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-      </template>
-      <template x-if="!loading.term && (!data.term || data.term.length === 0)">
-        <div class="empty-state-mini">
-          <div>📊</div>
-          <div>No UTM term data yet</div>
-        </div>
-      </template>
-    </div>
+{{define "header-buttons"}}
+<!-- Campaigns page doesn't need header buttons -->
+{{end}}
 
-    <!-- UTM Content -->
-    <div class="section glass card">
-      <div class="section-header">
-        <h2>
-          <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
-            ></path>
-          </svg>
-          Content
-        </h2>
-      </div>
-      <template x-if="loading.content">
-        <div class="loading">
+{{define "page-scripts"}}
+<script src="/assets/js/campaigns.js?v={{.Version}}"></script>
+<script>
+  // Initialize campaigns page on load
+  document.addEventListener('DOMContentLoaded', function() {
+    window.campaignsInit();
+  });
+</script>
+{{end}}
+
+{{define "content"}}
+
+<!-- Main Campaigns Container with Datastar signals -->
+<div
+  id="campaigns-container"
+  data-signals="{
+    websitesLoading: true,
+    websitesError: false,
+    websites: [],
+    selectedWebsite: localStorage.getItem('kaunta_website') || '',
+    loading: {
+      source: false,
+      medium: false,
+      campaign: false,
+      term: false,
+      content: false
+    },
+    sort: {
+      source: { column: 'count', direction: 'desc' },
+      medium: { column: 'count', direction: 'desc' },
+      campaign: { column: 'count', direction: 'desc' },
+      term: { column: 'count', direction: 'desc' },
+      content: { column: 'count', direction: 'desc' }
+    }
+  }"
+  data-on:load="@get('/api/dashboard/campaigns-init')"
+>
+
+  <!-- Campaign Data Section -->
+  <div data-show="!$websitesLoading && !$websitesError && $selectedWebsite && $websites.length > 0">
+    <!-- UTM Dimensions Grid - 2 columns on large screens -->
+    <div
+      class="utm-grid"
+      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px"
+    >
+      <!-- UTM Source -->
+      <div class="section glass card">
+        <div class="section-header">
+          <h2>
+            <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+              ></path>
+            </svg>
+            Source
+          </h2>
+        </div>
+        <div data-show="$loading.source" class="loading">
           <div class="spinner"></div>
           <div>Loading...</div>
         </div>
-      </template>
-      <template x-if="!loading.content && data.content && data.content.length > 0">
-        <table class="glass card">
-          <thead>
-            <tr>
-              <th
-                @click="sortBy('content', 'name')"
-                style="cursor: pointer; user-select: none"
-                class="sortable-header"
-              >
-                <span>Content</span>
-                <span
-                  x-show="sort.content.column === 'name'"
-                  x-text="sort.content.direction === 'asc' ? ' ↑' : ' ↓'"
-                  style="opacity: 0.7"
-                ></span>
-              </th>
-              <th
-                @click="sortBy('content', 'count')"
-                style="text-align: right; cursor: pointer; user-select: none"
-                class="sortable-header"
-              >
-                <span>Count</span>
-                <span
-                  x-show="sort.content.column === 'count'"
-                  x-text="sort.content.direction === 'asc' ? ' ↑' : ' ↓'"
-                  style="opacity: 0.7"
-                ></span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <template x-for="(item, index) in data.content" :key="index">
-              <tr>
-                <td x-text="item.name"></td>
-                <td
-                  style="text-align: right; font-weight: 500; color: var(--accent-color)"
-                  x-text="item.count.toLocaleString()"
-                ></td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-      </template>
-      <template x-if="!loading.content && (!data.content || data.content.length === 0)">
-        <div class="empty-state-mini">
-          <div>📊</div>
-          <div>No UTM content data yet</div>
+        <div id="utm-source-table" data-show="!$loading.source">
+          <!-- Table populated via SSE -->
+          <div class="empty-state-mini">
+            <div>...</div>
+            <div>Loading UTM source data</div>
+          </div>
         </div>
-      </template>
+      </div>
+
+      <!-- UTM Medium -->
+      <div class="section glass card">
+        <div class="section-header">
+          <h2>
+            <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
+              ></path>
+            </svg>
+            Medium
+          </h2>
+        </div>
+        <div data-show="$loading.medium" class="loading">
+          <div class="spinner"></div>
+          <div>Loading...</div>
+        </div>
+        <div id="utm-medium-table" data-show="!$loading.medium">
+          <!-- Table populated via SSE -->
+          <div class="empty-state-mini">
+            <div>...</div>
+            <div>Loading UTM medium data</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UTM Campaign -->
+      <div class="section glass card">
+        <div class="section-header">
+          <h2>
+            <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
+              ></path>
+            </svg>
+            Campaign
+          </h2>
+        </div>
+        <div data-show="$loading.campaign" class="loading">
+          <div class="spinner"></div>
+          <div>Loading...</div>
+        </div>
+        <div id="utm-campaign-table" data-show="!$loading.campaign">
+          <!-- Table populated via SSE -->
+          <div class="empty-state-mini">
+            <div>...</div>
+            <div>Loading UTM campaign data</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UTM Term -->
+      <div class="section glass card">
+        <div class="section-header">
+          <h2>
+            <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+              ></path>
+            </svg>
+            Term
+          </h2>
+        </div>
+        <div data-show="$loading.term" class="loading">
+          <div class="spinner"></div>
+          <div>Loading...</div>
+        </div>
+        <div id="utm-term-table" data-show="!$loading.term">
+          <!-- Table populated via SSE -->
+          <div class="empty-state-mini">
+            <div>...</div>
+            <div>Loading UTM term data</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UTM Content -->
+      <div class="section glass card">
+        <div class="section-header">
+          <h2>
+            <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+              ></path>
+            </svg>
+            Content
+          </h2>
+        </div>
+        <div data-show="$loading.content" class="loading">
+          <div class="spinner"></div>
+          <div>Loading...</div>
+        </div>
+        <div id="utm-content-table" data-show="!$loading.content">
+          <!-- Table populated via SSE -->
+          <div class="empty-state-mini">
+            <div>...</div>
+            <div>Loading UTM content data</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- No Website Selected -->
-<div
-  x-show="!websitesLoading && !websitesError && !selectedWebsite && websites.length > 0"
-  class="empty-state"
-  style="margin-top: 100px"
->
-  <div class="empty-state-icon">📊</div>
-  <div class="empty-state-title">Select a Website</div>
-  <div class="empty-state-text">Choose a website from the dropdown above to view campaign data</div>
-</div>
+  <!-- No Website Selected -->
+  <div
+    data-show="!$websitesLoading && !$websitesError && !$selectedWebsite && $websites.length > 0"
+    class="empty-state"
+    style="margin-top: 100px"
+  >
+    <div class="empty-state-icon">...</div>
+    <div class="empty-state-title">Select a Website</div>
+    <div class="empty-state-text">Choose a website from the dropdown above to view campaign data</div>
+  </div>
 
-<!-- No Websites at All -->
-<div
-  x-show="!websitesLoading && !websitesError && websites.length === 0"
-  class="empty-state"
-  style="margin-top: 100px"
->
-  <div class="empty-state-icon">🛰️</div>
-  <div class="empty-state-title">No websites found</div>
-  <div class="empty-state-text">Add a website in Kaunta to get started.</div>
-</div>
+  <!-- No Websites at All -->
+  <div
+    data-show="!$websitesLoading && !$websitesError && $websites.length === 0"
+    class="empty-state"
+    style="margin-top: 100px"
+  >
+    <div class="empty-state-icon">[~]</div>
+    <div class="empty-state-title">No websites found</div>
+    <div class="empty-state-text">Add a website in Kaunta to get started.</div>
+  </div>
 
-<!-- Websites Load Error -->
-<div x-show="!websitesLoading && websitesError" class="empty-state" style="margin-top: 100px">
-  <div class="empty-state-icon">⚠️</div>
-  <div class="empty-state-title">Unable to load websites</div>
-  <div class="empty-state-text">Check the server logs for /api/websites errors and try again.</div>
+  <!-- Websites Load Error -->
+  <div data-show="!$websitesLoading && $websitesError" class="empty-state" style="margin-top: 100px">
+    <div class="empty-state-icon">[!]</div>
+    <div class="empty-state-title">Unable to load websites</div>
+    <div class="empty-state-text">Check the server logs for /api/websites errors and try again.</div>
+  </div>
 </div>
 
 <style>

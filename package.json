@@ -12,17 +12,15 @@
     "dev:test": "bun run --cwd tracker/test-server start"
   },
   "dependencies": {
-    "@alpinejs/intersect": "^3.15.2",
-    "alpinejs": "^3.15.2",
     "chart.js": "4.5.1",
     "leaflet": "1.9.4",
     "topojson-client": "3.1.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
+    "@eslint/js": "^9.39.2",
     "@playwright/test": "latest",
     "@types/bun": "latest",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.2",
     "globals": "^16.5.0",
     "stylelint": "^16.26.1",
     "stylelint-config-standard": "^39.0.1"
