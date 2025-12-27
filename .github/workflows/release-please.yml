@@ -23,7 +23,7 @@ jobs:
       version: ${{ steps.release.outputs.version }}
     services:
       postgres:
-        image: postgres:17
+        image: postgres:18
         env:
           POSTGRES_DB: kaunta_test
           POSTGRES_USER: kaunta
