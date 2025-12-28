@@ -364,7 +364,7 @@ EOF
 
   log ""
   log "Next steps:"
-  log "  1. Set up PostgreSQL 17+"
+  log "  1. Set up PostgreSQL 18+"
   log "  2. Configure database: kaunta.toml or DATABASE_URL env var"
   log "  3. Run server: kaunta"
   log "  4. Create user: kaunta user create <username>"

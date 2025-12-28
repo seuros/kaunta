@@ -1,4 +1,4 @@
--- Kaunta Initial Schema (PostgreSQL 17+)
+-- Kaunta Initial Schema (PostgreSQL 18+)
 -- Squashed migration combining all initialization steps
 -- Idempotent: Safe to run on existing Umami databases or fresh installs
 
@@ -57,7 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_session_country ON session (website_id, country) 
 CREATE INDEX IF NOT EXISTS idx_session_browser ON session (website_id, browser) WHERE browser IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_session_device ON session (website_id, device) WHERE device IS NOT NULL;
 
--- Partitioned Website Event table (PostgreSQL 17+)
+-- Partitioned Website Event table (PostgreSQL 18+)
 CREATE TABLE IF NOT EXISTS website_event (
     event_id UUID DEFAULT gen_random_uuid(),
     website_id UUID NOT NULL,
@@ -105,7 +105,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- Event table indexes (optimized for PostgreSQL 17)
+-- Event table indexes (optimized for PostgreSQL 18)
 CREATE INDEX IF NOT EXISTS idx_event_website_created ON website_event (website_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_event_session_created ON website_event (session_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_event_url_path ON website_event (url_path) WHERE event_type = 1 AND url_path IS NOT NULL;
@@ -634,9 +634,9 @@ CREATE TRIGGER trg_website_event_realtime_stats
 -- PART 8: Comments and Documentation
 -- ============================================================
 
-COMMENT ON TABLE website IS 'Tracked websites. PostgreSQL 17+ optimized.';
+COMMENT ON TABLE website IS 'Tracked websites. PostgreSQL 18+ optimized.';
 COMMENT ON TABLE session IS 'User sessions with device/location information.';
-COMMENT ON TABLE website_event IS 'Partitioned by created_at (daily partitions). Optimized for PostgreSQL 17.';
+COMMENT ON TABLE website_event IS 'Partitioned by created_at (daily partitions). Optimized for PostgreSQL 18.';
 COMMENT ON TABLE ip_metadata IS 'Privacy-preserving IP metadata for bot detection.';
 COMMENT ON TABLE bot_detection_log IS 'Partitioned log of bot detection events.';
 COMMENT ON TABLE realtime_stats_cache IS 'Cache table for real-time statistics.';
