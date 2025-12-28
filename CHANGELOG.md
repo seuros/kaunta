@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.50.0](https://github.com/seuros/kaunta/compare/v0.38.0...v0.50.0) (2025-12-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* Minimum PostgreSQL version is now 18+
+
+### Features
+
+* replace Alpine.js with Datastar for SSE-driven dashboard ([#124](https://github.com/seuros/kaunta/issues/124)) ([080ae70](https://github.com/seuros/kaunta/commit/080ae70908e29fb0303fafecd3a8f6690b205de7))
+* upgrade to PostgreSQL 18 with UUIDv7 and virtual columns ([#126](https://github.com/seuros/kaunta/issues/126)) ([ff0257a](https://github.com/seuros/kaunta/commit/ff0257a17aa5e6d00e062d82b6061fa2c05f5fd8))
+
+
+### Bug Fixes
+
+* replace alpine setup with datastar ([1bb7a97](https://github.com/seuros/kaunta/commit/1bb7a97b19878a02684daa80d42eb02d5ac3d4b3))
+
 ## [0.38.0](https://github.com/seuros/kaunta/compare/v0.37.0...v0.38.0) (2025-12-14)
 
 
