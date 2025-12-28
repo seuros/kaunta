@@ -4,12 +4,6 @@
  * Data flows via SSE signals from the server
  */
 
-// Initialize campaigns page
-window.campaignsInit = function() {
-  // Nothing to do - Datastar handles the SSE init via data-on:load
-  console.log('Campaigns Datastar page initialized');
-};
-
 // Sort handler - called from SSE-rendered HTML onclick
 window.campaignsSortBy = function(dimension, column) {
   // Get current sort state from Datastar signals

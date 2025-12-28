@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="/assets/global.css" />
     <meta name="robots" content="noindex, nofollow" />
     <title>Setup - Kaunta</title>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <style>
       /* Setup-specific styles */
       body {
@@ -149,22 +148,55 @@
     </style>
   </head>
   <body>
-    <div class="setup-container" x-data="setupWizard()">
+    <div
+      class="setup-container"
+      id="setup-container"
+      data-signals="{
+        form: {
+          db_host: 'localhost',
+          db_port: '5432',
+          db_name: '',
+          db_user: 'postgres',
+          db_password: '',
+          db_ssl_mode: 'disable',
+          server_port: '3000',
+          data_dir: './data',
+          admin_username: '',
+          admin_name: '',
+          admin_password: '',
+          admin_password_confirm: ''
+        },
+        message: '',
+        messageType: 'info',
+        testing: false,
+        submitting: false,
+        passwordStrength: 0,
+        passwordStrengthClass: ''
+      }"
+    >
       <div class="logo">
         <h1>Kaunta</h1>
         <p class="subtitle">Initial Setup</p>
       </div>
 
       <!-- Status Messages -->
-      <div x-show="message" x-transition>
-        <div class="error-message" x-show="messageType === 'error'" x-text="message"></div>
-        <div class="alert alert-success" x-show="messageType === 'success'" x-text="message"
-             style="background: rgb(16 185 129 / 10%); color: var(--success-color); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); border: 1px solid rgb(16 185 129 / 20%);"></div>
-        <div class="alert alert-info" x-show="messageType === 'info'" x-text="message"
-             style="background: rgb(59 130 246 / 10%); color: var(--accent-color); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); border: 1px solid rgb(59 130 246 / 20%);"></div>
+      <div data-show="$message">
+        <div class="error-message" data-show="$messageType === 'error'" data-text="$message"></div>
+        <div
+          class="alert alert-success"
+          data-show="$messageType === 'success'"
+          data-text="$message"
+          style="background: rgb(16 185 129 / 10%); color: var(--success-color); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); border: 1px solid rgb(16 185 129 / 20%);"
+        ></div>
+        <div
+          class="alert alert-info"
+          data-show="$messageType === 'info'"
+          data-text="$message"
+          style="background: rgb(59 130 246 / 10%); color: var(--accent-color); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); border: 1px solid rgb(59 130 246 / 20%);"
+        ></div>
       </div>
 
-      <form @submit.prevent="submitSetup">
+      <form data-on:submit__prevent="kauntaSetup.submitSetup()">
         <!-- Database Configuration -->
         <div class="form-section">
           <h2 class="section-title">Database Configuration</h2>
@@ -175,34 +207,73 @@
           <div class="form-row">
             <div class="form-group">
               <label for="db_host">Host *</label>
-              <input type="text" id="db_host" name="db_host" class="input focus-ring" x-model="form.db_host" required />
+              <input
+                type="text"
+                id="db_host"
+                name="db_host"
+                class="input focus-ring"
+                data-bind:form.db_host
+                required
+              />
             </div>
             <div class="form-group">
               <label for="db_port">Port *</label>
-              <input type="text" id="db_port" name="db_port" class="input focus-ring" x-model="form.db_port" required />
+              <input
+                type="text"
+                id="db_port"
+                name="db_port"
+                class="input focus-ring"
+                data-bind:form.db_port
+                required
+              />
             </div>
           </div>
 
           <div class="form-group">
             <label for="db_name">Database Name *</label>
-            <input type="text" id="db_name" name="db_name" class="input focus-ring" x-model="form.db_name" required />
+            <input
+              type="text"
+              id="db_name"
+              name="db_name"
+              class="input focus-ring"
+              data-bind:form.db_name
+              required
+            />
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="db_user">Username *</label>
-              <input type="text" id="db_user" name="db_user" class="input focus-ring" x-model="form.db_user" required />
+              <input
+                type="text"
+                id="db_user"
+                name="db_user"
+                class="input focus-ring"
+                data-bind:form.db_user
+                required
+              />
             </div>
             <div class="form-group">
               <label for="db_password">Password</label>
-              <input type="password" id="db_password" name="db_password" class="input focus-ring" x-model="form.db_password" />
+              <input
+                type="password"
+                id="db_password"
+                name="db_password"
+                class="input focus-ring"
+                data-bind:form.db_password
+              />
               <small>Leave empty if not required</small>
             </div>
           </div>
 
           <div class="form-group">
             <label for="db_ssl_mode">SSL Mode</label>
-            <select id="db_ssl_mode" name="db_ssl_mode" class="focus-ring" x-model="form.db_ssl_mode">
+            <select
+              id="db_ssl_mode"
+              name="db_ssl_mode"
+              class="focus-ring"
+              data-bind:form.db_ssl_mode
+            >
               <option value="disable">Disable</option>
               <option value="require">Require</option>
               <option value="verify-ca">Verify CA</option>
@@ -210,9 +281,14 @@
             </select>
           </div>
 
-          <button type="button" @click="testDatabase" class="btn btn-secondary" :disabled="testing">
-            <span x-show="!testing">Test Database Connection</span>
-            <span x-show="testing" class="spinner"></span>
+          <button
+            type="button"
+            data-on:click="kauntaSetup.testDatabase()"
+            class="btn btn-secondary"
+            data-attr:disabled="$testing"
+          >
+            <span data-show="!$testing">Test Database Connection</span>
+            <span data-show="$testing" class="spinner"></span>
           </button>
         </div>
 
@@ -223,12 +299,24 @@
           <div class="form-row">
             <div class="form-group">
               <label for="server_port">Server Port</label>
-              <input type="text" id="server_port" name="server_port" class="input focus-ring" x-model="form.server_port" />
+              <input
+                type="text"
+                id="server_port"
+                name="server_port"
+                class="input focus-ring"
+                data-bind:form.server_port
+              />
               <small>Default: 3000</small>
             </div>
             <div class="form-group">
               <label for="data_dir">Data Directory</label>
-              <input type="text" id="data_dir" name="data_dir" class="input focus-ring" x-model="form.data_dir" />
+              <input
+                type="text"
+                id="data_dir"
+                name="data_dir"
+                class="input focus-ring"
+                data-bind:form.data_dir
+              />
               <small>For GeoIP database</small>
             </div>
           </div>
@@ -245,8 +333,8 @@
               id="admin_username"
               name="admin_username"
               class="input focus-ring"
-              x-model="form.admin_username"
-              @input="validateUsername"
+              data-bind:form.admin_username
+              data-class:error="$form.admin_username && !/^[a-zA-Z0-9_]+$/.test($form.admin_username)"
               required
               minlength="3"
               maxlength="30"
@@ -262,7 +350,7 @@
               id="admin_name"
               name="admin_name"
               class="input focus-ring"
-              x-model="form.admin_name"
+              data-bind:form.admin_name
               placeholder="Optional"
             />
           </div>
@@ -274,13 +362,18 @@
               id="admin_password"
               name="admin_password"
               class="input focus-ring"
-              x-model="form.admin_password"
-              @input="checkPasswordStrength"
+              data-bind:form.admin_password
+              data-on:input="kauntaSetup.updatePasswordStrength(evt)"
               required
               minlength="8"
             />
-            <div class="password-strength" x-show="form.admin_password">
-              <div class="password-strength-bar" :class="passwordStrengthClass"></div>
+            <div class="password-strength" data-show="$form.admin_password">
+              <div
+                class="password-strength-bar"
+                data-class:strength-weak="$passwordStrengthClass === 'strength-weak'"
+                data-class:strength-medium="$passwordStrengthClass === 'strength-medium'"
+                data-class:strength-strong="$passwordStrengthClass === 'strength-strong'"
+              ></div>
             </div>
             <small>Minimum 8 characters</small>
           </div>
@@ -292,7 +385,7 @@
               id="admin_password_confirm"
               name="admin_password_confirm"
               class="input focus-ring"
-              x-model="form.admin_password_confirm"
+              data-bind:form.admin_password_confirm
               required
               minlength="8"
             />
@@ -304,178 +397,154 @@
           <div>
             <small style="color: var(--text-tertiary);">* Required fields</small>
           </div>
-          <button type="submit" class="btn btn-primary" :disabled="submitting">
-            <span x-show="!submitting">Complete Setup</span>
-            <span x-show="submitting" class="spinner"></span>
+          <button type="submit" class="btn btn-primary" data-attr:disabled="$submitting">
+            <span data-show="!$submitting">Complete Setup</span>
+            <span data-show="$submitting" class="spinner"></span>
           </button>
         </div>
       </form>
     </div>
 
+    <script src="/assets/vendor/datastar.js"></script>
     <script>
-      function setupWizard() {
-        return {
-          form: {
-            db_host: 'localhost',
-            db_port: '5432',
-            db_name: '',
-            db_user: 'postgres',
-            db_password: '',
-            db_ssl_mode: 'disable',
-            server_port: '3000',
-            data_dir: './data',
-            admin_username: '',
-            admin_name: '',
-            admin_password: '',
-            admin_password_confirm: ''
-          },
-          message: '',
-          messageType: 'info',
-          testing: false,
-          submitting: false,
-          passwordStrength: 0,
-          passwordStrengthClass: '',
+      window.kauntaSetup = (() => {
+        const container = document.getElementById('setup-container');
+        const getSignals = () => container?._dsSignals;
 
-          validateUsername() {
-            const username = this.form.admin_username;
-            const valid = /^[a-zA-Z0-9_]+$/.test(username);
-            const input = document.getElementById('admin_username');
+        const updatePasswordStrength = (evt) => {
+          const signals = getSignals();
+          if (!signals) return;
+          const password = evt?.target?.value ?? signals.form?.admin_password ?? '';
+          let strength = 0;
 
-            if (username && !valid) {
-              input.classList.add('error');
+          if (password.length >= 8) strength++;
+          if (password.length >= 12) strength++;
+          if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength++;
+          if (/[0-9]/.test(password)) strength++;
+          if (/[^A-Za-z0-9]/.test(password)) strength++;
+
+          signals.passwordStrength = strength;
+
+          if (strength <= 2) {
+            signals.passwordStrengthClass = 'strength-weak';
+          } else if (strength <= 3) {
+            signals.passwordStrengthClass = 'strength-medium';
+          } else {
+            signals.passwordStrengthClass = 'strength-strong';
+          }
+        };
+
+        const testDatabase = async () => {
+          const signals = getSignals();
+          if (!signals) return;
+          signals.testing = true;
+          signals.message = '';
+
+          try {
+            const response = await fetch('/setup/test-db', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(signals.form)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              signals.message = 'Database connection successful!';
+              signals.messageType = 'success';
             } else {
-              input.classList.remove('error');
+              signals.message = data.error || 'Database connection failed';
+              signals.messageType = 'error';
             }
-          },
+          } catch (error) {
+            signals.message = 'Network error: ' + error.message;
+            signals.messageType = 'error';
+          } finally {
+            signals.testing = false;
+          }
+        };
 
-          checkPasswordStrength() {
-            const password = this.form.admin_password;
-            let strength = 0;
+        const waitForServerAndRedirect = async () => {
+          const signals = getSignals();
+          if (!signals) return;
+          const maxAttempts = 30;
+          const delay = 1000;
 
-            if (password.length >= 8) strength++;
-            if (password.length >= 12) strength++;
-            if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength++;
-            if (/[0-9]/.test(password)) strength++;
-            if (/[^A-Za-z0-9]/.test(password)) strength++;
-
-            this.passwordStrength = strength;
-
-            if (strength <= 2) {
-              this.passwordStrengthClass = 'strength-weak';
-            } else if (strength <= 3) {
-              this.passwordStrengthClass = 'strength-medium';
-            } else {
-              this.passwordStrengthClass = 'strength-strong';
-            }
-          },
-
-          async testDatabase() {
-            this.testing = true;
-            this.message = '';
+          for (let i = 0; i < maxAttempts; i++) {
+            signals.message = `Server restarting... (${i + 1}/${maxAttempts})`;
+            await new Promise(resolve => setTimeout(resolve, delay));
 
             try {
-              const response = await fetch('/setup/test-db', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(this.form)
-              });
-
-              const data = await response.json();
-
-              if (data.success) {
-                this.message = 'Database connection successful!';
-                this.messageType = 'success';
-              } else {
-                this.message = data.error || 'Database connection failed';
-                this.messageType = 'error';
+              const response = await fetch('/health', { method: 'GET' });
+              if (response.ok) {
+                signals.message = 'Server ready! Redirecting to dashboard...';
+                await new Promise(resolve => setTimeout(resolve, 500));
+                window.location.href = '/dashboard';
+                return;
               }
-            } catch (error) {
-              this.message = 'Network error: ' + error.message;
-              this.messageType = 'error';
-            } finally {
-              this.testing = false;
-            }
-          },
-
-          async waitForServerAndRedirect() {
-            // Wait for server to restart (poll /health endpoint)
-            const maxAttempts = 30;
-            const delay = 1000; // 1 second between attempts
-
-            for (let i = 0; i < maxAttempts; i++) {
-              this.message = `Server restarting... (${i + 1}/${maxAttempts})`;
-
-              // Wait before checking
-              await new Promise(resolve => setTimeout(resolve, delay));
-
-              try {
-                const response = await fetch('/health', { method: 'GET' });
-                if (response.ok) {
-                  this.message = 'Server ready! Redirecting to dashboard...';
-                  await new Promise(resolve => setTimeout(resolve, 500));
-                  window.location.href = '/dashboard';
-                  return;
-                }
-              } catch (e) {
-                // Server not ready yet, continue polling
-              }
-            }
-
-            // Timeout - tell user to manually refresh
-            this.message = 'Server restart taking longer than expected. Please refresh the page.';
-            this.messageType = 'info';
-          },
-
-          async submitSetup() {
-            // Validate passwords match
-            if (this.form.admin_password !== this.form.admin_password_confirm) {
-              this.message = 'Passwords do not match';
-              this.messageType = 'error';
-              return;
-            }
-
-            // Validate username format
-            if (!/^[a-zA-Z0-9_]+$/.test(this.form.admin_username)) {
-              this.message = 'Username can only contain letters, numbers, and underscores';
-              this.messageType = 'error';
-              return;
-            }
-
-            this.submitting = true;
-            this.message = '';
-
-            try {
-              const response = await fetch('/setup', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(this.form)
-              });
-
-              const data = await response.json();
-
-              if (data.success) {
-                this.message = 'Setup completed! Server is restarting...';
-                this.messageType = 'success';
-
-                // Wait for server to restart and redirect to dashboard
-                await this.waitForServerAndRedirect();
-              } else {
-                this.message = data.error || 'Setup failed';
-                this.messageType = 'error';
-              }
-            } catch (error) {
-              this.message = 'Network error: ' + error.message;
-              this.messageType = 'error';
-            } finally {
-              this.submitting = false;
+            } catch (e) {
+              // Server not ready yet, continue polling
             }
           }
-        }
-      }
+
+          signals.message = 'Server restart taking longer than expected. Please refresh the page.';
+          signals.messageType = 'info';
+        };
+
+        const submitSetup = async () => {
+          const signals = getSignals();
+          if (!signals) return;
+
+          if (signals.form.admin_password !== signals.form.admin_password_confirm) {
+            signals.message = 'Passwords do not match';
+            signals.messageType = 'error';
+            return;
+          }
+
+          if (!/^[a-zA-Z0-9_]+$/.test(signals.form.admin_username)) {
+            signals.message = 'Username can only contain letters, numbers, and underscores';
+            signals.messageType = 'error';
+            return;
+          }
+
+          signals.submitting = true;
+          signals.message = '';
+
+          try {
+            const response = await fetch('/setup', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(signals.form)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              signals.message = 'Setup completed! Server is restarting...';
+              signals.messageType = 'success';
+              await waitForServerAndRedirect();
+            } else {
+              signals.message = data.error || 'Setup failed';
+              signals.messageType = 'error';
+            }
+          } catch (error) {
+            signals.message = 'Network error: ' + error.message;
+            signals.messageType = 'error';
+          } finally {
+            signals.submitting = false;
+          }
+        };
+
+        return {
+          updatePasswordStrength,
+          testDatabase,
+          submitSetup,
+        };
+      })();
     </script>
   </body>
 </html>
