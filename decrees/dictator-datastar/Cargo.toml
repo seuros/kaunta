@@ -1,0 +1,15 @@
+[package]
+name = "dictator-datastar"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+dictator-decree-abi = "0.13.0"
+wit-bindgen = "0.41.0"
+
+[profile.release]
+opt-level = "z"
+lto = true

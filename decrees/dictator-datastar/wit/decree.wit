@@ -1,0 +1,44 @@
+package dictator:decree@0.1.0;
+
+interface lints {
+  record span { start: u32, end: u32 }
+  enum severity { error, warning, info }
+  record diagnostic {
+    rule: string,
+    message: string,
+    severity: severity,
+    span: span,
+  }
+
+  enum capability {
+    lint,
+    auto-fix,
+    streaming,
+    runtime-config,
+    rich-diagnostics,
+  }
+
+  record decree-metadata {
+    abi-version: string,
+    decree-version: string,
+    description: string,
+    dectauthors: option<string>,
+    supported-extensions: list<string>,
+    supported-filenames: list<string>,
+    skip-filenames: list<string>,
+    capabilities: list<capability>,
+  }
+
+  /// Lint a single file; path is UTF-8.
+  lint: func(path: string, source: string) -> list<diagnostic>;
+
+  /// Plugin name.
+  name: func() -> string;
+
+  /// Plugin metadata (versioning, capabilities, etc.)
+  metadata: func() -> decree-metadata;
+}
+
+world decree {
+  export lints;
+}
