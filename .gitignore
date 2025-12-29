@@ -57,3 +57,10 @@ log/
 /.local/
 .playwright-mcp/
 .dictator/
+
+# Decree build artifacts
+decrees/**/target/
+decrees/**/dist/
+decrees/**/wasi_snapshot_preview1.reactor.wasm
+!decrees/dictator-datastar/dist/
+!decrees/dictator-datastar/dist/dictator-datastar.component.wasm

@@ -96,3 +96,7 @@ command = "gofmt"
 # [decree.kjr]
 # enabled = true
 # path = "path/to/dictator_kjr.wasm"
+
+[decree.datastar]
+enabled = true
+path = "decrees/dictator-datastar/dist/dictator-datastar.component.wasm"
