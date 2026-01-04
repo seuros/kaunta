@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.51.0](https://github.com/seuros/kaunta/compare/v0.50.0...v0.51.0) (2026-01-04)
+
+
+### Features
+
+* dictator datastar decree ([#127](https://github.com/seuros/kaunta/issues/127)) ([fe63971](https://github.com/seuros/kaunta/commit/fe639712678b92cc8ae904e0d494e3e4fe3ef013))
+
+
+### Bug Fixes
+
+* add datastar.js vendor file (was globally gitignored) ([54e4d96](https://github.com/seuros/kaunta/commit/54e4d96c316ec3ab754c84a55bb30dc3126b227d))
+
 ## [0.50.0](https://github.com/seuros/kaunta/compare/v0.38.0...v0.50.0) (2025-12-28)
 
 
