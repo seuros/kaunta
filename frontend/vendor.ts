@@ -1,5 +1,5 @@
 // Datastar for SSE-driven reactivity (auto-initializes via data-* attributes)
-import '../cmd/kaunta/assets/vendor/datastar.js';
+import './vendor/datastar.js';
 
 import Chart from 'chart.js/auto';
 import L from 'leaflet';

@@ -3,4 +3,4 @@
 
 package database
 
-const LatestMigrationVersion uint = 22
+const LatestMigrationVersion uint = 25

@@ -2,6 +2,13 @@
 name = "dictator-datastar"
 version = "0.1.0"
 edition = "2024"
+description = "Datastar HTML attribute linter decree for Dictator"
+license = "MIT"
+repository = "https://github.com/seuros/kaunta"
+authors = ["Abdelkader Boudih <terminale@gmail.com>"]
+keywords = ["datastar", "linter", "html", "wasm", "dictator"]
+categories = ["development-tools", "wasm"]
+readme = "README.md"
 
 [lib]
 crate-type = ["cdylib"]
