@@ -1248,6 +1248,19 @@ func runSetupServer() error {
 		return c.Send(data)
 	})
 
+	// Vendor assets (for Datastar, Chart.js, Leaflet, etc.)
+	app.Get("/assets/vendor/vendor.js", func(c fiber.Ctx) error {
+		c.Set("Content-Type", "application/javascript; charset=utf-8")
+		c.Set("Cache-Control", "public, max-age=31536000, immutable")
+		return c.Send(VendorJS)
+	})
+
+	app.Get("/assets/vendor/vendor.css", func(c fiber.Ctx) error {
+		c.Set("Content-Type", "text/css; charset=utf-8")
+		c.Set("Cache-Control", "public, max-age=31536000, immutable")
+		return c.Send(VendorCSS)
+	})
+
 	// Get port from config or environment
 	port := os.Getenv("PORT")
 	if port == "" {

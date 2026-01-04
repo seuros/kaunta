@@ -23,8 +23,8 @@
   <select
     class="btn btn-sm"
     data-bind:selectedWebsite
-    data-on:change="localStorage.setItem('kaunta_website', $selectedWebsite); @get('/api/dashboard/campaigns?website=' + $selectedWebsite)"
     data-show="$websites.length > 1"
+    data-on:change="localStorage.setItem('kaunta_website', $selectedWebsite); @get('/api/dashboard/campaigns?website=' + $selectedWebsite)"
   >
     <template data-for="site in $websites">
       <option data-attr:value="site.id" data-text="site.name || site.domain"></option>

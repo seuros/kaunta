@@ -191,6 +191,8 @@ func HandleLogoutSSE(c fiber.Ctx) error {
 		}
 
 		// Clear localStorage and redirect to login
-		_ = sse.ExecuteScript("localStorage.removeItem('kaunta_website'); localStorage.removeItem('kaunta_dateRange'); window.location.href = '/login'")
+		_ = sse.ExecuteScript("localStorage.removeItem('kaunta_website')")
+		_ = sse.ExecuteScript("localStorage.removeItem('kaunta_dateRange')")
+		_ = sse.ExecuteScript("window.location.href = '/login'")
 	})
 }
