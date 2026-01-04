@@ -57,9 +57,9 @@ dependencies = [
 
 [[package]]
 name = "dictator-decree-abi"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be1603bf9f3a15ce190dfe7ba533dbc3d38e30deb85dbfc7dbca64ca65c662f5"
+checksum = "1e85b00e2a5d4c49fff05d94f8e0d16c9f2f910f06bd257f3396d061f6068e85"
 dependencies = [
  "serde",
 ]

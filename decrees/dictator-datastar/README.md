@@ -69,12 +69,12 @@ The correct order depends on your specific use case and signal dependencies.
 
 ## Building
 
-Requires Rust with `wasm32-wasip1` target:
+Requires Rust with `wasm32-wasip2` target:
 
 ```bash
-rustup target add wasm32-wasip1
-cargo build --release --target wasm32-wasip1
-cp target/wasm32-wasip1/release/dictator_datastar.wasm dist/dictator-datastar.component.wasm
+rustup target add wasm32-wasip2
+cargo build --release --target wasm32-wasip2
+cp target/wasm32-wasip2/release/dictator_datastar.wasm dist/dictator-datastar.component.wasm
 ```
 
 ## Testing

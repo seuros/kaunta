@@ -14,7 +14,7 @@ readme = "README.md"
 crate-type = ["cdylib"]
 
 [dependencies]
-dictator-decree-abi = "0.13.0"
+dictator-decree-abi = "0.14.0"
 wit-bindgen = "0.41.0"
 
 [profile.release]
