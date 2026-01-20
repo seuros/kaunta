@@ -165,15 +165,28 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Upload to release
+      - name: Package and upload tar.gz assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: v${{ needs.release-please.outputs.version }}
         run: |
+          set -euo pipefail
           shopt -s nullglob
-          for file in dist/*; do
-            gh release upload "$VERSION" "$file" --clobber
+          cd dist
+
+          # Create tar.gz archives from raw platform binaries named kaunta-{os}-{arch}
+          for bin in kaunta-*; do
+            [ -f "$bin" ] || continue
+            os="${bin#kaunta-}"
+            os="${os%%-*}"
+            arch="${bin##*-}"
+            archive="kaunta_${os}_${arch}.tar.gz"
+            tar -czf "$archive" "$bin"
+            echo "Created $archive"
           done
+
+          echo "Uploading archives to release $VERSION"
+          gh release upload "$VERSION" kaunta_*.tar.gz --clobber
 
   build-and-push-image:
     runs-on: ubuntu-latest
