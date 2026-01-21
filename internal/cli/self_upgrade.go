@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/rhysd/go-github-selfupdate/selfupdate"
+	"github.com/seuros/kaunta/internal/selfupdate"
 	"github.com/spf13/cobra"
 )
 
@@ -83,15 +83,11 @@ func runSelfUpgrade(checkOnly, autoYes bool) error {
 	fmt.Printf("Checking current version... v%s\n", current)
 
 	fmt.Print("Checking latest released version... ")
-	latest, found, err := selfupdate.DetectLatest("seuros/kaunta")
+	client := selfupdate.NewClient("seuros", "kaunta")
+	latest, err := client.DetectLatest()
 	if err != nil {
 		fmt.Println()
 		return fmt.Errorf("failed to check for updates: %w", err)
-	}
-
-	if !found {
-		fmt.Println()
-		return errors.New("no releases found for Kaunta")
 	}
 
 	latestVer := latest.Version
@@ -116,8 +112,13 @@ func runSelfUpgrade(checkOnly, autoYes bool) error {
 	fmt.Println("Kaunta release status:")
 	fmt.Printf("  * Current exe: %q\n", exe)
 	fmt.Printf("  * Target OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-	if latest.AssetURL != "" {
-		fmt.Printf("  * Download URL: %s\n", latest.AssetURL)
+	// Find the appropriate asset for this platform
+	asset, err := latest.FindAsset()
+	if err != nil {
+		return fmt.Errorf("failed to find download: %w", err)
+	}
+	if asset.BrowserDownloadURL != "" {
+		fmt.Printf("  * Download URL: %s\n", asset.BrowserDownloadURL)
 	}
 	fmt.Println()
 
@@ -139,7 +140,7 @@ func runSelfUpgrade(checkOnly, autoYes bool) error {
 	}
 
 	fmt.Println("Downloading release...")
-	if err := selfupdate.UpdateTo(latest.AssetURL, exe); err != nil {
+	if err := selfupdate.UpdateTo(asset.BrowserDownloadURL, exe); err != nil {
 		return fmt.Errorf("self-upgrade failed: %w", err)
 	}
 
