@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.0](https://github.com/seuros/kaunta/compare/v0.51.0...v0.52.0) (2026-01-21)
+
+
+### Features
+
+* replace go-github-selfupdate with contriboss/go-update ([#129](https://github.com/seuros/kaunta/issues/129)) ([ec8cf39](https://github.com/seuros/kaunta/commit/ec8cf398925119891a592045f549fd025e0d59a9))
+
 ## [0.51.0](https://github.com/seuros/kaunta/compare/v0.50.0...v0.51.0) (2026-01-04)
 
 
