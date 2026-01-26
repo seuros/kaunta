@@ -55,7 +55,7 @@ build: ## Build the kaunta binary
 
 run: build ## Run the application
 	@echo "$(BLUE)Starting Kaunta...$(NC)"
-	@DATABASE_URL="postgres://postgres:postgres@localhost:5432/test_db?sslmode=disable" PORT=3000 ./kaunta
+	@DATABASE_URL="postgres://postgres:postgres@localhost:5432/kaunta_test?sslmode=disable" PORT=3000 ./kaunta
 
 dev: ## Development mode with hot reload (requires air)
 	air
@@ -107,11 +107,11 @@ docker-logs: ## Show PostgreSQL container logs
 
 migrate-up: docker-up ## Run database migrations up
 	@echo "$(BLUE)Running migrations up...$(NC)"
-	@migrate -path ./internal/database/migrations -database "postgres://postgres:postgres@localhost:5432/test_db?sslmode=disable" up
+	@migrate -path ./internal/database/migrations -database "postgres://postgres:postgres@localhost:5432/kaunta_test?sslmode=disable" up
 	@echo "$(GREEN)Migrations complete$(NC)"
 
 migrate-down: ## Run database migrations down
-	@migrate -path ./internal/database/migrations -database "postgres://postgres:postgres@localhost:5432/test_db?sslmode=disable" down
+	@migrate -path ./internal/database/migrations -database "postgres://postgres:postgres@localhost:5432/kaunta_test?sslmode=disable" down
 	@echo "$(GREEN)Migrations reversed$(NC)"
 
 # ============================================================================

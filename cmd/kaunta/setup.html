@@ -17,7 +17,6 @@
         justify-content: center;
         padding: var(--space-lg);
       }
-
       .setup-container {
         background: var(--glass-bg);
         backdrop-filter: blur(10px);
@@ -28,21 +27,17 @@
         max-width: 800px;
         padding: var(--space-2xl);
       }
-
       .logo {
         text-align: center;
         margin-bottom: var(--space-2xl);
       }
-
       .logo h1 {
         font-size: var(--font-3xl);
         margin-bottom: var(--space-sm);
       }
-
       .form-section {
         margin-bottom: var(--space-2xl);
       }
-
       .section-title {
         font-size: var(--font-xl);
         font-weight: 600;
@@ -54,24 +49,20 @@
         align-items: center;
         gap: var(--space-sm);
       }
-
       .form-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: var(--space-lg);
         align-items: start;
       }
-
       .form-row .form-group input,
       .form-row .form-group select {
         width: 100%;
       }
-
       .form-group input,
       .form-group select {
         width: 100%;
       }
-
       .form-actions {
         display: flex;
         gap: var(--space-md);
@@ -81,12 +72,10 @@
         justify-content: space-between;
         align-items: center;
       }
-
       .setup-container input.error {
         border-color: var(--error-color);
         box-shadow: 0 0 0 3px rgb(239 68 68 / 15%);
       }
-
       .password-strength {
         height: 4px;
         background: var(--glass-bg);
@@ -95,52 +84,44 @@
         overflow: hidden;
         border: 1px solid var(--border-color);
       }
-
       .password-strength-bar {
         height: 100%;
-        transition: width var(--transition-slow), background-color var(--transition-slow);
+        transition:
+          width var(--transition-slow),
+          background-color var(--transition-slow);
       }
-
       .strength-weak {
         width: 33%;
         background: var(--error-color);
       }
-
       .strength-medium {
         width: 66%;
         background: #f59e0b;
       }
-
       .strength-strong {
         width: 100%;
         background: var(--success-color);
       }
-
       /* Responsive adjustments */
       @media (max-width: 768px) {
         body {
           padding: var(--space-md);
         }
-
         .setup-container {
           padding: var(--space-lg);
         }
-
         .form-row {
           grid-template-columns: 1fr;
         }
-
         .form-actions {
           flex-direction: column;
           align-items: stretch;
         }
-
         .form-actions > div {
           order: 2;
           text-align: center;
           margin-top: var(--space-sm);
         }
-
         .form-actions .btn {
           order: 1;
         }
@@ -171,14 +152,15 @@
         testing: false,
         submitting: false,
         passwordStrength: 0,
-        passwordStrengthClass: ''
+        passwordStrengthClass: '',
+        redirect: '',
+        redirecting: false
       }"
     >
       <div class="logo">
         <h1>Kaunta</h1>
         <p class="subtitle">Initial Setup</p>
       </div>
-
       <!-- Status Messages -->
       <div data-show="$message">
         <div class="error-message" data-show="$messageType === 'error'" data-text="$message"></div>
@@ -186,24 +168,54 @@
           class="alert alert-success"
           data-show="$messageType === 'success'"
           data-text="$message"
-          style="background: rgb(16 185 129 / 10%); color: var(--success-color); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); border: 1px solid rgb(16 185 129 / 20%);"
+          style="
+            background: rgb(16 185 129 / 10%);
+            color: var(--success-color);
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-md);
+            border: 1px solid rgb(16 185 129 / 20%);
+          "
         ></div>
         <div
           class="alert alert-info"
           data-show="$messageType === 'info'"
           data-text="$message"
-          style="background: rgb(59 130 246 / 10%); color: var(--accent-color); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); border: 1px solid rgb(59 130 246 / 20%);"
+          style="
+            background: rgb(59 130 246 / 10%);
+            color: var(--accent-color);
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-md);
+            border: 1px solid rgb(59 130 246 / 20%);
+          "
         ></div>
       </div>
-
-      <form data-on:submit__prevent="kauntaSetup.submitSetup()">
+      <form
+        data-on:submit__prevent="
+          if ($form.admin_password !== $form.admin_password_confirm) {
+            $message = 'Passwords do not match';
+            $messageType = 'error';
+            return;
+          }
+          if ($form.admin_username && !/^[a-zA-Z0-9_]+$/.test($form.admin_username)) {
+            $message = 'Username can only contain letters, numbers, and underscores';
+            $messageType = 'error';
+            return;
+          }
+          $submitting = true;
+          $message = '';
+          $messageType = 'info';
+          @post('/setup', { body: $form })
+        "
+      >
         <!-- Database Configuration -->
         <div class="form-section">
           <h2 class="section-title">Database Configuration</h2>
-          <p class="help-text" style="margin-bottom: var(--space-lg);">
-            Kaunta requires <strong>PostgreSQL 18+</strong> (uses UUIDv7, virtual columns, async I/O, and advanced analytics functions)
+          <p class="help-text" style="margin-bottom: var(--space-lg)">
+            Kaunta requires <strong>PostgreSQL 18+</strong> (uses UUIDv7, virtual columns, async
+            I/O, and advanced analytics functions)
           </p>
-
           <div class="form-row">
             <div class="form-group">
               <label for="db_host">Host *</label>
@@ -228,7 +240,6 @@
               />
             </div>
           </div>
-
           <div class="form-group">
             <label for="db_name">Database Name *</label>
             <input
@@ -240,7 +251,6 @@
               required
             />
           </div>
-
           <div class="form-row">
             <div class="form-group">
               <label for="db_user">Username *</label>
@@ -265,7 +275,6 @@
               <small>Leave empty if not required</small>
             </div>
           </div>
-
           <div class="form-group">
             <label for="db_ssl_mode">SSL Mode</label>
             <select
@@ -280,22 +289,31 @@
               <option value="verify-full">Verify Full</option>
             </select>
           </div>
-
           <button
             type="button"
-            data-on:click="kauntaSetup.testDatabase()"
             class="btn btn-secondary"
+            data-on:click="
+              $testing = true;
+              $message = '';
+              $messageType = 'info';
+              @post('/setup/test-db', { body: {
+                db_host: $form.db_host,
+                db_port: $form.db_port,
+                db_name: $form.db_name,
+                db_user: $form.db_user,
+                db_password: $form.db_password,
+                db_ssl_mode: $form.db_ssl_mode
+              }})
+            "
             data-attr:disabled="$testing"
           >
             <span data-show="!$testing">Test Database Connection</span>
             <span data-show="$testing" class="spinner"></span>
           </button>
         </div>
-
         <!-- Server Configuration -->
         <div class="form-section">
           <h2 class="section-title">Server Configuration</h2>
-
           <div class="form-row">
             <div class="form-group">
               <label for="server_port">Server Port</label>
@@ -321,11 +339,9 @@
             </div>
           </div>
         </div>
-
         <!-- Admin User -->
         <div class="form-section">
           <h2 class="section-title">Administrator Account</h2>
-
           <div class="form-group">
             <label for="admin_username">Username *</label>
             <input
@@ -342,7 +358,6 @@
             />
             <small>3-30 characters, letters, numbers, and underscores only</small>
           </div>
-
           <div class="form-group">
             <label for="admin_name">Full Name</label>
             <input
@@ -354,7 +369,6 @@
               placeholder="Optional"
             />
           </div>
-
           <div class="form-group">
             <label for="admin_password">Password *</label>
             <input
@@ -363,7 +377,23 @@
               name="admin_password"
               class="input focus-ring"
               data-bind:form.admin_password
-              data-on:input="kauntaSetup.updatePasswordStrength(evt)"
+              data-on:input="
+                let pwd = $form.admin_password;
+                let len = pwd.length;
+                let hasCase = /[A-Z]/.test(pwd) && /[a-z]/.test(pwd);
+                let hasNum = /[0-9]/.test(pwd);
+                let hasSpecial = /[^A-Za-z0-9]/.test(pwd);
+                $passwordStrength =
+                  (len >= 8 ? 1 : 0) +
+                  (len >= 12 ? 1 : 0) +
+                  (hasCase ? 1 : 0) +
+                  (hasNum ? 1 : 0) +
+                  (hasSpecial ? 1 : 0);
+                $passwordStrengthClass =
+                  $passwordStrength <= 2 ? 'strength-weak' :
+                  $passwordStrength <= 3 ? 'strength-medium' :
+                  'strength-strong';
+              "
               required
               minlength="8"
             />
@@ -377,7 +407,6 @@
             </div>
             <small>Minimum 8 characters</small>
           </div>
-
           <div class="form-group">
             <label for="admin_password_confirm">Confirm Password *</label>
             <input
@@ -391,11 +420,10 @@
             />
           </div>
         </div>
-
         <!-- Form Actions -->
         <div class="form-actions">
           <div>
-            <small style="color: var(--text-tertiary);">* Required fields</small>
+            <small style="color: var(--text-tertiary)">* Required fields</small>
           </div>
           <button type="submit" class="btn btn-primary" data-attr:disabled="$submitting">
             <span data-show="!$submitting">Complete Setup</span>
@@ -403,148 +431,30 @@
           </button>
         </div>
       </form>
-    </div>
-
-    <script type="module" src="/assets/vendor/vendor.js"></script>
-    <script>
-      window.kauntaSetup = (() => {
-        const container = document.getElementById('setup-container');
-        const getSignals = () => container?._dsSignals;
-
-        const updatePasswordStrength = (evt) => {
-          const signals = getSignals();
-          if (!signals) return;
-          const password = evt?.target?.value ?? signals.form?.admin_password ?? '';
-          let strength = 0;
-
-          if (password.length >= 8) strength++;
-          if (password.length >= 12) strength++;
-          if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength++;
-          if (/[0-9]/.test(password)) strength++;
-          if (/[^A-Za-z0-9]/.test(password)) strength++;
-
-          signals.passwordStrength = strength;
-
-          if (strength <= 2) {
-            signals.passwordStrengthClass = 'strength-weak';
-          } else if (strength <= 3) {
-            signals.passwordStrengthClass = 'strength-medium';
-          } else {
-            signals.passwordStrengthClass = 'strength-strong';
-          }
-        };
-
-        const testDatabase = async () => {
-          const signals = getSignals();
-          if (!signals) return;
-          signals.testing = true;
-          signals.message = '';
-
-          try {
-            const response = await fetch('/setup/test-db', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(signals.form)
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-              signals.message = 'Database connection successful!';
-              signals.messageType = 'success';
-            } else {
-              signals.message = data.error || 'Database connection failed';
-              signals.messageType = 'error';
-            }
-          } catch (error) {
-            signals.message = 'Network error: ' + error.message;
-            signals.messageType = 'error';
-          } finally {
-            signals.testing = false;
-          }
-        };
-
-        const waitForServerAndRedirect = async () => {
-          const signals = getSignals();
-          if (!signals) return;
-          const maxAttempts = 30;
-          const delay = 1000;
-
-          for (let i = 0; i < maxAttempts; i++) {
-            signals.message = `Server restarting... (${i + 1}/${maxAttempts})`;
-            await new Promise(resolve => setTimeout(resolve, delay));
-
-            try {
-              const response = await fetch('/health', { method: 'GET' });
-              if (response.ok) {
-                signals.message = 'Server ready! Redirecting to dashboard...';
-                await new Promise(resolve => setTimeout(resolve, 500));
-                window.location.href = '/dashboard';
-                return;
+      <div
+        aria-hidden="true"
+        style="display: none"
+        data-effect="
+          if ($redirect && !$redirecting) {
+            $redirecting = true;
+            const target = $redirect || '/dashboard';
+            const poll = async () => {
+              try {
+                const res = await fetch('/up', { cache: 'no-store' });
+                if (res.ok) {
+                  window.location.href = target;
+                  return;
+                }
+              } catch (err) {
+                console.warn('Waiting for main server to come back online', err);
               }
-            } catch (e) {
-              // Server not ready yet, continue polling
-            }
+              setTimeout(poll, 1500);
+            };
+            poll();
           }
-
-          signals.message = 'Server restart taking longer than expected. Please refresh the page.';
-          signals.messageType = 'info';
-        };
-
-        const submitSetup = async () => {
-          const signals = getSignals();
-          if (!signals) return;
-
-          if (signals.form.admin_password !== signals.form.admin_password_confirm) {
-            signals.message = 'Passwords do not match';
-            signals.messageType = 'error';
-            return;
-          }
-
-          if (!/^[a-zA-Z0-9_]+$/.test(signals.form.admin_username)) {
-            signals.message = 'Username can only contain letters, numbers, and underscores';
-            signals.messageType = 'error';
-            return;
-          }
-
-          signals.submitting = true;
-          signals.message = '';
-
-          try {
-            const response = await fetch('/setup', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(signals.form)
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-              signals.message = 'Setup completed! Server is restarting...';
-              signals.messageType = 'success';
-              await waitForServerAndRedirect();
-            } else {
-              signals.message = data.error || 'Setup failed';
-              signals.messageType = 'error';
-            }
-          } catch (error) {
-            signals.message = 'Network error: ' + error.message;
-            signals.messageType = 'error';
-          } finally {
-            signals.submitting = false;
-          }
-        };
-
-        return {
-          updatePasswordStrength,
-          testDatabase,
-          submitSetup,
-        };
-      })();
-    </script>
+        "
+      ></div>
+    </div>
+    <script type="module" src="/assets/vendor/vendor.js"></script>
   </body>
 </html>
