@@ -232,7 +232,13 @@ func TestTestDatabase(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			body, _ := json.Marshal(tt.form)
+			// The handler expects the form to be nested
+			requestBody := struct {
+				Form SetupForm `json:"form"`
+			}{
+				Form: tt.form,
+			}
+			body, _ := json.Marshal(requestBody)
 			req := httptest.NewRequest("POST", "/test", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
 
@@ -244,7 +250,7 @@ func TestTestDatabase(t *testing.T) {
 			_ = json.NewDecoder(resp.Body).Decode(&result)
 
 			if tt.checkError {
-				assert.Contains(t, result, "error")
+				assert.Contains(t, result, "message") // Handler returns "message"
 			}
 		})
 	}

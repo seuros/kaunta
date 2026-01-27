@@ -43,6 +43,11 @@ type SetupForm struct {
 	AdminPasswordConfirm string `form:"admin_password_confirm" json:"admin_password_confirm"`
 }
 
+// DatastarRequest represent the request format from setup page
+type DatastarRequest struct {
+	Form SetupForm `json:"form"`
+}
+
 // ShowSetup displays the setup page
 func ShowSetup(setupTemplate []byte) fiber.Handler {
 	return func(c fiber.Ctx) error {
@@ -103,18 +108,24 @@ func ShowSetup(setupTemplate []byte) fiber.Handler {
 // onComplete is called after successful setup to signal server restart
 func SubmitSetup(onComplete func()) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		// Parse form
-		var form SetupForm
-		if err := c.Bind().Body(&form); err != nil {
+		var reqBody DatastarRequest
+		if err := c.Bind().Body(&reqBody); err != nil {
+			logging.L().Error("Bind failed for setup", zap.Error(err))
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Invalid form data",
+				"submitting":  false,
+				"message":     "Invalid request: " + err.Error(),
+				"messageType": "error",
 			})
 		}
+		form := reqBody.Form
+		logging.L().Info("Parsed form for setup")
 
 		// Validate form fields
 		if err := validateSetupForm(&form); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": err.Error(),
+				"submitting":  false,
+				"message":     err.Error(),
+				"messageType": "error",
 			})
 		}
 
@@ -142,7 +153,7 @@ func SubmitSetup(onComplete func()) fiber.Handler {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": "Setup already completed. Users already exist in the database.",
 			})
-		}
+			}
 
 		// Run migrations
 		logging.L().Info("running database migrations during setup")
@@ -239,72 +250,91 @@ func SubmitSetup(onComplete func()) fiber.Handler {
 			}
 		}
 
-		// Signal setup completion (triggers server restart)
-		if onComplete != nil {
-			onComplete()
-		}
-
-		// Return success response
-		return c.JSON(fiber.Map{
-			"success": true,
-			"message": "Setup completed successfully. Server is restarting...",
+		response := fiber.Map{
+			"success":    true,
+			"submitting": false,
+			"message":    "Setup completed successfully. Server is restarting...",
 			"user": fiber.Map{
 				"id":       user.UserID.String(),
 				"username": user.Username,
 			},
-		})
+			"redirect": "/dashboard",
+		}
+
+		if err := c.JSON(response); err != nil {
+			return err
+		}
+
+		// Signal setup completion (triggers server restart) after response is flushed
+		if onComplete != nil {
+			onComplete()
+		}
+
+		return nil
 	}
 }
 
 // TestDatabase tests the database connection with provided credentials
 func TestDatabase() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		// Parse form
-		var form SetupForm
-		if err := c.Bind().Body(&form); err != nil {
+		raw := string(c.Body())
+		logging.L().Info("Raw body for test-db", zap.String("raw", raw))
+
+		var reqBody DatastarRequest
+		if err := c.Bind().Body(&reqBody); err != nil {
+			logging.L().Error("Bind failed for test-db", zap.Error(err))
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Invalid form data",
+				"testing":     false,
+				"submitting":  false,
+				"message":     "Invalid request: " + err.Error(),
+				"messageType": "error",
 			})
 		}
 
-		// Validate database fields
+		form := reqBody.Form
+		logging.L().Info("Parsed form for test-db", zap.Any("form", form))
+
 		if form.DBHost == "" || form.DBPort == "" || form.DBName == "" || form.DBUser == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Missing required database fields",
+				"testing":     false,
+				"submitting":  false,
+				"message":     "Missing required database fields",
+				"messageType": "error",
 			})
 		}
 
-		// Build database URL
 		dbURL := buildDatabaseURL(&form)
-
-		// Test connection
 		db, err := sql.Open("postgres", dbURL)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"success": false,
-				"error":   fmt.Sprintf("Invalid configuration: %v", err),
+				"testing":     false,
+				"submitting":  false,
+				"message":     fmt.Sprintf("Invalid config: %v", err),
+				"messageType": "error",
 			})
 		}
 		defer func() { _ = db.Close() }()
 
 		if err := db.Ping(); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"success": false,
-				"error":   fmt.Sprintf("Connection failed: %v", err),
+				"testing":     false,
+				"submitting":  false,
+				"message":     fmt.Sprintf("Connection failed: %v", err),
+				"messageType": "error",
 			})
 		}
 
-		// Check PostgreSQL version
 		var version string
-		err = db.QueryRow("SELECT version()").Scan(&version)
-		if err != nil {
+		if err := db.QueryRow("SELECT version()").Scan(&version); err != nil {
 			version = "Unknown"
 		}
 
 		return c.JSON(fiber.Map{
-			"success": true,
-			"message": "Database connection successful",
-			"version": version,
+			"testing":     false,
+			"submitting":  false,
+			"message":     "Database connection successful! Version: " + version,
+			"messageType": "success",
+			"version":     version,
 		})
 	}
 }

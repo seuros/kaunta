@@ -42,7 +42,6 @@ func LoadWithOverrides(databaseURL, port, dataDir string) (*Config, error) {
 func newBaseViper() *viper.Viper {
 	v := viper.New()
 	v.SetConfigName("kaunta")
-	v.SetConfigType("toml")
 	v.AddConfigPath(".")
 
 	// Use XDG Base Directory specification
