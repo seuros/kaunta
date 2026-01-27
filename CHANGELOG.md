@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.1](https://github.com/seuros/kaunta/compare/v0.52.0...v0.52.1) (2026-01-27)
+
+
+### Bug Fixes
+
+* restore setup actions after datastar upgrade ([#132](https://github.com/seuros/kaunta/issues/132)) ([4be3f64](https://github.com/seuros/kaunta/commit/4be3f64fe3e6ad4d6d24572aaf00a5883a038338))
+
 ## [0.52.0](https://github.com/seuros/kaunta/compare/v0.51.0...v0.52.0) (2026-01-21)
 
 
