@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
@@ -19,8 +21,111 @@ type WebsiteInfo struct {
 	Domain string `json:"domain"`
 }
 
+func selectedWebsiteFromRequest(c fiber.Ctx) string {
+	if value := c.Query("website"); value != "" {
+		return value
+	}
+	if value := c.Query("selectedWebsite"); value != "" {
+		return value
+	}
+	if ds := c.Query("datastar"); ds != "" {
+		var signals map[string]any
+		if err := json.Unmarshal([]byte(ds), &signals); err == nil {
+			if stored, ok := signals["selectedWebsite"].(string); ok && stored != "" {
+				return stored
+			}
+		}
+	}
+	return ""
+}
+
+func buildWebsiteSelectorHTML(websites []WebsiteInfo, selectedWebsite, context string) string {
+	if len(websites) == 0 {
+		return ""
+	}
+
+	selectClass := "btn btn-sm"
+	readonlyClass := "btn btn-sm"
+	changeHandler := `const value = (event.target && event.target.value) ? event.target.value : ''; if (value) { localStorage.setItem('kaunta_website', value); } else { localStorage.removeItem('kaunta_website'); } $selectedWebsite = value;`
+
+	switch context {
+	case "dashboard":
+		selectClass = "input focus-ring"
+		readonlyClass = "input"
+		changeHandler = `const value = (event.target && event.target.value) ? event.target.value : ''; if (value) { localStorage.setItem('kaunta_website', value); } else { localStorage.removeItem('kaunta_website'); } $selectedWebsite = value; $lastBreakdownKey = ''; $lastChartWebsite = ''; @get('/api/dashboard/stats?website=' + encodeURIComponent(value));`
+	case "campaigns":
+		changeHandler = `const value = (event.target && event.target.value) ? event.target.value : ''; if (value) { localStorage.setItem('kaunta_website', value); } else { localStorage.removeItem('kaunta_website'); } $selectedWebsite = value; @get('/api/dashboard/campaigns?website_id=' + encodeURIComponent(value));`
+	case "map":
+		// default change handler already updates localStorage and signal; map effect handles fetching
+	default:
+		// keep defaults
+	}
+
+	var builder strings.Builder
+
+	if context == "campaigns" {
+		label := findWebsiteLabel(websites, selectedWebsite)
+		if label == "" {
+			label = "Select a website in the main dashboard"
+		}
+		fmt.Fprintf(&builder, `<span class="%s" style="cursor: default; pointer-events: none">%s</span>`, escapeHTML(readonlyClass), escapeHTML(label))
+		return builder.String()
+	}
+
+	if len(websites) > 1 {
+		fmt.Fprintf(&builder, `<select class="%s" data-on:change="%s">`, escapeHTML(selectClass), escapeHTML(changeHandler))
+		for _, w := range websites {
+			label := websiteLabel(w)
+			selectedAttr := ""
+			if w.ID == selectedWebsite {
+				selectedAttr = " selected"
+			}
+			fmt.Fprintf(&builder, `<option value="%s"%s>%s</option>`, escapeHTML(w.ID), selectedAttr, escapeHTML(label))
+		}
+		builder.WriteString(`</select>`)
+	} else {
+		label := websiteLabel(websites[0])
+		fmt.Fprintf(&builder, `<span class="%s" style="cursor: default; pointer-events: none">%s</span>`, escapeHTML(readonlyClass), escapeHTML(label))
+	}
+
+	return builder.String()
+}
+
+func websiteLabel(site WebsiteInfo) string {
+	label := strings.TrimSpace(site.Name)
+	if label == "" {
+		label = site.Domain
+	}
+	if label == "" {
+		label = "Unnamed Website"
+	}
+	return label
+}
+
+func findWebsiteLabel(websites []WebsiteInfo, selected string) string {
+	if selected != "" {
+		for _, w := range websites {
+			if w.ID == selected {
+				return websiteLabel(w)
+			}
+		}
+	}
+	if len(websites) > 0 {
+		return websiteLabel(websites[0])
+	}
+	return ""
+}
+
+type GoalInfo struct {
+	ID        string `json:"id"`
+	WebsiteID string `json:"website_id"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Value     string `json:"value"`
+}
+
 // HandleDashboardInit initializes the dashboard with websites list and initial data
-// GET /api/dashboard/init-ds
+// GET /api/dashboard/init
 func HandleDashboardInit(c fiber.Ctx) error {
 	// Get user from context
 	user := middleware.GetUser(c)
@@ -40,13 +145,11 @@ func HandleDashboardInit(c fiber.Ctx) error {
 	// Query websites for this user BEFORE streaming
 	var websites []WebsiteInfo
 	var queryErr error
-
 	query := `
-		SELECT w.website_id, COALESCE(w.name, ''), w.domain
-		FROM website w
-		JOIN user_website uw ON w.website_id = uw.website_id
-		WHERE uw.user_id = $1
-		ORDER BY w.domain
+		SELECT website_id, COALESCE(name, ''), domain
+		FROM website
+		WHERE user_id = $1 -- Direct user_id column
+		ORDER BY domain
 	`
 	rows, err := database.DB.Query(query, user.UserID)
 	if err != nil {
@@ -63,7 +166,7 @@ func HandleDashboardInit(c fiber.Ctx) error {
 	}
 
 	// Determine selected website
-	selectedWebsite := c.Query("website")
+	selectedWebsite := selectedWebsiteFromRequest(c)
 	if selectedWebsite == "" && len(websites) > 0 {
 		selectedWebsite = websites[0].ID
 	}
@@ -72,7 +175,6 @@ func HandleDashboardInit(c fiber.Ctx) error {
 	var currentVisitors, todayPageviews, todayVisitors int64
 	var bounceRateNumeric float64
 	var statsErr error
-
 	if selectedWebsite != "" {
 		websiteID, parseErr := uuid.Parse(selectedWebsite)
 		if parseErr == nil {
@@ -92,17 +194,19 @@ func HandleDashboardInit(c fiber.Ctx) error {
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
-
 	return c.SendStreamWriter(func(w *bufio.Writer) {
 		sse := NewDatastarSSE(w)
-
 		if queryErr != nil {
 			_ = sse.PatchSignals(map[string]any{
 				"websitesError":   "Failed to load websites",
-				"websitesLoading": false,
 				"websites":        []WebsiteInfo{},
+				"websitesLoading": false,
 			})
 			return
+		}
+
+		if html := buildWebsiteSelectorHTML(websites, selectedWebsite, "dashboard"); html != "" {
+			_ = sse.PatchElements("#websites-container", html)
 		}
 
 		// Build stats object
@@ -111,8 +215,8 @@ func HandleDashboardInit(c fiber.Ctx) error {
 			bounceRate = fmt.Sprintf("%.1f%%", bounceRateNumeric)
 		}
 
+		// Send small reactive state via signals (flags, selected, simple stats map)
 		_ = sse.PatchSignals(map[string]any{
-			"websites":        websites,
 			"selectedWebsite": selectedWebsite,
 			"websitesLoading": false,
 			"websitesError":   false,
@@ -127,10 +231,13 @@ func HandleDashboardInit(c fiber.Ctx) error {
 }
 
 // HandleDashboardStats returns dashboard stats via Datastar SSE
-// GET /api/dashboard/stats-ds?website_id=...&country=...&browser=...&device=...&page=...
+// GET /api/dashboard/stats
 func HandleDashboardStats(c fiber.Ctx) error {
 	// Extract all context values BEFORE entering stream
 	websiteIDStr := c.Query("website_id")
+	if websiteIDStr == "" {
+		websiteIDStr = c.Query("website")
+	}
 	country := c.Query("country")
 	browser := c.Query("browser")
 	device := c.Query("device")
@@ -316,66 +423,101 @@ func HandleTimeSeries(c fiber.Ctx) error {
 
 		if parseErr != "" {
 			_ = sse.PatchSignals(map[string]any{
-				"timeseriesError":   parseErr,
-				"timeseriesLoading": false,
+				"chartLoading": false,
 			})
 			return
 		}
 
 		if queryErr != nil {
+			_ = sse.ExecuteScript("window.destroyChart && window.destroyChart();")
 			_ = sse.PatchSignals(map[string]any{
-				"timeseries":        []TimeSeriesPoint{},
-				"timeseriesLoading": false,
+				"chartLoading": false,
 			})
 			return
 		}
 
+		timestamps := make([]string, 0, len(points))
+		values := make([]int, 0, len(points))
+
+		for _, point := range points {
+			timestamps = append(timestamps, point.Timestamp)
+			values = append(values, point.Value)
+		}
+
+		labelsJSON, _ := json.Marshal(timestamps)
+		valuesJSON, _ := json.Marshal(values)
+
+		var script string
+		if len(values) == 0 {
+			script = "window.destroyChart && window.destroyChart();"
+		} else {
+			script = fmt.Sprintf(`(function(){const _kauntaLabels=%s.map(ts=>new Date(ts).toLocaleString());const _kauntaValues=%s;window.initChart&&window.initChart(_kauntaLabels,_kauntaValues);})();`,
+				string(labelsJSON),
+				string(valuesJSON),
+			)
+		}
+
+		_ = sse.ExecuteScript(script)
 		_ = sse.PatchSignals(map[string]any{
-			"timeseries":        points,
-			"timeseriesLoading": false,
+			"chartLoading": false,
 		})
 	})
 }
 
 // HandleBreakdown returns breakdown data via Datastar SSE
-// GET /api/dashboard/breakdown?website_id=...&type=pages|referrers|browsers|devices|...
-// Supports: countries|cities|regions|os|utm_source|utm_medium|utm_campaign|utm_term|utm_content
-// Also supports: website (alias for website_id), tab (alias for type)
+// GET /api/dashboard/breakdown
 func HandleBreakdown(c fiber.Ctx) error {
-	// Extract all context values BEFORE entering stream
-	// Support both website_id and website params
-	websiteIDStr := c.Query("website_id")
-	if websiteIDStr == "" {
-		websiteIDStr = c.Query("website")
-	}
-	// Support both type and tab params
-	breakdownType := c.Query("type")
-	if breakdownType == "" {
-		breakdownType = c.Query("tab", "pages")
-	}
-	country := c.Query("country")
-	browser := c.Query("browser")
-	device := c.Query("device")
-	page := c.Query("page")
+	datastarParam := c.Query("datastar")
 
-	// Parse pagination parameters
-	pagination := ParsePaginationParamsWithValidation(c, "breakdown")
+	var websiteIDStr, breakdownType string
 
-	// Parse and validate website ID before streaming
-	var parseErr string
-	var websiteID uuid.UUID
-	if websiteIDStr == "" {
-		parseErr = "Website ID is required"
-	} else {
-		var err error
-		websiteID, err = uuid.Parse(websiteIDStr)
-		if err != nil {
-			parseErr = "Invalid website ID"
+	if datastarParam != "" {
+		var signals map[string]interface{}
+		if err := json.Unmarshal([]byte(datastarParam), &signals); err == nil {
+			// Get website ID
+			if ws, ok := signals["selectedWebsite"].(string); ok && ws != "" {
+				websiteIDStr = ws
+			}
+			// Get breakdown type (activeTab)
+			if tab, ok := signals["activeTab"].(string); ok && tab != "" {
+				breakdownType = tab
+			}
 		}
 	}
 
-	// Map breakdown types to dimension names
-	// Support both underscore and hyphen variants (entry_page and entry-pages)
+	if websiteIDStr == "" {
+		websiteIDStr = c.Query("website_id")
+		if websiteIDStr == "" {
+			websiteIDStr = c.Query("website")
+		}
+	}
+
+	if breakdownType == "" {
+		breakdownType = c.Query("type")
+		if breakdownType == "" {
+			breakdownType = c.Query("tab", "pages")
+		}
+	}
+
+	if websiteIDStr == "" {
+		c.Set("Content-Type", "text/event-stream")
+		return c.SendStreamWriter(func(w *bufio.Writer) {
+			sse := NewDatastarSSE(w)
+			patchBreakdownErrorState(sse, "Website ID is required")
+		})
+	}
+
+	var websiteID uuid.UUID
+	var parseErr error
+	websiteID, parseErr = uuid.Parse(websiteIDStr)
+	if parseErr != nil {
+		c.Set("Content-Type", "text/event-stream")
+		return c.SendStreamWriter(func(w *bufio.Writer) {
+			sse := NewDatastarSSE(w)
+			patchBreakdownErrorState(sse, "Invalid website ID")
+		})
+	}
+
 	dimensionMap := map[string]string{
 		"pages":        "pages",
 		"referrers":    "referrer",
@@ -392,14 +534,25 @@ func HandleBreakdown(c fiber.Ctx) error {
 		"utm_content":  "utm_content",
 		"entry_page":   "entry_page",
 		"exit_page":    "exit_page",
-		"entry-pages":  "entry_page", // Alias with hyphen
-		"exit-pages":   "exit_page",  // Alias with hyphen
+		"entry-pages":  "entry_page",
+		"exit-pages":   "exit_page",
 	}
 
 	dimension, ok := dimensionMap[breakdownType]
 	if !ok {
-		parseErr = "Invalid breakdown type"
+		c.Set("Content-Type", "text/event-stream")
+		return c.SendStreamWriter(func(w *bufio.Writer) {
+			sse := NewDatastarSSE(w)
+			patchBreakdownErrorState(sse, "Invalid breakdown type: "+breakdownType)
+		})
 	}
+
+	pagination := ParsePaginationParamsWithValidation(c, "breakdown")
+
+	country := c.Query("country")
+	browser := c.Query("browser")
+	device := c.Query("device")
+	page := c.Query("page")
 
 	// Convert empty strings to NULL for SQL
 	var countryParam, browserParam, deviceParam, pageParam interface{}
@@ -416,118 +569,117 @@ func HandleBreakdown(c fiber.Ctx) error {
 		pageParam = page
 	}
 
-	// Query database BEFORE streaming
 	var items []BreakdownItem
 	var totalCount int64
 	var queryErr error
 
-	if parseErr == "" {
-		if breakdownType == "pages" {
-			// Use get_top_pages() for pages breakdown
-			query := `SELECT * FROM get_top_pages($1, 1, $2, $3, $4, $5, $6, $7, $8)`
-			rows, err := database.DB.Query(
-				query,
-				websiteID,
-				pagination.Per,
-				pagination.Offset,
-				countryParam,
-				browserParam,
-				deviceParam,
-				pagination.SortBy,
-				string(pagination.SortOrder),
-			)
-			if err != nil {
-				queryErr = err
-			} else {
-				defer func() { _ = rows.Close() }()
-				items = make([]BreakdownItem, 0)
-				for rows.Next() {
-					var path string
-					var views int64
-					var uniqueVisitors int64
-					var avgEngagement *float64
-					var rowTotal int64
-					if err := rows.Scan(&path, &views, &uniqueVisitors, &avgEngagement, &rowTotal); err != nil {
-						continue
-					}
-					totalCount = rowTotal
-					items = append(items, BreakdownItem{
-						Name:  path,
-						Count: int(views),
-					})
-				}
-			}
-		} else if breakdownType == "countries" {
-			// Special handling for countries to include ISO code and name conversion
-			query := `SELECT * FROM get_breakdown($1, $2, 1, $3, $4, $5, $6, $7, $8, $9, $10)`
-			rows, err := database.DB.Query(
-				query,
-				websiteID,
-				dimension,
-				pagination.Per,
-				pagination.Offset,
-				nil, // country filter not applicable when querying countries
-				browserParam,
-				deviceParam,
-				pageParam,
-				pagination.SortBy,
-				string(pagination.SortOrder),
-			)
-			if err != nil {
-				queryErr = err
-			} else {
-				defer func() { _ = rows.Close() }()
-				items = make([]BreakdownItem, 0)
-				for rows.Next() {
-					var isoCode string
-					var count int64
-					var rowTotal int64
-					if err := rows.Scan(&isoCode, &count, &rowTotal); err != nil {
-						continue
-					}
-					totalCount = rowTotal
-					items = append(items, BreakdownItem{
-						Name:  getCountryName(isoCode),
-						Code:  isoCode,
-						Count: int(count),
-					})
-				}
-			}
+	if breakdownType == "pages" {
+		// Use get_top_pages() for pages breakdown
+		query := `SELECT * FROM get_top_pages($1, 1, $2, $3, $4, $5, $6, $7, $8)`
+
+		rows, err := database.DB.Query(
+			query,
+			websiteID,
+			pagination.Per,
+			pagination.Offset,
+			countryParam,
+			browserParam,
+			deviceParam,
+			pagination.SortBy,
+			string(pagination.SortOrder),
+		)
+		if err != nil {
+			queryErr = err
 		} else {
-			// Generic breakdown handler
-			query := `SELECT * FROM get_breakdown($1, $2, 1, $3, $4, $5, $6, $7, $8, $9, $10)`
-			rows, err := database.DB.Query(
-				query,
-				websiteID,
-				dimension,
-				pagination.Per,
-				pagination.Offset,
-				countryParam,
-				browserParam,
-				deviceParam,
-				pageParam,
-				pagination.SortBy,
-				string(pagination.SortOrder),
-			)
-			if err != nil {
-				queryErr = err
-			} else {
-				defer func() { _ = rows.Close() }()
-				items = make([]BreakdownItem, 0)
-				for rows.Next() {
-					var item BreakdownItem
-					var rowTotal int64
-					if err := rows.Scan(&item.Name, &item.Count, &rowTotal); err != nil {
-						continue
-					}
-					totalCount = rowTotal
-					items = append(items, item)
+			defer func() { _ = rows.Close() }()
+			items = make([]BreakdownItem, 0)
+			for rows.Next() {
+				var path string
+				var views int64
+				var uniqueVisitors int64
+				var avgEngagement *float64
+				var rowTotal int64
+				if err := rows.Scan(&path, &views, &uniqueVisitors, &avgEngagement, &rowTotal); err != nil {
+					continue
 				}
+				totalCount = rowTotal
+				items = append(items, BreakdownItem{
+					Name:  path,
+					Count: int(views),
+				})
+			}
+		}
+	} else if breakdownType == "countries" {
+		// Special handling for countries to include ISO code and name conversion
+		query := `SELECT * FROM get_breakdown($1, $2, 1, $3, $4, $5, $6, $7, $8, $9, $10)`
+
+		rows, err := database.DB.Query(
+			query,
+			websiteID,
+			dimension,
+			pagination.Per,
+			pagination.Offset,
+			nil, // country filter not applicable when querying countries
+			browserParam,
+			deviceParam,
+			pageParam,
+			pagination.SortBy,
+			string(pagination.SortOrder),
+		)
+		if err != nil {
+			queryErr = err
+		} else {
+			defer func() { _ = rows.Close() }()
+			items = make([]BreakdownItem, 0)
+			for rows.Next() {
+				var isoCode string
+				var count int64
+				var rowTotal int64
+				if err := rows.Scan(&isoCode, &count, &rowTotal); err != nil {
+					continue
+				}
+				totalCount = rowTotal
+				items = append(items, BreakdownItem{
+					Name:  getCountryName(isoCode),
+					Code:  isoCode,
+					Count: int(count),
+				})
+			}
+		}
+	} else {
+		// Generic breakdown handler
+		query := `SELECT * FROM get_breakdown($1, $2, 1, $3, $4, $5, $6, $7, $8, $9, $10)`
+
+		rows, err := database.DB.Query(
+			query,
+			websiteID,
+			dimension,
+			pagination.Per,
+			pagination.Offset,
+			countryParam,
+			browserParam,
+			deviceParam,
+			pageParam,
+			pagination.SortBy,
+			string(pagination.SortOrder),
+		)
+		if err != nil {
+			queryErr = err
+		} else {
+			defer func() { _ = rows.Close() }()
+			items = make([]BreakdownItem, 0)
+			for rows.Next() {
+				var item BreakdownItem
+				var rowTotal int64
+				if err := rows.Scan(&item.Name, &item.Count, &rowTotal); err != nil {
+					continue
+				}
+				totalCount = rowTotal
+				items = append(items, item)
 			}
 		}
 	}
 
-	// Set SSE headers
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
@@ -535,36 +687,19 @@ func HandleBreakdown(c fiber.Ctx) error {
 	return c.SendStreamWriter(func(w *bufio.Writer) {
 		sse := NewDatastarSSE(w)
 
-		signalPrefix := "breakdown" + breakdownType
-
-		if parseErr != "" {
-			_ = sse.PatchSignals(map[string]any{
-				signalPrefix + "Error":   parseErr,
-				signalPrefix + "Loading": false,
-			})
-			return
-		}
-
 		if queryErr != nil {
-			_ = sse.PatchSignals(map[string]any{
-				signalPrefix:             []BreakdownItem{},
-				signalPrefix + "Loading": false,
-				"pagination": map[string]any{
-					"page":        pagination.Page,
-					"per":         pagination.Per,
-					"total":       0,
-					"total_pages": 0,
-					"has_more":    false,
-				},
-			})
+			fmt.Printf("DEBUG: Database query error: %v\n", queryErr)
+			patchBreakdownErrorState(sse, "Database error: "+queryErr.Error())
 			return
 		}
 
+		// Build pagination meta
 		meta := BuildPaginationMeta(pagination, totalCount)
 
+		_ = sse.PatchElementsWithMode("#breakdown-content-body", buildBreakdownTableHTML(breakdownType, items), "inner")
 		_ = sse.PatchSignals(map[string]any{
-			signalPrefix:             items,
-			signalPrefix + "Loading": false,
+			"breakdownLoading": false,
+			"breakdownError":   false,
 			"pagination": map[string]any{
 				"page":        meta.Page,
 				"per":         meta.Per,
@@ -573,6 +708,8 @@ func HandleBreakdown(c fiber.Ctx) error {
 				"has_more":    meta.HasMore,
 			},
 		})
+
+		// table is rendered on the client using patched HTML
 	})
 }
 
@@ -756,7 +893,7 @@ func HandleRealtimeVisitors(c fiber.Ctx) error {
 }
 
 // HandleCampaignsInit initializes the campaigns page with websites list
-// GET /api/dashboard/campaigns-init-ds
+// GET /api/dashboard/campaigns-init
 func HandleCampaignsInit(c fiber.Ctx) error {
 	// Get user from context
 	user := middleware.GetUser(c)
@@ -778,11 +915,10 @@ func HandleCampaignsInit(c fiber.Ctx) error {
 	var queryErr error
 
 	query := `
-		SELECT w.website_id, COALESCE(w.name, ''), w.domain
-		FROM website w
-		JOIN user_website uw ON w.website_id = uw.website_id
-		WHERE uw.user_id = $1
-		ORDER BY w.domain
+		SELECT website_id, COALESCE(name, ''), domain
+		FROM website
+		WHERE user_id = $1 AND deleted_at IS NULL
+		ORDER BY domain
 	`
 	rows, err := database.DB.Query(query, user.UserID)
 	if err != nil {
@@ -799,7 +935,7 @@ func HandleCampaignsInit(c fiber.Ctx) error {
 	}
 
 	// Determine selected website
-	selectedWebsite := c.Query("website")
+	selectedWebsite := selectedWebsiteFromRequest(c)
 	if selectedWebsite == "" && len(websites) > 0 {
 		selectedWebsite = websites[0].ID
 	}
@@ -813,8 +949,10 @@ func HandleCampaignsInit(c fiber.Ctx) error {
 		sse := NewDatastarSSE(w)
 
 		if queryErr != nil {
+			log.Printf("HandleCampaignsInit: query error: %v", queryErr)
+			msg := fmt.Sprintf("Failed to load websites: %v", queryErr)
 			_ = sse.PatchSignals(map[string]any{
-				"websitesError":   "Failed to load websites",
+				"websitesError":   msg,
 				"websitesLoading": false,
 				"websites":        []WebsiteInfo{},
 			})
@@ -828,21 +966,19 @@ func HandleCampaignsInit(c fiber.Ctx) error {
 			"websitesError":   false,
 		})
 
-		// If we have a selected website, load UTM data
-		if selectedWebsite != "" {
-			loadCampaignUTMData(sse, selectedWebsite, "source", "count", "desc")
-			loadCampaignUTMData(sse, selectedWebsite, "medium", "count", "desc")
-			loadCampaignUTMData(sse, selectedWebsite, "campaign", "count", "desc")
-			loadCampaignUTMData(sse, selectedWebsite, "term", "count", "desc")
-			loadCampaignUTMData(sse, selectedWebsite, "content", "count", "desc")
+		if html := buildWebsiteSelectorHTML(websites, selectedWebsite, "campaigns"); html != "" {
+			_ = sse.PatchElements("#website-selector-container", html)
 		}
 	})
 }
 
 // HandleCampaigns handles campaign data requests via Datastar SSE
-// GET /api/dashboard/campaigns-ds?website=...&dimension=...&sort_by=...&sort_order=...
+// GET /api/dashboard/campaigns-ds?website_id=...&dimension=...&sort_by=...&sort_order=...
 func HandleCampaigns(c fiber.Ctx) error {
-	websiteID := c.Query("website")
+	websiteID := selectedWebsiteFromRequest(c)
+	if websiteID == "" {
+		websiteID = c.Query("website_id")
+	}
 	dimension := c.Query("dimension")
 	sortBy := c.Query("sort_by", "count")
 	sortOrder := c.Query("sort_order", "desc")
@@ -866,6 +1002,7 @@ func HandleCampaigns(c fiber.Ctx) error {
 		if dimension != "" {
 			loadCampaignUTMData(sse, websiteID, dimension, sortBy, sortOrder)
 		} else {
+
 			// Load all UTM dimensions
 			loadCampaignUTMData(sse, websiteID, "source", sortBy, sortOrder)
 			loadCampaignUTMData(sse, websiteID, "medium", sortBy, sortOrder)
@@ -883,14 +1020,13 @@ func loadCampaignUTMData(sse *DatastarSSE, websiteID, dimension, sortBy, sortOrd
 		return
 	}
 
-	// Set loading state
+	// Show loader for this dimension until the table is patched
 	_ = sse.PatchSignals(map[string]any{
 		"loading": map[string]any{
 			dimension: true,
 		},
 	})
 
-	// Query UTM data
 	query := `SELECT * FROM get_breakdown($1, $2, 1, 50, 0, NULL, NULL, NULL, NULL, $3, $4)`
 	utmDimension := "utm_" + dimension
 	rows, err := database.DB.Query(query, websiteUUID, utmDimension, sortBy, sortOrder)
@@ -908,33 +1044,23 @@ func loadCampaignUTMData(sse *DatastarSSE, websiteID, dimension, sortBy, sortOrd
 		}
 	}
 
-	// Build table HTML
 	tableHTML := buildUTMTableHTML(dimension, items, sortBy, sortOrder)
 
-	// Update loading state and send HTML
+	// USE ID SELECTOR LIKE THE WORKING CODE
+	selector := fmt.Sprintf("#utm-%s-content", dimension)
+	_ = sse.PatchElements(selector, tableHTML)
+
 	_ = sse.PatchSignals(map[string]any{
 		"loading": map[string]any{
 			dimension: false,
 		},
-		"sort": map[string]any{
-			dimension: map[string]string{
-				"column":    sortBy,
-				"direction": sortOrder,
-			},
-		},
 	})
-
-	// Patch the table container with rendered HTML
-	_ = sse.PatchElements("#utm-"+dimension+"-table", tableHTML)
 }
 
 // buildUTMTableHTML generates HTML for a UTM breakdown table
 func buildUTMTableHTML(dimension string, items []BreakdownItem, sortBy, sortOrder string) string {
 	if len(items) == 0 {
-		return `<div class="empty-state-mini">
-			<div>[=]</div>
-			<div>No UTM ` + dimension + ` data yet</div>
-		</div>`
+		return `<div class="empty-state-mini"><div>[=]</div><div>No UTM ` + dimension + ` data yet</div></div>`
 	}
 
 	nameLabel := strings.ToUpper(dimension[:1]) + dimension[1:]
@@ -956,37 +1082,254 @@ func buildUTMTableHTML(dimension string, items []BreakdownItem, sortBy, sortOrde
 		}
 	}
 
-	var rows string
+	var rows strings.Builder
 	for _, item := range items {
-		rows += fmt.Sprintf(`<tr>
-			<td>%s</td>
-			<td style="text-align: right; font-weight: 500; color: var(--accent-color)">%s</td>
-		</tr>`, escapeHTML(item.Name), formatNumber(item.Count))
+		rows.WriteString(fmt.Sprintf(`<tr><td>%s</td><td style="text-align:right;font-weight:500;color:var(--accent-color)">%s</td></tr>`,
+			escapeHTML(item.Name), formatNumber(item.Count)))
 	}
 
-	return fmt.Sprintf(`<table class="glass card">
-		<thead>
-			<tr>
-				<th data-on:click="@get('/api/dashboard/campaigns?website=' + $selectedWebsite +
-					'&dimension=%s&sort_by=name&sort_order=' +
-					($sort.%s.column === 'name' && $sort.%s.direction === 'desc' ? 'asc' : 'desc'))"
-					style="cursor: pointer; user-select: none" class="sortable-header">
-					<span>%s</span>
-					<span style="opacity: 0.7">%s</span>
-				</th>
-				<th data-on:click="@get('/api/dashboard/campaigns?website=' + $selectedWebsite +
-					'&dimension=%s&sort_by=count&sort_order=' +
-					($sort.%s.column === 'count' && $sort.%s.direction === 'desc' ? 'asc' : 'desc'))"
-					style="text-align: right; cursor: pointer; user-select: none" class="sortable-header">
-					<span>Count</span>
-					<span style="opacity: 0.7">%s</span>
-				</th>
-			</tr>
-		</thead>
-		<tbody>
-			%s
-		</tbody>
-	</table>`, dimension, dimension, dimension, nameLabel, nameArrow, dimension, dimension, dimension, countArrow, rows)
+	// This is the compact, single-line version — no newlines/spaces between tags
+	return fmt.Sprintf(`<table id="utm-%s-content" class="glass card"><thead><tr><th data-on:click="@get('/api/dashboard/campaigns?website_id='+$selectedWebsite+'&dimension=%s&sort_by=name&sort_order='+($sort.%s.column==='name'&&$sort.%s.direction==='desc'?'asc':'desc'))" style="cursor:pointer;user-select:none" class="sortable-header"><span>%s</span><span style="opacity:0.7">%s</span></th><th data-on:click="@get('/api/dashboard/campaigns?website_id='+$selectedWebsite+'&dimension=%s&sort_by=count&sort_order='+($sort.%s.column==='count'&&$sort.%s.direction==='desc'?'asc':'desc'))" style="text-align:right;cursor:pointer;user-select:none" class="sortable-header"><span>Count</span><span style="opacity:0.7">%s</span></th></tr></thead><tbody>%s</tbody></table>`,
+		dimension, dimension, dimension, dimension, nameLabel, nameArrow,
+		dimension, dimension, dimension, countArrow,
+		rows.String(),
+	)
+}
+
+var breakdownLabels = map[string]string{
+	"pages":        "Pages",
+	"referrers":    "Referrers",
+	"referrer":     "Referrers",
+	"browsers":     "Browsers",
+	"browser":      "Browsers",
+	"devices":      "Devices",
+	"device":       "Devices",
+	"countries":    "Countries",
+	"country":      "Countries",
+	"cities":       "Cities",
+	"regions":      "Regions",
+	"os":           "Operating Systems",
+	"entry-pages":  "Entry Pages",
+	"exit-pages":   "Exit Pages",
+	"entry_page":   "Entry Pages",
+	"exit_page":    "Exit Pages",
+	"utm_source":   "UTM Source",
+	"utm_medium":   "UTM Medium",
+	"utm_campaign": "UTM Campaign",
+	"utm_term":     "UTM Term",
+	"utm_content":  "UTM Content",
+}
+
+func buildBreakdownTableHTML(breakdownType string, items []BreakdownItem) string {
+	if len(items) == 0 {
+		return `<div class="empty-state"><div class="empty-state-icon">[=]</div><div class="empty-state-title">No data yet</div><div class="empty-state-text">Start tracking to see breakdown data</div></div>`
+	}
+
+	header := breakdownHeaderLabel(breakdownType)
+	var rows strings.Builder
+	for _, item := range items {
+		label := strings.TrimSpace(item.Name)
+		if label == "" {
+			label = "Unknown"
+		}
+		rows.WriteString(fmt.Sprintf(`<tr><td style="display:flex;align-items:center;gap:8px">%s<span>%s</span></td><td style="text-align:right;font-weight:500;color:var(--accent-color)">%s</td></tr>`,
+			breakdownRowPrefix(breakdownType, item),
+			escapeHTML(label),
+			formatNumber(item.Count),
+		))
+	}
+
+	return fmt.Sprintf(`<table class="breakdown-table"><thead><tr><th>%s</th><th style="text-align:right">Count</th></tr></thead><tbody>%s</tbody></table>`,
+		escapeHTML(header),
+		rows.String(),
+	)
+}
+
+func breakdownHeaderLabel(breakdownType string) string {
+	if label, ok := breakdownLabels[breakdownType]; ok {
+		return label
+	}
+
+	value := strings.ReplaceAll(breakdownType, "_", " ")
+	value = strings.ReplaceAll(value, "-", " ")
+
+	parts := strings.Fields(value)
+	for i, part := range parts {
+		if len(part) == 0 {
+			continue
+		}
+		if len(part) == 1 {
+			parts[i] = strings.ToUpper(part)
+			continue
+		}
+		parts[i] = strings.ToUpper(part[:1]) + strings.ToLower(part[1:])
+	}
+
+	if len(parts) == 0 {
+		return "Value"
+	}
+	return strings.Join(parts, " ")
+}
+
+func breakdownRowPrefix(breakdownType string, item BreakdownItem) string {
+	switch breakdownType {
+	case "country", "countries":
+		if flag := countryFlagFromCode(item.Code); flag != "" {
+			return `<span style="font-size:1.2em">` + flag + `</span>`
+		}
+	case "browser", "browsers":
+		if icon := browserIconHTML(item.Name); icon != "" {
+			return `<span class="breakdown-icon">` + icon + `</span>`
+		}
+	case "os":
+		if icon := osIconHTML(item.Name); icon != "" {
+			return `<span class="breakdown-icon">` + icon + `</span>`
+		}
+	case "device", "devices":
+		if icon := deviceIconHTML(item.Name); icon != "" {
+			return `<span class="breakdown-icon">` + icon + `</span>`
+		}
+	}
+	return ""
+}
+
+func buildBreakdownErrorHTML(message string) string {
+	if strings.TrimSpace(message) == "" {
+		message = "Unable to load breakdown data."
+	}
+	return fmt.Sprintf(`<div class="empty-state"><div class="empty-state-icon">[!]</div><div class="empty-state-title">Unable to load breakdown</div><div class="empty-state-text">%s</div></div>`, escapeHTML(message))
+}
+
+func patchBreakdownErrorState(sse *DatastarSSE, message string) {
+	msg := strings.TrimSpace(message)
+	if msg == "" {
+		msg = "Unable to load breakdown data."
+	}
+	_ = sse.PatchElementsWithMode("#breakdown-content-body", buildBreakdownErrorHTML(msg), "inner")
+	_ = sse.PatchSignals(map[string]any{
+		"breakdownError":   msg,
+		"breakdownLoading": false,
+	})
+}
+
+var browserIcons = map[string]string{
+	"Chrome":  `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M21.17 8H12M3.95 6.06L8.54 14M14.34 14l-4.63 8" stroke="currentColor" stroke-width="2" fill="none"/></svg>`,
+	"Firefox": `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`,
+	"Safari":  `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M16.24 7.76l-1.41 1.41M9.17 14.83l-1.41 1.41M7.76 7.76l1.41 1.41M14.83 14.83l1.41 1.41" stroke="currentColor" stroke-width="1.5"/><polygon points="12,6 9,15 12,12 15,15" fill="currentColor"/></svg>`,
+	"Edge":    `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12c0 4.97-4.03 9-9 9-1.5 0-2.91-.37-4.15-1.02.25.02.5.02.75.02 3.31 0 6-2.69 6-6 0-2.49-1.52-4.63-3.68-5.54A8.03 8.03 0 0 1 21 12zM12 3c4.97 0 9 4.03 9 9 0 1.5-.37 2.91-1.02 4.15.02-.25.02-.5.02-.75 0-3.31-2.69-6-6-6-2.49 0-4.63 1.52-5.54 3.68A8.03 8.03 0 0 1 12 3z"/><circle cx="9" cy="15" r="4" fill="none" stroke="currentColor" stroke-width="2"/></svg>`,
+	"Opera":   `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="12" rx="4" ry="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/></svg>`,
+	"Brave":   `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L4 6v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4zm0 4l4 2v4c0 2.96-1.46 5.74-4 7.47-2.54-1.73-4-4.51-4-7.47V8l4-2z"/></svg>`,
+	"Samsung": `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 12h8M12 8v8" stroke="currentColor" stroke-width="2"/></svg>`,
+}
+
+func browserIconHTML(name string) string {
+	if icon, ok := browserIcons[name]; ok {
+		return icon
+	}
+	return ""
+}
+
+var osIcons = map[string]string{
+	"Windows":   `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12V6.5l7-1v6.5H3zm8-7.5V11h10V3L11 4.5zM3 13v5.5l7 1V13H3zm8 .5V19l10 2v-8H11z"/></svg>`,
+	"macOS":     `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
+	"Mac OS X":  `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
+	"Linux":     `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.5 2c-1.66 0-3 1.57-3 3.5 0 .66.15 1.27.41 1.81L8.04 9.19C7.12 8.75 6.09 8.5 5 8.5c-2.76 0-5 2.24-5 5s2.24 5 5 5c1.09 0 2.1-.35 2.93-.95l1.91 1.91c-.55.83-.84 1.79-.84 2.79 0 2.76 2.24 5 5 5s5-2.24 5-5c0-1-.29-1.96-.84-2.79l1.91-1.91c.83.6 1.84.95 2.93.95 2.76 0 5-2.24 5-5s-2.24-5-5-5c-1.09 0-2.12.25-3.04.69l-1.87-1.88c.26-.54.41-1.15.41-1.81 0-1.93-1.34-3.5-3-3.5zm0 2c.55 0 1 .67 1 1.5S13.05 7 12.5 7s-1-.67-1-1.5.45-1.5 1-1.5z"/></svg>`,
+	"Android":   `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0 0 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.983 5.983 0 0 0 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>`,
+	"iOS":       `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
+	"Chrome OS": `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M21.17 8H12M3.95 6.06L8.54 14M14.34 14l-4.63 8" stroke="currentColor" stroke-width="2" fill="none"/></svg>`,
+}
+
+func osIconHTML(name string) string {
+	if icon, ok := osIcons[name]; ok {
+		return icon
+	}
+	return ""
+}
+
+var deviceIcons = map[string]string{
+	"desktop": `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+	"mobile":  `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>`,
+	"tablet":  `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>`,
+}
+
+func deviceIconHTML(device string) string {
+	key := strings.ToLower(strings.TrimSpace(device))
+	if icon, ok := deviceIcons[key]; ok {
+		return icon
+	}
+	return ""
+}
+
+func countryFlagFromCode(code string) string {
+	if len(code) != 2 {
+		return ""
+	}
+
+	upper := strings.ToUpper(code)
+	r1 := upper[0]
+	r2 := upper[1]
+
+	if r1 < 'A' || r1 > 'Z' || r2 < 'A' || r2 > 'Z' {
+		return ""
+	}
+
+	flag := []rune{
+		rune(r1-'A') + 0x1F1E6,
+		rune(r2-'A') + 0x1F1E6,
+	}
+	return string(flag)
+}
+
+func buildGoalsTableHTML(goals []GoalInfo) string {
+	if len(goals) == 0 {
+		return `<div class="empty-state-mini" style="grid-column: 1/-1;"><div>[+]</div><div>No goals yet. Create one to start tracking.</div></div>`
+	}
+
+	const editAction = `const btn = evt.currentTarget || evt.target; if (!btn) { return; } const data = btn.dataset || {}; $currentGoal = { id: data.goalId || '', name: data.goalName || '', type: data.goalType || '', value: data.goalValue || '' }; $goalForm = { name: data.goalName || '', type: data.goalType || '', value: data.goalValue || '' }; $formError = ''; $showEditModal = true;`
+	const analyticsAction = `const btn = evt.currentTarget || evt.target; if (!btn) { return; } const data = btn.dataset || {}; $currentGoal = { id: data.goalId || '', name: data.goalName || '', type: data.goalType || '', value: data.goalValue || '' }; $analytics = { completions: 0, unique_sessions: 0, conversion_rate: '0.00', total_sessions: 0 }; $breakdownData = []; destroyGoalChart(); $analyticsLoading = true; $lastAnalyticsRequestKey = ''; $showAnalyticsModal = true;`
+	const deleteAction = `const btn = evt.currentTarget || evt.target; if (!btn) { return; } const data = btn.dataset || {}; if (confirm('Delete goal &ldquo;' + (data.goalName || '') + '&rdquo;?')) { @delete('/api/dashboard/goals/' + (data.goalId || ''), { headers: { 'X-CSRF-Token': getGoalsCsrfToken() } }); }`
+
+	var rows strings.Builder
+	for _, g := range goals {
+		typeLabel := "Page View"
+		if g.Type == "custom_event" {
+			typeLabel = "Custom Event"
+		}
+		rows.WriteString(fmt.Sprintf(`<tr><td><div class="goal-name">%s</div><div class="goal-meta">%s</div></td><td><span class="badge">%s</span></td><td><code class="goal-target">%s</code></td><td class="goal-actions"><button class="btn btn-xs btn-ghost" data-goal-id="%s" data-goal-name="%s" data-goal-type="%s" data-goal-value="%s" data-on:click="%s">Edit</button><!-- Analytics button temporarily disabled <button class="btn btn-xs btn-ghost" data-goal-id="%s" data-goal-name="%s" data-goal-type="%s" data-goal-value="%s" data-on:click="%s">Analytics</button> --><button class="btn btn-xs btn-danger" data-goal-id="%s" data-goal-name="%s" data-on:click="%s">Delete</button></td></tr>`,
+			escapeHTML(g.Name),
+			escapeHTML(fmt.Sprintf("ID: %s", g.ID)),
+			typeLabel,
+			escapeHTML(g.Value),
+			escapeHTML(g.ID),
+			escapeHTML(g.Name),
+			escapeHTML(g.Type),
+			escapeHTML(g.Value),
+			editAction,
+			escapeHTML(g.ID),
+			escapeHTML(g.Name),
+			escapeHTML(g.Type),
+			escapeHTML(g.Value),
+			analyticsAction,
+			escapeHTML(g.ID),
+			escapeHTML(g.Name),
+			deleteAction,
+		))
+	}
+
+	return fmt.Sprintf(`<table class="glass card goals-table"><thead><tr><th>Goal</th><th>Type</th><th>Target</th><th style="text-align:right">Actions</th></tr></thead><tbody>%s</tbody></table>`, rows.String())
+}
+
+func buildGoalAnalyticsStatsHTML(conversionRate float64, completions, uniqueSessions, totalSessions int) string {
+	convText := fmt.Sprintf("%.2f%%", conversionRate)
+	sessionSummary := fmt.Sprintf("%s of %s sessions", formatNumber(uniqueSessions), formatNumber(totalSessions))
+
+	var b strings.Builder
+	fmt.Fprintf(&b, `<div class="stat-card glass card"><div class="stat-label">Conversion Rate</div><div class="stat-value">%s</div><div class="stat-footer">%s</div></div>`, escapeHTML(convText), escapeHTML(sessionSummary))
+	fmt.Fprintf(&b, `<div class="stat-card glass card"><div class="stat-label">Total Completions</div><div class="stat-value">%s</div></div>`, escapeHTML(formatNumber(completions)))
+	fmt.Fprintf(&b, `<div class="stat-card glass card"><div class="stat-label">Unique Sessions</div><div class="stat-value">%s</div></div>`, escapeHTML(formatNumber(uniqueSessions)))
+	fmt.Fprintf(&b, `<div class="stat-card glass card"><div class="stat-label">Total Sessions</div><div class="stat-value">%s</div></div>`, escapeHTML(formatNumber(totalSessions)))
+
+	return b.String()
 }
 
 // escapeHTML escapes special HTML characters
@@ -1001,10 +1344,26 @@ func escapeHTML(s string) string {
 
 // formatNumber formats an integer with thousand separators
 func formatNumber(n int) string {
-	if n < 1000 {
-		return fmt.Sprintf("%d", n)
+	value := fmt.Sprintf("%d", n)
+	sign := ""
+	if strings.HasPrefix(value, "-") {
+		sign = "-"
+		value = value[1:]
 	}
-	return fmt.Sprintf("%d,%03d", n/1000, n%1000)
+
+	if len(value) <= 3 {
+		return sign + value
+	}
+
+	var b strings.Builder
+	for i, ch := range value {
+		if i > 0 && (len(value)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(ch)
+	}
+
+	return sign + b.String()
 }
 
 // HandleWebsitesInit initializes the websites management page
@@ -1037,11 +1396,10 @@ func HandleWebsitesInit(c fiber.Ctx) error {
 	var queryErr error
 
 	query := `
-		SELECT w.website_id, w.domain, COALESCE(w.name, ''), w.allowed_domains, w.public_stats_enabled
-		FROM website w
-		JOIN user_website uw ON w.website_id = uw.website_id
-		WHERE uw.user_id = $1 AND w.deleted_at IS NULL
-		ORDER BY w.domain
+		SELECT website_id, domain, COALESCE(name, ''), allowed_domains, public_stats_enabled
+		FROM website
+		WHERE user_id = $1 AND deleted_at IS NULL
+		ORDER BY domain
 	`
 	rows, err := database.DB.Query(query, user.UserID)
 	if err != nil {
@@ -1071,59 +1429,58 @@ func HandleWebsitesInit(c fiber.Ctx) error {
 		sse := NewDatastarSSE(w)
 
 		if queryErr != nil {
+			log.Printf("HandleWebsitesInit: query error: %v", queryErr)
+			msg := fmt.Sprintf("Failed to load websites: %v", queryErr)
 			_ = sse.PatchSignals(map[string]any{
-				"websitesError":   "Failed to load websites",
+				"websitesError":   msg,
 				"websitesLoading": false,
 			})
 			return
 		}
 
 		// Build website cards HTML
+		gridSelector := "[data-element='websites-grid-content']"
+
 		if len(websites) == 0 {
-			_ = sse.PatchElements("#websites-grid-container", `
+			emptyHTML := `
 				<div class="empty-state-mini" style="grid-column: 1/-1;">
 					<div>[+]</div>
 					<div>No websites yet. Create one to start tracking.</div>
 				</div>
-			`)
+			`
+			_ = sse.PatchElementsWithMode(gridSelector, emptyHTML, "inner")
 		} else {
-			var cardsHTML string
+			var cardsHTML strings.Builder
 			for _, ws := range websites {
-				tpl := `&lt;script defer src=&quot;%s/k.js&quot; ` +
-					`data-website-id=&quot;%s&quot;&gt;&lt;/script&gt;`
-				trackingCode := fmt.Sprintf(tpl, "{{.BaseURL}}", ws.ID)
-				copyJS := `navigator.clipboard.writeText(` +
-					`document.getElementById('code-%s').textContent` +
-					`.replace(/&lt;/g,'<').replace(/&gt;/g,'>')` +
-					`.replace(/&amp;/g,'&').replace(/&quot;/g,'\"'));` +
-					` $toastMessage = 'Copied!'; $showToast = true;` +
-					` setTimeout(() => $showToast = false, 2000)`
-				copyBtn := fmt.Sprintf(copyJS, ws.ID)
-				cardsHTML += fmt.Sprintf(`
-					<div class="glass card website-card">
-						<div class="website-header">
-							<h3>%s</h3>
-							<span class="domain-badge">%s</span>
-						</div>
-						<div class="tracking-code-section">
-							<label>Tracking Code:</label>
-							<div class="code-wrapper">
-								<code class="tracking-code" id="code-%s">%s</code>
-								<button class="btn btn-xs btn-ghost copy-btn" data-on:click="%s">
-									Copy
-								</button>
-							</div>
-						</div>
-						<div class="website-footer">
-							<a href="/dashboard?website=%s" class="btn btn-xs btn-primary">View Analytics</a>
-						</div>
-					</div>
-				`, escapeHTML(ws.Name), escapeHTML(ws.Domain), ws.ID, trackingCode, copyBtn, ws.ID)
+				displayName := strings.TrimSpace(ws.Name)
+				if displayName == "" {
+					displayName = ws.Domain
+				}
+
+				trackingCode := fmt.Sprintf(`<script async src="/k.js" data-website-id="%s"></script>`, ws.ID)
+				copyAction := fmt.Sprintf("copyTrackingCode('%s', $signals)", ws.ID)
+
+				var domains strings.Builder
+				if len(ws.AllowedDomains) == 0 {
+					domains.WriteString(`<div class="domain-item"><span>No allowed domains yet</span></div>`)
+				} else {
+					for _, domain := range ws.AllowedDomains {
+						domains.WriteString(fmt.Sprintf(`<div class="domain-item"><span>%s</span></div>`, escapeHTML(domain)))
+					}
+				}
+
+				card := fmt.Sprintf(`<div class="glass card website-card"><div class="website-header"><div class="website-title-group"><div class="website-name">%s</div></div></div><div class="website-info"><div class="info-row"><div class="info-label">Website ID</div><div class="info-value">%s</div></div><div class="info-row"><div class="info-label">Tracking Code</div><div class="info-value"><code class="tracking-code" id="code-%s">%s</code></div></div></div><div class="domains-section"><div class="domains-header"><div class="domains-label">Allowed Domains</div><div class="domains-count">%d</div></div><div class="domains-list">%s</div></div><div class="website-actions"><button class="btn btn-xs btn-ghost transition-standard" data-on:click="%s" title="Copy tracking snippet"><svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v8a2 2 0 002 2z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 8H5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-1"></path></svg></button><a href="/dashboard?website=%s" class="btn btn-xs btn-primary transition-standard">Analytics</a></div></div>`,
+					escapeHTML(displayName), escapeHTML(ws.ID), ws.ID, escapeHTML(trackingCode), len(ws.AllowedDomains), domains.String(), copyAction, ws.ID)
+
+				cardsHTML.WriteString(card)
 			}
-			_ = sse.PatchElements("#websites-grid-container", cardsHTML)
+
+			_ = sse.PatchElementsWithMode(gridSelector, cardsHTML.String(), "inner")
 		}
 
 		_ = sse.PatchSignals(map[string]any{
+			"websites":        websites,
+			"websitesError":   false,
 			"websitesLoading": false,
 		})
 	})
@@ -1150,8 +1507,8 @@ func HandleWebsitesCreate(c fiber.Ctx) error {
 		return c.SendStreamWriter(func(w *bufio.Writer) {
 			sse := NewDatastarSSE(w)
 			_ = sse.PatchSignals(map[string]any{
-				"createError":   createErr,
-				"createLoading": false,
+				"createError": createErr,
+				"creating":    false,
 			})
 		})
 	}
@@ -1162,8 +1519,8 @@ func HandleWebsitesCreate(c fiber.Ctx) error {
 		return c.SendStreamWriter(func(w *bufio.Writer) {
 			sse := NewDatastarSSE(w)
 			_ = sse.PatchSignals(map[string]any{
-				"createError":   "Not authenticated",
-				"createLoading": false,
+				"createError": "Not authenticated",
+				"creating":    false,
 			})
 		})
 	}
@@ -1178,39 +1535,45 @@ func HandleWebsitesCreate(c fiber.Ctx) error {
 	allowedDomainsJSON, _ := json.Marshal(allowedDomains)
 
 	_, err := database.DB.Exec(`
-		INSERT INTO website (website_id, domain, name, allowed_domains, created_at, updated_at)
-		VALUES ($1, $2, $3, $4::jsonb, NOW(), NOW())
-	`, websiteID, domain, name, string(allowedDomainsJSON))
+		INSERT INTO website (website_id, user_id, domain, name, allowed_domains, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5::jsonb, NOW(), NOW())
+	`, websiteID, user.UserID, domain, name, string(allowedDomainsJSON))
 
 	if err != nil {
 		return c.SendStreamWriter(func(w *bufio.Writer) {
 			sse := NewDatastarSSE(w)
 			_ = sse.PatchSignals(map[string]any{
-				"createError":   "Failed to create website. Domain may already exist.",
-				"createLoading": false,
+				"createError": "Failed to create website. Domain may already exist.",
+				"creating":    false,
 			})
 		})
 	}
-
-	// Link to user
-	_, _ = database.DB.Exec(`
-		INSERT INTO user_website (user_id, website_id, created_at)
-		VALUES ($1, $2, NOW())
-	`, user.UserID, websiteID)
 
 	return c.SendStreamWriter(func(w *bufio.Writer) {
 		sse := NewDatastarSSE(w)
 		_ = sse.PatchSignals(map[string]any{
 			"showCreateModal": false,
-			"createLoading":   false,
-			"createError":     false,
-			"newDomain":       "",
-			"newName":         "",
-			"toastMessage":    "Website created successfully!",
-			"showToast":       true,
+			"creating":        false,
+			"createError":     "",
+			"newWebsite": map[string]any{
+				"domain": "",
+				"name":   "",
+			},
+			"toast": map[string]any{
+				"show":    true,
+				"message": "Website created successfully!",
+				"type":    "success",
+			},
+			"websitesReload": true,
 		})
-		// Trigger refresh of website list
-		_ = sse.ExecuteScript("setTimeout(() => { $showToast = false }, 2000)")
+		_ = sse.ExecuteScript(`
+			clearTimeout(window.__kauntaToastTimer || 0);
+			window.__kauntaToastTimer = setTimeout(() => {
+				if (window.Datastar?.store) {
+					window.Datastar.store.toast = { show: false, message: "", type: "" };
+				}
+			}, 3000);
+		`)
 	})
 }
 
@@ -1237,11 +1600,10 @@ func HandleMapInit(c fiber.Ctx) error {
 	var queryErr error
 
 	query := `
-		SELECT w.website_id, COALESCE(w.name, ''), w.domain
-		FROM website w
-		JOIN user_website uw ON w.website_id = uw.website_id
-		WHERE uw.user_id = $1
-		ORDER BY w.domain
+		SELECT website_id, COALESCE(name, ''), domain
+		FROM website
+		WHERE user_id = $1 AND deleted_at IS NULL
+		ORDER BY domain
 	`
 	rows, err := database.DB.Query(query, user.UserID)
 	if err != nil {
@@ -1265,7 +1627,7 @@ func HandleMapInit(c fiber.Ctx) error {
 
 	// Query map data if we have a selected website
 	days := 7
-	var mapData []MapDataPoint
+	mapData := make([]MapDataPoint, 0)
 	var totalVisitors int64
 
 	if selectedWebsite != "" {
@@ -1304,8 +1666,10 @@ func HandleMapInit(c fiber.Ctx) error {
 		sse := NewDatastarSSE(w)
 
 		if queryErr != nil {
+			log.Printf("HandleMapInit: query error: %v", queryErr)
+			msg := fmt.Sprintf("Failed to load websites: %v", queryErr)
 			_ = sse.PatchSignals(map[string]any{
-				"mapError":   "Failed to load websites",
+				"mapError":   msg,
 				"mapLoading": false,
 			})
 			return
@@ -1314,18 +1678,17 @@ func HandleMapInit(c fiber.Ctx) error {
 		_ = sse.PatchSignals(map[string]any{
 			"websites":         websites,
 			"selectedWebsite":  selectedWebsite,
+			"websitesLoading":  false,
+			"websitesError":    false,
 			"mapData":          mapData,
 			"mapTotalVisitors": totalVisitors,
 			"mapPeriodDays":    days,
 			"mapLoading":       false,
 		})
 
-		// Initialize map via script execution
-		_ = sse.ExecuteScript(`
-			if (window.initChoroplethMap && $mapData) {
-				setTimeout(() => window.initChoroplethMap($mapData), 100);
-			}
-		`)
+		if html := buildWebsiteSelectorHTML(websites, selectedWebsite, "map"); html != "" {
+			_ = sse.PatchElements("#website-selector-container", html)
+		}
 	})
 }
 
@@ -1378,17 +1741,10 @@ func HandleGoals(c fiber.Ctx) error {
 	}
 	defer func() { _ = rows.Close() }()
 
-	type goal struct {
-		ID        string `json:"id"`
-		WebsiteID string `json:"website_id"`
-		Name      string `json:"name"`
-		Type      string `json:"type"`
-		Value     string `json:"value"`
-	}
-	var goals []goal
+	var goals []GoalInfo
 
 	for rows.Next() {
-		var g goal
+		var g GoalInfo
 		var targetURL, targetEvent *string
 		var createdAt, updatedAt interface{}
 		if err := rows.Scan(&g.ID, &g.WebsiteID, &g.Name, &targetURL, &targetEvent, &createdAt, &updatedAt); err != nil {
@@ -1406,10 +1762,13 @@ func HandleGoals(c fiber.Ctx) error {
 
 	return c.SendStreamWriter(func(w *bufio.Writer) {
 		sse := NewDatastarSSE(w)
+		tableHTML := buildGoalsTableHTML(goals)
+		_ = sse.PatchElementsWithMode("[data-element='goals-table-container']", tableHTML, "inner")
 		_ = sse.PatchSignals(map[string]any{
 			"goals":        goals,
 			"goalsLoading": false,
 			"goalsError":   false,
+			"goalsReload":  false,
 		})
 	})
 }
@@ -1435,6 +1794,7 @@ func HandleGoalsCreate(c fiber.Ctx) error {
 			_ = sse.PatchSignals(map[string]any{
 				"goalError":   "All fields are required",
 				"goalLoading": false,
+				"submitting":  false,
 			})
 		})
 	}
@@ -1451,6 +1811,7 @@ func HandleGoalsCreate(c fiber.Ctx) error {
 			_ = sse.PatchSignals(map[string]any{
 				"goalError":   "Invalid goal type",
 				"goalLoading": false,
+				"submitting":  false,
 			})
 		})
 	}
@@ -1467,6 +1828,7 @@ func HandleGoalsCreate(c fiber.Ctx) error {
 			_ = sse.PatchSignals(map[string]any{
 				"goalError":   "Failed to create goal",
 				"goalLoading": false,
+				"submitting":  false,
 			})
 		})
 	}
@@ -1481,11 +1843,15 @@ func HandleGoalsCreate(c fiber.Ctx) error {
 			"showCreateModal": false,
 			"goalLoading":     false,
 			"goalError":       false,
-			"newGoalName":     "",
-			"newGoalType":     "page_view",
-			"newGoalValue":    "",
-			"toastMessage":    "Goal created successfully!",
-			"showToast":       true,
+			"goalForm": map[string]string{
+				"name":  "",
+				"type":  "",
+				"value": "",
+			},
+			"submitting":   false,
+			"toastMessage": "Goal created successfully!",
+			"showToast":    true,
+			"goalsReload":  true,
 		})
 		_ = sse.ExecuteScript("setTimeout(() => { $showToast = false }, 2000)")
 	})
@@ -1560,6 +1926,14 @@ func HandleGoalsUpdate(c fiber.Ctx) error {
 			"goalError":     false,
 			"toastMessage":  "Goal updated successfully!",
 			"showToast":     true,
+			"submitting":    false,
+			"goalsReload":   true,
+			"goalForm": map[string]string{
+				"name":  "",
+				"type":  "",
+				"value": "",
+			},
+			"currentGoal": nil,
 		})
 		_ = sse.ExecuteScript("setTimeout(() => { $showToast = false }, 2000)")
 	})
@@ -1609,6 +1983,7 @@ func HandleGoalsDelete(c fiber.Ctx) error {
 			"goalError":    false,
 			"toastMessage": "Goal deleted successfully!",
 			"showToast":    true,
+			"goalsReload":  true,
 		})
 		_ = sse.ExecuteScript("setTimeout(() => { $showToast = false }, 2000)")
 	})
@@ -1676,8 +2051,43 @@ func HandleGoalsAnalytics(c fiber.Ctx) error {
 		})
 	}
 
+	chartLabels := make([]string, 0, 32)
+	chartValues := make([]int, 0, 32)
+	timeRows, timeErr := database.DB.Query(`
+		SELECT date_trunc('hour', gc.completed_at) AS bucket, COUNT(*) as count
+		FROM goal_completions gc
+		WHERE gc.goal_id = $1
+		  AND gc.completed_at >= NOW() - ($2 || ' days')::INTERVAL
+		GROUP BY bucket
+		ORDER BY bucket
+	`, goalID, days)
+	if timeErr == nil {
+		defer func() { _ = timeRows.Close() }()
+		for timeRows.Next() {
+			var bucket time.Time
+			var count int
+			if err := timeRows.Scan(&bucket, &count); err != nil {
+				continue
+			}
+			chartLabels = append(chartLabels, bucket.UTC().Format(time.RFC3339))
+			chartValues = append(chartValues, count)
+		}
+	}
+
+	var goalName string
+	_ = database.DB.QueryRow(`SELECT COALESCE(name, '') FROM goals WHERE id = $1`, goalID).Scan(&goalName)
+	statsHTML := buildGoalAnalyticsStatsHTML(conversionRate, completions, uniqueSessions, totalSessions)
+	labelJSON, _ := json.Marshal(chartLabels)
+	valueJSON, _ := json.Marshal(chartValues)
+	daysStr := fmt.Sprintf("%d", days)
+
 	return c.SendStreamWriter(func(w *bufio.Writer) {
 		sse := NewDatastarSSE(w)
+		_ = sse.PatchElementsWithMode("[data-element='analytics-stats-container']", statsHTML, "inner")
+		if goalName != "" {
+			_ = sse.ExecuteScript(fmt.Sprintf(`(function(){const el=document.getElementById('analytics-goal-name');if(el){el.textContent=%q;}})();`, goalName))
+		}
+		_ = sse.ExecuteScript(fmt.Sprintf(`initGoalChart(%s,%s,%q);`, labelJSON, valueJSON, daysStr))
 		_ = sse.PatchSignals(map[string]any{
 			"analytics": map[string]any{
 				"completions":     completions,
@@ -1748,6 +2158,8 @@ func HandleGoalsBreakdown(c fiber.Ctx) error {
 	if err != nil {
 		return c.SendStreamWriter(func(w *bufio.Writer) {
 			sse := NewDatastarSSE(w)
+			html := buildBreakdownErrorHTML("Failed to load breakdown data")
+			_ = sse.PatchElementsWithMode("[data-element='analytics-breakdown-container']", html, "inner")
 			_ = sse.PatchSignals(map[string]any{
 				"breakdown":        []BreakdownItem{},
 				"breakdownLoading": false,
@@ -1765,8 +2177,11 @@ func HandleGoalsBreakdown(c fiber.Ctx) error {
 		items = append(items, item)
 	}
 
+	breakdownHTML := buildBreakdownTableHTML(breakdownType, items)
+
 	return c.SendStreamWriter(func(w *bufio.Writer) {
 		sse := NewDatastarSSE(w)
+		_ = sse.PatchElementsWithMode("[data-element='analytics-breakdown-container']", breakdownHTML, "inner")
 		_ = sse.PatchSignals(map[string]any{
 			"breakdown":        items,
 			"breakdownLoading": false,

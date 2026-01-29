@@ -1,6 +1,4 @@
-{{define "page-subtitle"}}Website Management{{end}}
-
-{{define "navigation"}}
+{{define "page-subtitle"}}Website Management{{end}} {{define "navigation"}}
 <a
   href="/dashboard"
   class="btn btn-sm btn-ghost glass transition-standard"
@@ -16,59 +14,46 @@
   </svg>
   Dashboard
 </a>
-{{end}}
-
-{{define "website-selector"}}
+{{end}} {{define "website-selector"}}
 <!-- Websites page doesn't need website selector -->
-{{end}}
-
-{{define "date-controls"}}
+{{end}} {{define "date-controls"}}
 <!-- Websites page doesn't need date controls -->
-{{end}}
-
-{{define "filters"}}
+{{end}} {{define "filters"}}
 <!-- Websites page doesn't need filters -->
-{{end}}
-
-{{define "header-buttons"}}
+{{end}} {{define "header-buttons"}}
 <button
   data-on:click="$showCreateModal = true"
   title="Add Website"
-  class="btn btn-sm btn-primary"
+  class="btn btn-sm btn-primary glass transition-standard"
 >
   <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
   </svg>
   Add Website
 </button>
-{{end}}
-
-{{define "page-scripts"}}
+{{end}} {{define "page-scripts"}}
 <script src="/assets/js/websites.js?v={{.Version}}"></script>
-{{end}}
-
-{{define "content"}}
+{{end}} {{define "content"}}
 <!-- Websites Page Container with Datastar Signals -->
 <div
   id="websites-page"
-  data-signals="{
-    loading: true,
-    error: '',
-    websites: [],
-    showCreateModal: false,
-    newWebsite: { domain: '', name: '' },
-    expandedWebsite: null,
-    addingDomainTo: null,
-    newDomain: '',
-    copiedId: null,
-    creating: false,
-    createError: '',
-    toast: { show: false, message: '', type: '' }
-  }"
-  data-on:load="@get('/api/dashboard/websites-init')"
+  data-signals:websitesLoading="true"
+  data-signals:websitesError="''"
+  data-signals:websites="[]"
+  data-signals:showCreateModal="false"
+  data-signals:newWebsite="{ domain: '', name: '' }"
+  data-signals:expandedWebsite="null"
+  data-signals:addingDomainTo="null"
+  data-signals:newDomain="''"
+  data-signals:copiedId="null"
+  data-signals:creating="false"
+  data-signals:createError="''"
+  data-signals:websitesReload="false"
+  data-signals:toast="{ show: false, message: '', type: '' }"
+  data-init="@get('/api/dashboard/websites-init')"
 >
   <!-- Loading State -->
-  <div data-show="$loading" class="loading" style="margin-top: 100px">
+  <div data-show="$websitesLoading" class="loading" style="margin-top: 100px">
     <div class="spinner"></div>
     <div>Loading websites...</div>
   </div>
@@ -76,43 +61,28 @@
   <!-- Websites Grid Container - populated via SSE -->
   <div
     id="websites-grid-container"
-    data-show="!$loading && !$error && $websites.length > 0"
+    data-element="websites-grid"
+    data-attr:hidden="$websitesLoading || $websitesError"
     class="websites-grid"
   >
-    <!-- Website cards rendered server-side via SSE -->
-  </div>
-
-  <!-- No Websites Empty State -->
-  <div
-    data-show="!$loading && !$error && $websites.length === 0"
-    class="empty-state"
-    style="margin-top: 100px"
-  >
-    <div class="empty-state-icon">&#127760;</div>
-    <div class="empty-state-title">No websites yet</div>
-    <div class="empty-state-text">Add your first website to start tracking analytics.</div>
-    <button
-      data-on:click="$showCreateModal = true"
-      class="btn btn-primary"
-      style="margin-top: 16px"
-    >
-      <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 4v16m8-8H4"
-        ></path>
-      </svg>
-      Add Website
-    </button>
+    <div data-element="websites-grid-content">
+      <!-- Website cards rendered server-side via SSE -->
+      <div class="empty-state-mini" style="grid-column: 1/-1">
+        <div>[...]</div>
+        <div>Loading websites...</div>
+      </div>
+    </div>
   </div>
 
   <!-- Error State -->
-  <div data-show="!$loading && $error" class="empty-state" style="margin-top: 100px">
+  <div
+    data-show="!$websitesLoading && $websitesError"
+    class="empty-state"
+    style="margin-top: 100px"
+  >
     <div class="empty-state-icon">&#9888;&#65039;</div>
     <div class="empty-state-title">Unable to load websites</div>
-    <div class="empty-state-text" data-text="$error"></div>
+    <div class="empty-state-text" data-text="$websitesError"></div>
     <button
       data-on:click="@get('/api/dashboard/websites-init')"
       class="btn btn-primary"
@@ -126,11 +96,28 @@
   <div
     data-show="$showCreateModal"
     class="modal-overlay"
-    data-on:click__self="$showCreateModal = false"
+    style="display: none"
+    data-on:click="
+      if (evt.target === el) {
+        $showCreateModal = false;
+        $createError = '';
+      }
+    "
   >
-    <div class="modal glass card">
+    <div
+      class="modal glass card"
+      data-on:click="evt.stopPropagation()"
+    >
       <h2 class="modal-title">Add New Website</h2>
-      <form data-on:submit__prevent="@post('/api/dashboard/websites-create')">
+      <form
+        data-on:submit__prevent="
+          $creating = true;
+          @post('/api/dashboard/websites-create', {
+            contentType: 'form',
+            headers: { 'X-CSRF-Token': getCsrfToken() }
+          });
+        "
+      >
         <div class="form-group">
           <label for="domain">Domain *</label>
           <input
@@ -181,21 +168,56 @@
     data-class:error="$toast.type === 'error'"
     data-text="$toast.message"
   ></div>
+
+  <div
+    aria-hidden="true"
+    style="display: none"
+    data-effect="
+      if ($toast && $toast.show) {
+        clearTimeout(window.__kauntaToastTimer || 0);
+        window.__kauntaToastTimer = setTimeout(() => {
+          $toast = { show: false, message: '', type: '' };
+        }, 3000);
+      }
+    "
+  ></div>
+
+  <div
+    aria-hidden="true"
+    style="display: none"
+    data-effect="
+      if ($websitesReload) {
+        @get('/api/dashboard/websites-init');
+        $websitesReload = false;
+      }
+    "
+  ></div>
 </div>
 
 <style>
+  #websites-page {
+    padding-bottom: var(--space-xl);
+  }
+
   .websites-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-lg);
     margin-top: var(--space-lg);
-    align-items: start;
+    width: 100%;
+  }
+
+  .websites-grid > [data-element='websites-grid-content'] {
+    display: contents;
   }
 
   .website-card {
     display: flex;
     flex-direction: column;
-    gap: var(--space-lg);
+    gap: var(--space-md);
+    padding: var(--space-lg);
+    height: 100%;
+    box-sizing: border-box;
     transition:
       transform var(--transition-base),
       box-shadow var(--transition-base);
@@ -209,8 +231,28 @@
   .website-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .website-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .website-actions {
+    display: flex;
     gap: var(--space-sm);
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-top: auto;
+  }
+
+  .website-actions .btn {
+    flex: 1 1 48%;
+    min-width: 0;
+    justify-content: center;
   }
 
   .website-name {
@@ -219,6 +261,7 @@
     color: var(--accent-dark);
     margin: 0 0 4px 0;
     line-height: 1.2;
+    word-break: break-word;
   }
 
   .website-domain {
@@ -229,6 +272,9 @@
     padding: 4px var(--space-sm);
     border-radius: var(--radius-sm);
     border: 1px solid var(--glass-border);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .website-info {
@@ -239,6 +285,7 @@
     background: var(--bg-accent);
     border-radius: var(--radius-md);
     border: 1px solid var(--glass-border);
+    flex: 1;
   }
 
   .info-row {
@@ -261,6 +308,16 @@
     background: var(--glass-bg);
     padding: 2px 6px;
     border-radius: var(--radius-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tracking-code {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .domains-section {
@@ -297,6 +354,8 @@
     flex-direction: column;
     gap: var(--space-sm);
     margin-bottom: var(--space-sm);
+    max-height: 160px;
+    overflow-y: auto;
   }
 
   .domain-item {
@@ -311,6 +370,8 @@
     font-family: monospace;
     transition: all var(--transition-base);
     min-height: var(--input-height-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .domain-item:hover {
@@ -391,18 +452,31 @@
 
   @media (max-width: 768px) {
     .websites-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: var(--space-md);
+      margin-top: var(--space-md);
+    }
+
+    .website-card {
+      padding: var(--space-md);
+      width: 100%;
     }
 
     .website-header {
       flex-direction: column;
       align-items: stretch;
-      gap: var(--space-md);
+      gap: var(--space-sm);
     }
 
     .website-actions {
-      align-self: flex-start;
+      flex-direction: column;
+      width: 100%;
+      gap: var(--space-sm);
+    }
+
+    .website-actions .btn {
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
     .add-domain-form {

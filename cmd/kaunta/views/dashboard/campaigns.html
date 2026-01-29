@@ -1,6 +1,4 @@
-{{define "page-subtitle"}}Campaign Analytics{{end}}
-
-{{define "navigation"}}
+{{define "page-subtitle"}}Campaign Analytics{{end}} {{define "navigation"}}
 <a
   href="/dashboard"
   class="btn btn-sm btn-ghost glass transition-standard"
@@ -16,87 +14,54 @@
   </svg>
   Dashboard
 </a>
-{{end}}
-
-{{define "website-selector"}}
+{{end}} {{define "website-selector"}}
 <div id="website-selector-container" data-show="$websites.length > 0">
-  <select
-    class="btn btn-sm"
-    data-bind:selectedWebsite
-    data-show="$websites.length > 1"
-    data-on:change="localStorage.setItem('kaunta_website', $selectedWebsite); @get('/api/dashboard/campaigns?website=' + $selectedWebsite)"
-  >
-    <template data-for="site in $websites">
-      <option data-attr:value="site.id" data-text="site.name || site.domain"></option>
-    </template>
-  </select>
-  <span
-    class="btn btn-sm"
-    style="cursor: default; pointer-events: none"
-    data-show="$websites.length === 1"
-    data-text="$websites[0]?.name || $websites[0]?.domain"
-  ></span>
+  <!-- Selector populated via SSE -->
 </div>
-{{end}}
-
-{{define "date-controls"}}
-<!-- Campaigns page doesn't need date controls -->
-{{end}}
-
-{{define "filters"}}
-<!-- Campaigns page doesn't need filters -->
-{{end}}
-
-{{define "header-buttons"}}
-<!-- Campaigns page doesn't need header buttons -->
-{{end}}
-
+{{end}} {{define "date-controls"}}<!-- Campaigns page doesn't need date controls -->{{end}} {{define
+"filters"}}<!-- Campaigns page doesn't need filters -->{{end}} {{define "header-buttons"}}<!-- Campaigns page doesn't need header buttons -->{{end}}
 {{define "page-scripts"}}
 <script src="/assets/js/campaigns.js?v={{.Version}}"></script>
-{{end}}
-
-{{define "content"}}
-
-<!-- Main Campaigns Container with Datastar signals -->
+{{end}} {{define "content"}}
 <div
   id="campaigns-container"
-  data-signals="{
-    websitesLoading: true,
-    websitesError: false,
-    websites: [],
-    selectedWebsite: localStorage.getItem('kaunta_website') || '',
-    loading: {
-      source: false,
-      medium: false,
-      campaign: false,
-      term: false,
-      content: false
-    },
-    sort: {
-      source: { column: 'count', direction: 'desc' },
-      medium: { column: 'count', direction: 'desc' },
-      campaign: { column: 'count', direction: 'desc' },
-      term: { column: 'count', direction: 'desc' },
-      content: { column: 'count', direction: 'desc' }
-    }
+  data-signals:websitesLoading="true"
+  data-signals:websitesError="false"
+  data-signals:websites="[]"
+  data-signals:selectedWebsite="(() => { const value = localStorage.getItem('kaunta_website'); return value && value !== 'undefined' && value !== 'null' ? value : ''; })()"
+  data-signals:loading="{
+    source: false,
+    medium: false,
+    campaign: false,
+    term: false,
+    content: false
   }"
-  data-on:load="@get('/api/dashboard/campaigns-init')"
+  data-signals:sort="{
+    source: { column: 'count', direction: 'desc' },
+    medium: { column: 'count', direction: 'desc' },
+    campaign: { column: 'count', direction: 'desc' },
+    term: { column: 'count', direction: 'desc' },
+    content: { column: 'count', direction: 'desc' }
+  }"
+  data-signals:lastCampaignWebsite="''"
+  data-init="@get('/api/dashboard/campaigns-init')"
 >
-
-  <!-- Campaign Data Section -->
-  <div data-show="!$websitesLoading && !$websitesError && $selectedWebsite && $websites.length > 0">
-    <!-- UTM Dimensions Grid - 2 columns on large screens -->
+  <!-- Main content when we have websites and selection -->
+  <div
+    data-show="!$websitesLoading && !$websitesError && $selectedWebsite && $websites.length > 0"
+    data-class:hidden="!$selectedWebsite || $websites.length === 0"
+  >
     <div
       class="utm-grid"
       style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px"
     >
       <!-- UTM Source -->
-      <div class="section glass card">
+      <div id="utm-source-card" class="section glass card">
         <div class="section-header">
           <h2>
             <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
               <path
-                d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+                d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 919-9"
               ></path>
             </svg>
             Source
@@ -104,19 +69,15 @@
         </div>
         <div data-show="$loading.source" class="loading">
           <div class="spinner"></div>
-          <div>Loading...</div>
+          <div>Loading UTM source data…</div>
         </div>
-        <div id="utm-source-table" data-show="!$loading.source">
-          <!-- Table populated via SSE -->
-          <div class="empty-state-mini">
-            <div>...</div>
-            <div>Loading UTM source data</div>
-          </div>
+        <div id="utm-source-content">
+          <!-- patched here: table or empty state -->
         </div>
       </div>
 
       <!-- UTM Medium -->
-      <div class="section glass card">
+      <div id="utm-medium-card" class="section glass card">
         <div class="section-header">
           <h2>
             <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
@@ -129,19 +90,15 @@
         </div>
         <div data-show="$loading.medium" class="loading">
           <div class="spinner"></div>
-          <div>Loading...</div>
+          <div>Loading UTM medium data…</div>
         </div>
-        <div id="utm-medium-table" data-show="!$loading.medium">
-          <!-- Table populated via SSE -->
-          <div class="empty-state-mini">
-            <div>...</div>
-            <div>Loading UTM medium data</div>
-          </div>
+        <div id="utm-medium-content">
+          <!-- patched here -->
         </div>
       </div>
 
       <!-- UTM Campaign -->
-      <div class="section glass card">
+      <div id="utm-campaign-card" class="section glass card">
         <div class="section-header">
           <h2>
             <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
@@ -154,19 +111,15 @@
         </div>
         <div data-show="$loading.campaign" class="loading">
           <div class="spinner"></div>
-          <div>Loading...</div>
+          <div>Loading UTM campaign data…</div>
         </div>
-        <div id="utm-campaign-table" data-show="!$loading.campaign">
-          <!-- Table populated via SSE -->
-          <div class="empty-state-mini">
-            <div>...</div>
-            <div>Loading UTM campaign data</div>
-          </div>
+        <div id="utm-campaign-content">
+          <!-- patched here -->
         </div>
       </div>
 
       <!-- UTM Term -->
-      <div class="section glass card">
+      <div id="utm-term-card" class="section glass card">
         <div class="section-header">
           <h2>
             <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
@@ -179,19 +132,15 @@
         </div>
         <div data-show="$loading.term" class="loading">
           <div class="spinner"></div>
-          <div>Loading...</div>
+          <div>Loading UTM term data…</div>
         </div>
-        <div id="utm-term-table" data-show="!$loading.term">
-          <!-- Table populated via SSE -->
-          <div class="empty-state-mini">
-            <div>...</div>
-            <div>Loading UTM term data</div>
-          </div>
+        <div id="utm-term-content">
+          <!-- patched here -->
         </div>
       </div>
 
       <!-- UTM Content -->
-      <div class="section glass card">
+      <div id="utm-content-card" class="section glass card">
         <div class="section-header">
           <h2>
             <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
@@ -204,20 +153,16 @@
         </div>
         <div data-show="$loading.content" class="loading">
           <div class="spinner"></div>
-          <div>Loading...</div>
+          <div>Loading UTM content data…</div>
         </div>
-        <div id="utm-content-table" data-show="!$loading.content">
-          <!-- Table populated via SSE -->
-          <div class="empty-state-mini">
-            <div>...</div>
-            <div>Loading UTM content data</div>
-          </div>
+        <div id="utm-content-content">
+          <!-- patched here -->
         </div>
       </div>
     </div>
   </div>
 
-  <!-- No Website Selected -->
+  <!-- No website selected -->
   <div
     data-show="!$websitesLoading && !$websitesError && !$selectedWebsite && $websites.length > 0"
     class="empty-state"
@@ -225,10 +170,12 @@
   >
     <div class="empty-state-icon">...</div>
     <div class="empty-state-title">Select a Website</div>
-    <div class="empty-state-text">Choose a website from the dropdown above to view campaign data</div>
+    <div class="empty-state-text">
+      Choose a website from the dropdown above to view campaign data
+    </div>
   </div>
 
-  <!-- No Websites at All -->
+  <!-- No websites at all -->
   <div
     data-show="!$websitesLoading && !$websitesError && $websites.length === 0"
     class="empty-state"
@@ -239,12 +186,33 @@
     <div class="empty-state-text">Add a website in Kaunta to get started.</div>
   </div>
 
-  <!-- Websites Load Error -->
-  <div data-show="!$websitesLoading && $websitesError" class="empty-state" style="margin-top: 100px">
+  <!-- Load error -->
+  <div
+    data-show="!$websitesLoading && $websitesError"
+    class="empty-state"
+    style="margin-top: 100px"
+  >
     <div class="empty-state-icon">[!]</div>
     <div class="empty-state-title">Unable to load websites</div>
-    <div class="empty-state-text">Check the server logs for /api/websites errors and try again.</div>
+    <div
+      class="empty-state-text"
+      data-text="$websitesError || 'Check the server logs and try again.'"
+    ></div>
   </div>
+
+  <!-- Auto trigger when website changes -->
+  <div
+    aria-hidden="true"
+    style="display: none"
+    data-effect="
+      if ($selectedWebsite) {
+        if ($selectedWebsite !== $lastCampaignWebsite) {
+          $lastCampaignWebsite = $selectedWebsite;
+          @get('/api/dashboard/campaigns?website_id=' + encodeURIComponent($selectedWebsite));
+        }
+      }
+    "
+  ></div>
 </div>
 
 <style>
@@ -258,12 +226,16 @@
     margin-bottom: 8px;
     opacity: 0.5;
   }
-  .empty-state-mini > div:last-child {
-    font-size: 14px;
-  }
   .sortable-header:hover {
     background: var(--bg-accent);
   }
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 32px 16px;
+    color: var(--text-secondary);
+  }
 </style>
-
 {{end}}

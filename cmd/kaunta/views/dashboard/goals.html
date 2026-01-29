@@ -59,6 +59,8 @@
        goals: [],
        websites: [],
        selectedWebsite: localStorage.getItem('kaunta_website') || '',
+       lastGoalsWebsite: '',
+       currentWebsiteName: '',
        showCreateModal: false,
        showEditModal: false,
        showAnalyticsModal: false,
@@ -71,9 +73,11 @@
        analyticsDateRange: '7',
        analyticsTab: 'pages',
        analytics: { completions: 0, unique_sessions: 0, conversion_rate: 0, total_sessions: 0 },
-       breakdownData: []
+       breakdownData: [],
+       goalsReload: false,
+       lastAnalyticsRequestKey: ''
      }"
-     data-on:load="@get('/api/dashboard/goals')">
+     data-init="@get('/api/dashboard/goals')">
 
   <!-- Loading State -->
   <div data-show="$goalsLoading" class="loading" style="margin-top: 100px">
@@ -81,8 +85,30 @@
     <div>Loading goals...</div>
   </div>
 
+  <div
+    aria-hidden="true"
+    style="display: none"
+    data-effect="
+      if ($showAnalyticsModal && $currentGoal && $currentGoal.id) {
+        const key = [$currentGoal.id, $analyticsDateRange, $analyticsTab].join('::');
+        if ($lastAnalyticsRequestKey !== key) {
+          $lastAnalyticsRequestKey = key;
+          $analyticsLoading = true;
+          const encodedId = encodeURIComponent($currentGoal.id);
+          @get('/api/dashboard/goals/' + encodedId + '/analytics?days=' + $analyticsDateRange);
+          @get('/api/dashboard/goals/' + encodedId + '/breakdown/' + $analyticsTab + '?days=' + $analyticsDateRange);
+        }
+      } else if ($lastAnalyticsRequestKey) {
+        $lastAnalyticsRequestKey = '';
+      }
+    "
+  ></div>
+
   <!-- Goals Table -->
-  <div data-show="!$goalsLoading && !$goalsError && $selectedWebsite" class="section glass card">
+  <div
+    class="section glass card"
+    data-attr:hidden="$goalsLoading || $goalsError || !$selectedWebsite"
+  >
     <div class="section-header">
       <h2>
         <svg
@@ -101,54 +127,43 @@
           <path d="M18 6l-6.5 6.5" />
           <path d="M13.5 6.5L18 6l-1 5.5" />
         </svg>
-        Goals for <span id="website-name-display"><!-- SSE populated --></span>
+        Goals for <span id="website-name-display" data-text="$currentWebsiteName || '—'"></span>
       </h2>
     </div>
 
     <!-- Goals table container - populated via SSE PatchElements -->
-    <div id="goals-table-container">
+    <div id="goals-table-container" data-element="goals-table-container">
       <!-- Table content will be patched via SSE -->
+      <div class="empty-state-mini">
+        <div>...</div>
+        <div>Loading goals...</div>
+      </div>
     </div>
 
     <!-- No Goals - shown when goals array is empty -->
-    <div id="goals-empty-state" class="empty-state" style="display: none;">
-      <div class="empty-state-icon">
-        <svg
-          class="icon-xl"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="8"></circle>
-          <circle cx="12" cy="12" r="5"></circle>
-          <circle cx="12" cy="12" r="2"></circle>
-          <path d="M18 6l-6.5 6.5" />
-          <path d="M13.5 6.5L18 6l-1 5.5" />
-        </svg>
-      </div>
-      <div class="empty-state-title">No goals yet</div>
-      <div class="empty-state-text">
-        Track important events like signups, purchases, or downloads.
-      </div>
+    <div
+      id="goals-empty-state"
+      class="empty-state"
+      data-attr:hidden="$goalsLoading || $goalsError || $goals.length !== 0"
+    >
+      <div class="empty-state-icon">[=]</div>
+      <div class="empty-state-title">No data yet</div>
+      <div class="empty-state-text">Start tracking to see breakdown data</div>
       <button data-on:click="$showCreateModal = true" class="btn btn-primary">
         <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 4v16m8-8H4"
-          ></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
         </svg>
-        Add Your First Goal
+        Add Goal
       </button>
     </div>
   </div>
 
   <!-- No Website Selected -->
-  <div data-show="!$goalsLoading && !$goalsError && !$selectedWebsite" class="empty-state" style="margin-top: 100px">
+  <div
+    data-show="!$goalsLoading && !$goalsError && !$selectedWebsite"
+    class="empty-state"
+    style="margin-top: 100px"
+  >
     <div class="empty-state-icon">
       <svg class="icon-xl" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -186,9 +201,22 @@
   <div
     data-show="$showCreateModal || $showEditModal"
     class="modal-overlay"
-    data-on:click__self="$showCreateModal = false; $showEditModal = false; $currentGoal = null; $goalForm = { name: '', type: '', value: '' }; $formError = ''"
+    data-on:click="
+      if (evt.target === el) {
+        $showCreateModal = false;
+        $showEditModal = false;
+        $currentGoal = null;
+        $goalForm = { name: '', type: '', value: '' };
+        $formError = '';
+        $analyticsLoading = false;
+        $lastAnalyticsRequestKey = '';
+      }
+    "
   >
-    <div class="modal glass card">
+    <div
+      class="modal glass card"
+      data-on:click="evt.stopPropagation()"
+    >
       <h2 class="modal-title">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -207,7 +235,19 @@
         <span data-show="$showEditModal">Edit Goal</span>
         <span data-show="$showCreateModal">Add New Goal</span>
       </h2>
-      <form data-on:submit__prevent="$showEditModal ? @put('/api/dashboard/goals/' + $currentGoal.id) : @post('/api/dashboard/goals')">
+      <form
+        data-on:submit__prevent="
+          if ($submitting) {
+            return;
+          }
+          $submitting = true;
+          $showEditModal
+            ? @put('/api/dashboard/goals/' + $currentGoal.id, { contentType: 'form', headers: { 'X-CSRF-Token': getGoalsCsrfToken() } })
+            : @post('/api/dashboard/goals', { contentType: 'form', headers: { 'X-CSRF-Token': getGoalsCsrfToken() } });
+        "
+      >
+        <input type="hidden" name="website_id" data-attr:value="$selectedWebsite" />
+        <input type="hidden" name="type" data-attr:value="$goalForm.type" required />
         <div class="form-group">
           <label for="goal-name">Goal Name *</label>
           <input
@@ -218,7 +258,7 @@
             placeholder="e.g., Newsletter Signup"
             required
             class="input"
-          />
+             />
         </div>
 
         <div class="form-group">
@@ -227,9 +267,9 @@
             <label class="radio-label">
               <input
                 type="radio"
-                data-bind:goalForm.type
                 value="page_view"
-                data-on:change="$goalForm.value = ''; $formError = ''"
+                data-on:change="$goalForm.type = 'page_view'; $goalForm.value = ''; $formError = ''"
+                data-attr:checked="$goalForm.type === 'page_view'"
                 name="goal-type-radio"
                 required
               />
@@ -249,9 +289,9 @@
             <label class="radio-label">
               <input
                 type="radio"
-                data-bind:goalForm.type
                 value="custom_event"
-                data-on:change="$goalForm.value = ''; $formError = ''"
+                data-on:change="$goalForm.type = 'custom_event'; $goalForm.value = ''; $formError = ''"
+                data-attr:checked="$goalForm.type === 'custom_event'"
                 name="goal-type-radio"
                 required
               />
@@ -281,6 +321,7 @@
               data-bind:goalForm.value
               placeholder="/thank-you"
               class="input"
+              data-attr:required="$goalForm.type === 'page_view'"
             />
             <small>The page URL visitors reach when they complete this goal (e.g. /thank-you)</small>
           </div>
@@ -294,6 +335,7 @@
               data-bind:goalForm.value
               placeholder="e.g., signup"
               class="input"
+              data-attr:required="$goalForm.type === 'custom_event'"
             />
             <small>The custom event name sent from your website (e.g. "signup", "purchase")</small>
           </div>
@@ -323,9 +365,22 @@
   <div
     data-show="$showAnalyticsModal"
     class="modal-overlay"
-    data-on:click__self="$showAnalyticsModal = false; $currentGoal = null; destroyGoalChart(); $breakdownData = []"
+    data-on:click="
+      if (evt.target === el) {
+        $showAnalyticsModal = false;
+        $currentGoal = null;
+        destroyGoalChart();
+        $breakdownData = [];
+        $analyticsLoading = false;
+        $lastAnalyticsRequestKey = '';
+      }
+    "
   >
-    <div class="modal glass card" style="max-width: 1200px; width: 90vw">
+    <div
+      class="modal glass card"
+      style="max-width: 1200px; width: 90vw"
+      data-on:click="evt.stopPropagation()"
+    >
       <h2 class="modal-title">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px">
           <path
@@ -343,21 +398,21 @@
         <button
           class="btn btn-xs date-btn"
           data-class:active="$analyticsDateRange === '1'"
-          data-on:click="$analyticsDateRange = '1'; @get('/api/dashboard/goals/' + $currentGoal.id + '/analytics?days=1')"
+          data-on:click="$analyticsDateRange = '1'"
         >
           Today
         </button>
         <button
           class="btn btn-xs date-btn"
           data-class:active="$analyticsDateRange === '7'"
-          data-on:click="$analyticsDateRange = '7'; @get('/api/dashboard/goals/' + $currentGoal.id + '/analytics?days=7')"
+          data-on:click="$analyticsDateRange = '7'"
         >
           7 days
         </button>
         <button
           class="btn btn-xs date-btn"
           data-class:active="$analyticsDateRange === '30'"
-          data-on:click="$analyticsDateRange = '30'; @get('/api/dashboard/goals/' + $currentGoal.id + '/analytics?days=30')"
+          data-on:click="$analyticsDateRange = '30'"
         >
           30 days
         </button>
@@ -365,8 +420,9 @@
 
       <!-- Conversion Metrics Cards - populated via SSE -->
       <div
-        data-show="!$analyticsLoading"
+        data-attr:hidden="$analyticsLoading"
         id="analytics-stats-container"
+        data-element="analytics-stats-container"
         class="stats-grid"
         style="
           margin-bottom: 24px;
@@ -399,13 +455,13 @@
       </div>
 
       <!-- Time Series Chart -->
-      <div data-show="!$analyticsLoading" class="section glass card" style="margin-bottom: 24px">
+      <div data-attr:hidden="$analyticsLoading" class="section glass card" style="margin-bottom: 24px">
         <h3>Completions Over Time</h3>
         <canvas id="goalChart" style="max-height: 300px"></canvas>
       </div>
 
       <!-- Tabbed Breakdowns -->
-      <div data-show="!$analyticsLoading" class="section glass card">
+      <div data-attr:hidden="$analyticsLoading" class="section glass card">
         <div
           class="tabs"
           style="
@@ -418,7 +474,7 @@
           <button
             class="tab-btn"
             data-class:active="$analyticsTab === 'pages'"
-            data-on:click="$analyticsTab = 'pages'; @get('/api/dashboard/goals/' + $currentGoal.id + '/breakdown/pages?days=' + $analyticsDateRange)"
+            data-on:click="$analyticsTab = 'pages'"
             style="
               padding: 8px 16px;
               background: none;
@@ -432,7 +488,7 @@
           <button
             class="tab-btn"
             data-class:active="$analyticsTab === 'referrer'"
-            data-on:click="$analyticsTab = 'referrer'; @get('/api/dashboard/goals/' + $currentGoal.id + '/breakdown/referrer?days=' + $analyticsDateRange)"
+            data-on:click="$analyticsTab = 'referrer'"
             style="
               padding: 8px 16px;
               background: none;
@@ -446,7 +502,7 @@
           <button
             class="tab-btn"
             data-class:active="$analyticsTab === 'country'"
-            data-on:click="$analyticsTab = 'country'; @get('/api/dashboard/goals/' + $currentGoal.id + '/breakdown/country?days=' + $analyticsDateRange)"
+            data-on:click="$analyticsTab = 'country'"
             style="
               padding: 8px 16px;
               background: none;
@@ -460,7 +516,7 @@
           <button
             class="tab-btn"
             data-class:active="$analyticsTab === 'device'"
-            data-on:click="$analyticsTab = 'device'; @get('/api/dashboard/goals/' + $currentGoal.id + '/breakdown/device?days=' + $analyticsDateRange)"
+            data-on:click="$analyticsTab = 'device'"
             style="
               padding: 8px 16px;
               background: none;
@@ -474,7 +530,7 @@
           <button
             class="tab-btn"
             data-class:active="$analyticsTab === 'browser'"
-            data-on:click="$analyticsTab = 'browser'; @get('/api/dashboard/goals/' + $currentGoal.id + '/breakdown/browser?days=' + $analyticsDateRange)"
+            data-on:click="$analyticsTab = 'browser'"
             style="
               padding: 8px 16px;
               background: none;
@@ -488,7 +544,7 @@
         </div>
 
         <!-- Breakdown Table - populated via SSE -->
-        <div id="analytics-breakdown-container">
+        <div id="analytics-breakdown-container" data-element="analytics-breakdown-container">
           <!-- Table content will be patched via SSE -->
         </div>
 
@@ -506,7 +562,7 @@
       <!-- Close Button -->
       <div class="modal-actions">
         <button
-          data-on:click="$showAnalyticsModal = false; $currentGoal = null; destroyGoalChart(); $breakdownData = []"
+          data-on:click="$showAnalyticsModal = false; $currentGoal = null; destroyGoalChart(); $breakdownData = []; $analyticsLoading = false; $lastAnalyticsRequestKey = ''"
           class="btn btn-ghost"
         >
           Close
@@ -514,6 +570,34 @@
       </div>
     </div>
   </div>
+
+  <!-- Auto-load goals when website changes -->
+  <div
+    aria-hidden="true"
+    style="display: none"
+    data-effect="
+      if ($websites && $websites.length) {
+        const site = $websites.find((w) => w.id === $selectedWebsite);
+        $currentWebsiteName = site ? (site.name || site.domain) : '';
+      }
+      if ($selectedWebsite && $selectedWebsite !== $lastGoalsWebsite) {
+        $lastGoalsWebsite = $selectedWebsite;
+        $goalsLoading = true;
+        @get('/api/dashboard/goals?website=' + encodeURIComponent($selectedWebsite));
+      }
+    "
+  ></div>
+
+  <div
+    aria-hidden="true"
+    style="display: none"
+    data-effect="
+      if ($goalsReload && $selectedWebsite) {
+        @get('/api/dashboard/goals?website=' + encodeURIComponent($selectedWebsite));
+        $goalsReload = false;
+      }
+    "
+  ></div>
 
   <!-- Toast Notification -->
   <div

@@ -25,16 +25,20 @@
 {{end}} {{define "content"}}
 
 <!-- Map Dashboard (Datastar) -->
-<div id="map-dashboard"
-     data-signals="{
-       websitesLoading: true,
-       websitesError: false,
-       websites: [],
-       selectedWebsite: localStorage.getItem('kaunta_website') || '',
-       mapLoading: false,
-       mapData: null
-     }"
-     data-on:load="@get('/api/dashboard/map-init')">
+<div
+  id="map-dashboard"
+  data-signals:websitesLoading="true"
+  data-signals:websitesError="false"
+  data-signals:websites="[]"
+  data-signals:selectedWebsite="localStorage.getItem('kaunta_website') || ''"
+  data-signals:mapLoading="false"
+  data-signals:mapError="''"
+  data-signals:mapData="null"
+  data-signals:mapTotalVisitors="0"
+  data-signals:mapPeriodDays="7"
+  data-signals:lastMapWebsite="''"
+  data-init="@get('/api/dashboard/map-init')"
+>
 
   <!-- Map Section -->
   <div data-show="!$websitesLoading && !$websitesError && $selectedWebsite && $websites.length > 0">
@@ -104,8 +108,44 @@
   <div data-show="!$websitesLoading && $websitesError" class="empty-state" style="margin-top: 100px">
     <div class="empty-state-icon">⚠️</div>
     <div class="empty-state-title">Unable to load websites</div>
-    <div class="empty-state-text">Check the server logs for /api/websites errors and try again.</div>
+    <div class="empty-state-text" data-text="$websitesError || 'Check the server logs and try again.'"></div>
   </div>
+
+  <!-- Map Error -->
+  <div data-show="$mapError" class="empty-state" style="margin-top: 40px">
+    <div class="empty-state-icon">🗺️</div>
+    <div class="empty-state-title">Map unavailable</div>
+    <div class="empty-state-text" data-text="$mapError"></div>
+  </div>
+
+  <!-- Auto-load map data when website changes -->
+  <div
+    aria-hidden="true"
+    style="display: none"
+    data-effect="
+      if ($selectedWebsite) {
+        if ($selectedWebsite !== $lastMapWebsite) {
+          $lastMapWebsite = $selectedWebsite;
+          $mapLoading = true;
+          @get('/api/dashboard/map?website_id=' + encodeURIComponent($selectedWebsite));
+        }
+      }
+    "
+  ></div>
+
+  <!-- Re-render map when map data updates -->
+  <div
+    aria-hidden="true"
+    style="display: none"
+    data-effect="
+      if ($mapData && window.initChoroplethMap) {
+        const payload = Array.isArray($mapData) ? { data: $mapData } : $mapData;
+        window.initChoroplethMap(payload);
+      } else if (!$mapData && window.cleanupMap) {
+        window.cleanupMap();
+      }
+    "
+  ></div>
 </div>
 
 {{end}}

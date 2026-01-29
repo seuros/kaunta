@@ -1,27 +1,38 @@
 {{define "header-buttons"}}{{end}} {{define "page-scripts"}}
 <script src="/assets/js/dashboard.js?v={{.Version}}"></script>
+{{end}} {{define "website-selector"}}
+<div
+  id="websites-container"
+  class="website-selector-placeholder"
+  data-element="websites-container"
+>
+  <select class="input" disabled aria-label="Loading websites">
+    <option>Loading websites...</option>
+  </select>
+</div>
 {{end}} {{define "content"}}
 <!-- Dashboard App (Datastar) -->
-<div id="dashboard-home"
-     data-signals="{
-       websitesLoading: true,
-       websitesError: false,
-       websites: [],
-       selectedWebsite: '',
-       stats: { current_visitors: 0, today_pageviews: 0, today_visitors: 0, today_bounce_rate: '0%' },
-       activeTab: 'pages',
-       breakdownLoading: false,
-       breakdownData: [],
-       sortColumn: 'count',
-       sortDirection: 'desc',
-       chartData: { labels: [], values: [] }
-     }"
-     data-on:load="@get('/api/dashboard/init')">
-
+<div
+  id="dashboard-home"
+  data-signals:websitesLoading="true"
+  data-signals:websitesError="false"
+  data-signals:websites="[]"
+  data-signals:selectedWebsite="(() => { const value = localStorage.getItem('kaunta_website'); return value && value !== 'undefined' && value !== 'null' ? value : ''; })()"
+  data-signals:stats="{ current_visitors: 0, today_pageviews: 0, today_visitors: 0, today_bounce_rate: '0%' }"
+  data-signals:statsLoading="false"
+  data-signals:activeTab="'pages'"
+  data-signals:breakdownLoading="false"
+  data-signals:breakdownError="false"
+  data-signals:chartLoading="false"
+  data-signals:lastBreakdownKey="''"
+  data-signals:lastChartWebsite="''"
+  data-init="@get('/api/dashboard/init')"
+>
   <!-- Dashboard content - shown when loaded -->
-  <div data-show="!$websitesLoading && !$websitesError && $selectedWebsite && $websites.length > 0">
+  <div data-show="!$websitesLoading && !$websitesError && $selectedWebsite">
     <!-- Stats Grid -->
     <div class="stats-grid">
+      <!-- Current Visitors Card -->
       <div class="stat-card glass card">
         <div class="stat-header">
           <div class="stat-icon green glass icon-xl">
@@ -37,16 +48,18 @@
           <div class="stat-label">Current Visitors</div>
         </div>
         <div class="stat-value live">
-          <span class="pulse"></span><span id="stat-current-visitors" data-text="$stats.current_visitors"></span>
+          <span class="pulse"></span>
+          <span data-text="$stats.current_visitors"></span>
         </div>
         <div class="progress-container">
           <div
             class="progress-bar"
-            id="progress-current-visitors"
             data-attr:style="'width: ' + Math.min($stats.current_visitors * 5, 100) + '%'"
           ></div>
         </div>
       </div>
+
+      <!-- Pageviews Card -->
       <div class="stat-card glass card">
         <div class="stat-header">
           <div class="stat-icon blue glass icon-xl">
@@ -58,15 +71,16 @@
           </div>
           <div class="stat-label">Pageviews</div>
         </div>
-        <div class="stat-value" id="stat-pageviews" data-text="$stats.today_pageviews"></div>
+        <div class="stat-value" data-text="$stats.today_pageviews"></div>
         <div class="progress-container">
           <div
             class="progress-bar"
-            id="progress-pageviews"
             data-attr:style="'width: ' + Math.min($stats.today_pageviews / 100, 100) + '%'"
           ></div>
         </div>
       </div>
+
+      <!-- Visitors Card -->
       <div class="stat-card glass card">
         <div class="stat-header">
           <div class="stat-icon purple glass icon-xl">
@@ -80,15 +94,16 @@
           </div>
           <div class="stat-label">Visitors</div>
         </div>
-        <div class="stat-value" id="stat-visitors" data-text="$stats.today_visitors"></div>
+        <div class="stat-value" data-text="$stats.today_visitors"></div>
         <div class="progress-container">
           <div
             class="progress-bar"
-            id="progress-visitors"
             data-attr:style="'width: ' + Math.min($stats.today_visitors / 100, 100) + '%'"
           ></div>
         </div>
       </div>
+
+      <!-- Bounce Rate Card -->
       <div class="stat-card glass card">
         <div class="stat-header">
           <div class="stat-icon orange glass icon-xl">
@@ -100,11 +115,10 @@
           </div>
           <div class="stat-label">Bounce Rate</div>
         </div>
-        <div class="stat-value" id="stat-bounce-rate" data-text="$stats.today_bounce_rate"></div>
+        <div class="stat-value" data-text="$stats.today_bounce_rate"></div>
         <div class="progress-container">
           <div
             class="progress-bar"
-            id="progress-bounce-rate"
             data-attr:style="'width: ' + $stats.today_bounce_rate.replace('%', '') + '%'"
           ></div>
         </div>
@@ -112,8 +126,7 @@
     </div>
 
     <!-- Pageviews Chart -->
-    <div class="section glass card" id="chart-section"
-         data-intersects="@get('/api/dashboard/chart?website=' + $selectedWebsite)">
+    <div class="section glass card" id="chart-section">
       <div class="section-header">
         <h2>
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
@@ -128,12 +141,17 @@
     </div>
 
     <!-- Breakdowns with Tabs -->
-    <div class="section glass card">
-      <div class="tabs">
+    <div class="section glass card" id="breakdown-panel">
+      <div class="tabs" role="tablist">
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'pages'"
-          data-on:click="$activeTab = 'pages'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="
+            if ($activeTab !== 'pages') {
+              $activeTab = 'pages';
+              $breakdownLoading = true;
+            }
+          "
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -142,10 +160,16 @@
           </svg>
           Pages
         </button>
+        <!-- Referrers Tab -->
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'referrers'"
-          data-on:click="$activeTab = 'referrers'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="
+            if ($activeTab !== 'referrers') {
+              $activeTab = 'referrers';
+              $breakdownLoading = true;
+            }
+          "
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -154,20 +178,34 @@
           </svg>
           Referrers
         </button>
+
+        <!-- Browsers Tab -->
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'browsers'"
-          data-on:click="$activeTab = 'browsers'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="
+            if ($activeTab !== 'browsers') {
+              $activeTab = 'browsers';
+              $breakdownLoading = true;
+            }
+          "
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V5z"></path>
           </svg>
           Browsers
         </button>
+
+        <!-- Devices Tab -->
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'devices'"
-          data-on:click="$activeTab = 'devices'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="
+            if ($activeTab !== 'devices') {
+              $activeTab = 'devices';
+              $breakdownLoading = true;
+            }
+          "
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -176,10 +214,17 @@
           </svg>
           Devices
         </button>
+
+        <!-- OS Tab -->
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'os'"
-          data-on:click="$activeTab = 'os'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="
+            if ($activeTab !== 'os') {
+              $activeTab = 'os';
+              $breakdownLoading = true;
+            }
+          "
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -188,10 +233,17 @@
           </svg>
           OS
         </button>
+
+        <!-- Countries Tab -->
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'countries'"
-          data-on:click="$activeTab = 'countries'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="
+            if ($activeTab !== 'countries') {
+              $activeTab = 'countries';
+              $breakdownLoading = true;
+            }
+          "
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -202,20 +254,34 @@
           </svg>
           Countries
         </button>
+
+        <!-- Cities Tab -->
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'cities'"
-          data-on:click="$activeTab = 'cities'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="
+            if ($activeTab !== 'cities') {
+              $activeTab = 'cities';
+              $breakdownLoading = true;
+            }
+          "
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
           </svg>
           Cities
         </button>
+
+        <!-- Regions Tab -->
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'regions'"
-          data-on:click="$activeTab = 'regions'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="
+            if ($activeTab !== 'regions') {
+              $activeTab = 'regions';
+              $breakdownLoading = true;
+            }
+          "
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -224,10 +290,17 @@
           </svg>
           Regions
         </button>
+
+        <!-- Entry Pages Tab -->
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'entry-pages'"
-          data-on:click="$activeTab = 'entry-pages'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="
+            if ($activeTab !== 'entry-pages') {
+              $activeTab = 'entry-pages';
+              $breakdownLoading = true;
+            }
+          "
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -236,10 +309,17 @@
           </svg>
           Entry
         </button>
+
+        <!-- Exit Pages Tab -->
         <button
           class="tab transition-standard"
           data-class:active="$activeTab === 'exit-pages'"
-          data-on:click="$activeTab = 'exit-pages'; @get('/api/dashboard/breakdown?website=' + $selectedWebsite + '&tab=' + $activeTab)"
+          data-on:click="
+            if ($activeTab !== 'exit-pages') {
+              $activeTab = 'exit-pages';
+              $breakdownLoading = true;
+            }
+          "
         >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -248,7 +328,13 @@
           </svg>
           Exit
         </button>
-        <a href="/dashboard/campaigns" class="tab transition-standard" style="text-decoration: none">
+
+        <!-- Campaigns Link (External) -->
+        <a
+          href="/dashboard/campaigns"
+          class="tab transition-standard"
+          style="text-decoration: none"
+        >
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
               d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
@@ -256,6 +342,8 @@
           </svg>
           Campaigns
         </a>
+
+        <!-- Map Link (External) -->
         <a href="/dashboard/map" class="tab transition-standard" style="text-decoration: none">
           <svg class="icon-lg" fill="currentColor" viewBox="0 0 24 24">
             <path
@@ -264,6 +352,8 @@
           </svg>
           Map
         </a>
+
+        <!-- Websites Link (External) -->
         <a href="/dashboard/websites" class="tab transition-standard" style="text-decoration: none">
           <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -275,6 +365,8 @@
           </svg>
           Websites
         </a>
+
+        <!-- Goals Link (External) -->
         <a href="/dashboard/goals" class="tab transition-standard" style="text-decoration: none">
           <svg
             class="icon-lg"
@@ -297,36 +389,75 @@
       </div>
 
       <!-- Breakdown Loading State -->
-      <div data-show="$breakdownLoading" class="loading">
+      <div data-show="$breakdownLoading" class="loading" aria-live="polite">
         <div class="spinner"></div>
-        <div>Loading data...</div>
+        <div>Loading..</div>
       </div>
 
-      <!-- Breakdown Table - rendered via SSE into this container -->
-      <div id="breakdown-table-container" data-show="!$breakdownLoading && $breakdownData.length > 0">
-        <!-- Table content will be patched via SSE PatchElements -->
-      </div>
-
-      <!-- Empty State -->
-      <div data-show="!$breakdownLoading && $breakdownData.length === 0" class="empty-state">
-        <div class="empty-state-icon">📊</div>
-        <div class="empty-state-title">No data yet</div>
-        <div class="empty-state-text">Start tracking to see breakdown data</div>
+      <!-- Breakdown Content Patched via SSE -->
+      <div
+        id="breakdown-content"
+        data-attr:hidden="$breakdownLoading"
+        data-element="breakdown-content"
+      >
+        <div id="breakdown-content-body" data-element="breakdown-content-body">
+          <div class="empty-state" aria-live="polite">
+            <div class="empty-state-icon">[=]</div>
+            <div class="empty-state-title" data-text="$breakdownError ? 'Unable to load breakdown' : 'No data yet'"></div>
+            <div class="empty-state-text">
+              <span data-show="!$breakdownError">Start tracking to see breakdown data</span>
+              <span data-show="$breakdownError" data-text="$breakdownError"></span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
+  </div>
+
+  <!-- Autoload breakdowns when website/tab changes -->
+  <div
+    aria-hidden="true"
+    style="display: none"
+    data-effect="
+      if ($selectedWebsite && $activeTab) {
+        const key = $selectedWebsite + '::' + $activeTab;
+        if (key !== $lastBreakdownKey) {
+          $lastBreakdownKey = key;
+          $breakdownLoading = true;
+          $breakdownError = false;
+          @get('/api/dashboard/breakdown?website=' + encodeURIComponent($selectedWebsite) + '&tab=' + encodeURIComponent($activeTab));
+        }
+      }
+    "
+  ></div>
+
+  <!-- Chart data loader -->
+  <div
+    aria-hidden="true"
+    style="display: none"
+    data-effect="
+      if ($selectedWebsite && $selectedWebsite !== $lastChartWebsite) {
+        $lastChartWebsite = $selectedWebsite;
+        $chartLoading = true;
+        @get('/api/dashboard/chart?website=' + encodeURIComponent($selectedWebsite));
+      }
+    "
+  ></div>
   <!-- Loading State -->
   <div data-show="$websitesLoading" class="loading" style="margin-top: 100px">
     <div class="spinner"></div>
     <div>Loading dashboard...</div>
   </div>
 
-  <!-- Websites Load Error -->
-  <div data-show="!$websitesLoading && $websitesError" class="empty-state" style="margin-top: 100px">
+  <!-- Error State -->
+  <div data-show="$websitesError" class="empty-state" style="margin-top: 100px">
     <div class="empty-state-icon">⚠️</div>
     <div class="empty-state-title">Unable to load websites</div>
-    <div class="empty-state-text">Check the server logs for /api/websites errors and try again.</div>
+    <div class="empty-state-text">
+      Check the server logs for /api/websites errors and try again.
+    </div>
   </div>
 </div>
 {{end}}
