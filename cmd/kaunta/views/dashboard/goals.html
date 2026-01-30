@@ -1,6 +1,4 @@
-{{define "page-subtitle"}}Goals Management{{end}}
-
-{{define "navigation"}}
+{{define "page-subtitle"}}Goals Management{{end}} {{define "navigation"}}
 <a
   href="/dashboard"
   class="btn btn-sm btn-ghost glass transition-standard"
@@ -16,44 +14,33 @@
   </svg>
   Dashboard
 </a>
-{{end}}
-
-{{define "website-selector"}}
+{{end}} {{define "website-selector"}}
 <div id="goals-website-selector" data-show="$websites.length > 0">
   <!-- Website selector populated via SSE -->
 </div>
-{{end}}
-
-{{define "date-controls"}}
+{{end}} {{define "date-controls"}}
 <!-- Goals page doesn't need date controls -->
-{{end}}
-
-{{define "filters"}}
+{{end}} {{define "filters"}}
 <!-- Goals page doesn't need filters -->
-{{end}}
-
-{{define "header-buttons"}}
+{{end}} {{define "header-buttons"}}
 <button
   data-show="$selectedWebsite"
   data-on:click="$showCreateModal = true"
   title="Add Goal"
-  class="btn btn-sm btn-primary"
+  class="btn btn-sm btn-primary glass transition-standard"
 >
   <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
   </svg>
   Add Goal
 </button>
-{{end}}
-
-{{define "page-scripts"}}
+{{end}} {{define "page-scripts"}}
 <script src="/assets/js/goals.js?v={{.Version}}"></script>
-{{end}}
-
-{{define "content"}}
+{{end}} {{define "content"}}
 <!-- Goals Dashboard (Datastar) -->
-<div id="goals-dashboard"
-     data-signals="{
+<div
+  id="goals-dashboard"
+  data-signals="{
        goalsLoading: true,
        goalsError: '',
        goals: [],
@@ -77,8 +64,8 @@
        goalsReload: false,
        lastAnalyticsRequestKey: ''
      }"
-     data-init="@get('/api/dashboard/goals')">
-
+  data-init="@get('/api/dashboard/goals')"
+>
   <!-- Loading State -->
   <div data-show="$goalsLoading" class="loading" style="margin-top: 100px">
     <div class="spinner"></div>
@@ -134,9 +121,9 @@
     <!-- Goals table container - populated via SSE PatchElements -->
     <div id="goals-table-container" data-element="goals-table-container">
       <!-- Table content will be patched via SSE -->
-      <div class="empty-state-mini">
-        <div>...</div>
-        <div>Loading goals...</div>
+      <div class="empty-state">
+        <div class="empty-state-icon">⋯</div>
+        <div class="empty-state-title">Loading goals...</div>
       </div>
     </div>
 
@@ -146,14 +133,23 @@
       class="empty-state"
       data-attr:hidden="$goalsLoading || $goalsError || $goals.length !== 0"
     >
-      <div class="empty-state-icon">[=]</div>
-      <div class="empty-state-title">No data yet</div>
-      <div class="empty-state-text">Start tracking to see breakdown data</div>
-      <button data-on:click="$showCreateModal = true" class="btn btn-primary">
+      <div class="empty-state-icon">🎯</div>
+      <div class="empty-state-title">No goals yet</div>
+      <div class="empty-state-text">Create your first goal to start tracking conversions</div>
+      <button
+        data-on:click="$showCreateModal = true"
+        class="btn btn-primary"
+        style="margin-top: 16px"
+      >
         <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 4v16m8-8H4"
+          ></path>
         </svg>
-        Add Goal
+        Add Your First Goal
       </button>
     </div>
   </div>
@@ -164,35 +160,21 @@
     class="empty-state"
     style="margin-top: 100px"
   >
-    <div class="empty-state-icon">
-      <svg class="icon-xl" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9-9a9 9 0 00-9 9m9-9v18"
-        ></path>
-      </svg>
-    </div>
-    <div class="empty-state-title">No website selected</div>
-    <div class="empty-state-text">Please select a website to manage goals.</div>
+    <div class="empty-state-icon">🌐</div>
+    <div class="empty-state-title">Select a Website</div>
+    <div class="empty-state-text">Choose a website from the dropdown above to manage goals</div>
   </div>
 
   <!-- Error State -->
   <div data-show="!$goalsLoading && $goalsError" class="empty-state" style="margin-top: 100px">
-    <div class="empty-state-icon">
-      <svg class="icon-xl" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-        ></path>
-      </svg>
-    </div>
+    <div class="empty-state-icon">⚠️</div>
     <div class="empty-state-title">Unable to load goals</div>
     <div class="empty-state-text" data-text="$goalsError"></div>
-    <button data-on:click="@get('/api/dashboard/goals')" class="btn btn-primary" style="margin-top: 16px">
+    <button
+      data-on:click="@get('/api/dashboard/goals')"
+      class="btn btn-primary"
+      style="margin-top: 16px"
+    >
       Try Again
     </button>
   </div>
@@ -201,6 +183,7 @@
   <div
     data-show="$showCreateModal || $showEditModal"
     class="modal-overlay"
+    style="display: none"
     data-on:click="
       if (evt.target === el) {
         $showCreateModal = false;
@@ -213,28 +196,42 @@
       }
     "
   >
-    <div
-      class="modal glass card"
-      data-on:click="evt.stopPropagation()"
-    >
-      <h2 class="modal-title">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-          ></path>
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-          ></path>
-        </svg>
-        <span data-show="$showEditModal">Edit Goal</span>
-        <span data-show="$showCreateModal">Add New Goal</span>
-      </h2>
+    <div class="modal glass card" data-on:click="evt.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            ></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+            ></path>
+          </svg>
+          <span data-show="$showEditModal">Edit Goal</span>
+          <span data-show="$showCreateModal">Add New Goal</span>
+        </h2>
+        <button
+          type="button"
+          class="modal-close"
+          data-on:click="$showCreateModal = false; $showEditModal = false; $currentGoal = null; $goalForm = { name: '', type: '', value: '' }; $formError = ''"
+          aria-label="Close modal"
+        >
+          <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            ></path>
+          </svg>
+        </button>
+      </div>
       <form
         data-on:submit__prevent="
           if ($submitting) {
@@ -246,8 +243,6 @@
             : @post('/api/dashboard/goals', { contentType: 'form', headers: { 'X-CSRF-Token': getGoalsCsrfToken() } });
         "
       >
-        <input type="hidden" name="website_id" data-attr:value="$selectedWebsite" />
-        <input type="hidden" name="type" data-attr:value="$goalForm.type" required />
         <div class="form-group">
           <label for="goal-name">Goal Name *</label>
           <input
@@ -255,92 +250,41 @@
             id="goal-name"
             name="name"
             data-bind:goalForm.name
-            placeholder="e.g., Newsletter Signup"
             required
             class="input"
-             />
+            placeholder="e.g., Newsletter Signup"
+          />
         </div>
-
         <div class="form-group">
-          <label>Goal Type *</label>
-          <div class="radio-group">
-            <label class="radio-label">
-              <input
-                type="radio"
-                value="page_view"
-                data-on:change="$goalForm.type = 'page_view'; $goalForm.value = ''; $formError = ''"
-                data-attr:checked="$goalForm.type === 'page_view'"
-                name="goal-type-radio"
-                required
-              />
-              <div class="radio-button-card">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  ></path>
-                </svg>
-                <span>Page View</span>
-                <small>Track visits to a specific URL.</small>
-              </div>
-            </label>
-            <label class="radio-label">
-              <input
-                type="radio"
-                value="custom_event"
-                data-on:change="$goalForm.type = 'custom_event'; $goalForm.value = ''; $formError = ''"
-                data-attr:checked="$goalForm.type === 'custom_event'"
-                name="goal-type-radio"
-                required
-              />
-              <div class="radio-button-card">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M8 9l4-4 4 4m0 6l-4 4-4-4"
-                  ></path>
-                </svg>
-                <span>Custom Event</span>
-                <small>Track a custom named event.</small>
-              </div>
-            </label>
-          </div>
+          <label for="goal-type">Goal Type *</label>
+          <select id="goal-type" name="type" data-bind:goalForm.type required class="input">
+            <option value="">Select type...</option>
+            <option value="pageview">Page View</option>
+            <option value="custom">Custom Event</option>
+          </select>
         </div>
-
-        <div data-show="$goalForm.type">
-          <div class="form-group" data-show="$goalForm.type === 'page_view'">
-            <label for="goal-page-value">Page URL *</label>
-            <input
-              type="text"
-              id="goal-page-value"
-              name="value"
-              data-bind:goalForm.value
-              placeholder="/thank-you"
-              class="input"
-              data-attr:required="$goalForm.type === 'page_view'"
-            />
-            <small>The page URL visitors reach when they complete this goal (e.g. /thank-you)</small>
-          </div>
-
-          <div class="form-group" data-show="$goalForm.type === 'custom_event'">
-            <label for="goal-event-value">Event Name *</label>
-            <input
-              type="text"
-              id="goal-event-value"
-              name="value"
-              data-bind:goalForm.value
-              placeholder="e.g., signup"
-              class="input"
-              data-attr:required="$goalForm.type === 'custom_event'"
-            />
-            <small>The custom event name sent from your website (e.g. "signup", "purchase")</small>
-          </div>
+        <div class="form-group">
+          <label for="goal-value">
+            <span data-show="$goalForm.type === 'pageview'">Page URL *</span>
+            <span data-show="$goalForm.type === 'custom'">Event Name *</span>
+            <span data-show="!$goalForm.type">Value *</span>
+          </label>
+          <input
+            type="text"
+            id="goal-value"
+            name="value"
+            data-bind:goalForm.value
+            required
+            class="input"
+            data-attr:placeholder="$goalForm.type === 'pageview' ? '/thank-you' : ($goalForm.type === 'custom' ? 'signup_completed' : 'Enter value...')"
+          />
+          <small data-show="$goalForm.type === 'pageview'"
+            >Enter the URL path (e.g., /thank-you or /success)</small
+          >
+          <small data-show="$goalForm.type === 'custom'"
+            >Enter the custom event name you'll track</small
+          >
         </div>
-
         <div data-show="$formError" class="error-message" data-text="$formError"></div>
         <div class="modal-actions">
           <button
@@ -353,18 +297,18 @@
           <button type="submit" class="btn btn-primary" data-attr:disabled="$submitting">
             <span data-show="!$submitting && $showEditModal">Update Goal</span>
             <span data-show="!$submitting && $showCreateModal">Create Goal</span>
-            <span data-show="$submitting && $showEditModal">Updating...</span>
-            <span data-show="$submitting && $showCreateModal">Creating...</span>
+            <span data-show="$submitting">Saving...</span>
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Goal Analytics Modal -->
+  <!-- Analytics Modal -->
   <div
     data-show="$showAnalyticsModal"
     class="modal-overlay"
+    style="display: none"
     data-on:click="
       if (evt.target === el) {
         $showAnalyticsModal = false;
@@ -376,22 +320,37 @@
       }
     "
   >
-    <div
-      class="modal glass card"
-      style="max-width: 1200px; width: 90vw"
-      data-on:click="evt.stopPropagation()"
-    >
-      <h2 class="modal-title">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 24px; height: 24px">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-          ></path>
-        </svg>
-        <span>Analytics: <span id="analytics-goal-name"><!-- SSE populated --></span></span>
-      </h2>
+    <div class="modal modal-lg glass card" data-on:click="evt.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            ></path>
+          </svg>
+          <span
+            >Analytics: <span id="analytics-goal-name"><!-- SSE populated --></span></span
+          >
+        </h2>
+        <button
+          type="button"
+          class="modal-close"
+          data-on:click="$showAnalyticsModal = false; $currentGoal = null; destroyGoalChart(); $breakdownData = []; $analyticsLoading = false; $lastAnalyticsRequestKey = ''"
+          aria-label="Close modal"
+        >
+          <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            ></path>
+          </svg>
+        </button>
+      </div>
 
       <!-- Date Range Filter -->
       <div class="date-range-buttons glass" style="margin-bottom: 24px">
@@ -424,12 +383,7 @@
         id="analytics-stats-container"
         data-element="analytics-stats-container"
         class="stats-grid"
-        style="
-          margin-bottom: 24px;
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 16px;
-        "
+        style="margin-bottom: 24px"
       >
         <div class="stat-card glass card">
           <div class="stat-label">Conversion Rate</div>
@@ -455,89 +409,52 @@
       </div>
 
       <!-- Time Series Chart -->
-      <div data-attr:hidden="$analyticsLoading" class="section glass card" style="margin-bottom: 24px">
-        <h3>Completions Over Time</h3>
+      <div
+        data-attr:hidden="$analyticsLoading"
+        class="section glass card"
+        style="margin-bottom: 24px"
+      >
+        <h3 style="margin-bottom: 16px; font-size: var(--font-lg); color: var(--accent-dark)">
+          Completions Over Time
+        </h3>
         <canvas id="goalChart" style="max-height: 300px"></canvas>
       </div>
 
       <!-- Tabbed Breakdowns -->
       <div data-attr:hidden="$analyticsLoading" class="section glass card">
-        <div
-          class="tabs"
-          style="
-            margin-bottom: 16px;
-            display: flex;
-            gap: 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          "
-        >
+        <div class="tabs" role="tablist">
           <button
-            class="tab-btn"
+            class="tab transition-standard"
             data-class:active="$analyticsTab === 'pages'"
             data-on:click="$analyticsTab = 'pages'"
-            style="
-              padding: 8px 16px;
-              background: none;
-              border: none;
-              cursor: pointer;
-              border-bottom: 2px solid transparent;
-            "
           >
             Top Converting Pages
           </button>
           <button
-            class="tab-btn"
+            class="tab transition-standard"
             data-class:active="$analyticsTab === 'referrer'"
             data-on:click="$analyticsTab = 'referrer'"
-            style="
-              padding: 8px 16px;
-              background: none;
-              border: none;
-              cursor: pointer;
-              border-bottom: 2px solid transparent;
-            "
           >
             Referrers
           </button>
           <button
-            class="tab-btn"
+            class="tab transition-standard"
             data-class:active="$analyticsTab === 'country'"
             data-on:click="$analyticsTab = 'country'"
-            style="
-              padding: 8px 16px;
-              background: none;
-              border: none;
-              cursor: pointer;
-              border-bottom: 2px solid transparent;
-            "
           >
             Countries
           </button>
           <button
-            class="tab-btn"
+            class="tab transition-standard"
             data-class:active="$analyticsTab === 'device'"
             data-on:click="$analyticsTab = 'device'"
-            style="
-              padding: 8px 16px;
-              background: none;
-              border: none;
-              cursor: pointer;
-              border-bottom: 2px solid transparent;
-            "
           >
             Devices
           </button>
           <button
-            class="tab-btn"
+            class="tab transition-standard"
             data-class:active="$analyticsTab === 'browser'"
             data-on:click="$analyticsTab = 'browser'"
-            style="
-              padding: 8px 16px;
-              background: none;
-              border: none;
-              cursor: pointer;
-              border-bottom: 2px solid transparent;
-            "
           >
             Browsers
           </button>
@@ -548,25 +465,15 @@
           <!-- Table content will be patched via SSE -->
         </div>
 
-        <div id="analytics-breakdown-empty" class="empty-state" style="display: none;">
+        <div id="analytics-breakdown-empty" class="empty-state" style="display: none">
           <div class="empty-state-text">No data available for this breakdown</div>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div data-show="$analyticsLoading" class="loading" style="margin: 40px 0; text-align: center">
+      <div data-show="$analyticsLoading" class="loading" style="margin: 40px 0">
         <div class="spinner"></div>
         <div>Loading analytics...</div>
-      </div>
-
-      <!-- Close Button -->
-      <div class="modal-actions">
-        <button
-          data-on:click="$showAnalyticsModal = false; $currentGoal = null; destroyGoalChart(); $breakdownData = []; $analyticsLoading = false; $lastAnalyticsRequestKey = ''"
-          class="btn btn-ghost"
-        >
-          Close
-        </button>
       </div>
     </div>
   </div>
@@ -607,6 +514,5 @@
     data-class:error="$toast.type === 'error'"
     data-text="$toast.message"
   ></div>
-
 </div>
 {{end}}

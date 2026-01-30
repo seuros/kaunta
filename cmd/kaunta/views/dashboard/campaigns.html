@@ -46,15 +46,18 @@
   data-signals:lastCampaignWebsite="''"
   data-init="@get('/api/dashboard/campaigns-init')"
 >
+  <!-- Loading State -->
+  <div data-show="$websitesLoading" class="loading" style="margin-top: 100px">
+    <div class="spinner"></div>
+    <div>Loading campaigns...</div>
+  </div>
+
   <!-- Main content when we have websites and selection -->
   <div
     data-show="!$websitesLoading && !$websitesError && $selectedWebsite && $websites.length > 0"
     data-class:hidden="!$selectedWebsite || $websites.length === 0"
   >
-    <div
-      class="utm-grid"
-      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px"
-    >
+    <div class="utm-grid">
       <!-- UTM Source -->
       <div id="utm-source-card" class="section glass card">
         <div class="section-header">
@@ -168,7 +171,7 @@
     class="empty-state"
     style="margin-top: 100px"
   >
-    <div class="empty-state-icon">...</div>
+    <div class="empty-state-icon">📊</div>
     <div class="empty-state-title">Select a Website</div>
     <div class="empty-state-text">
       Choose a website from the dropdown above to view campaign data
@@ -181,7 +184,7 @@
     class="empty-state"
     style="margin-top: 100px"
   >
-    <div class="empty-state-icon">[~]</div>
+    <div class="empty-state-icon">🌐</div>
     <div class="empty-state-title">No websites found</div>
     <div class="empty-state-text">Add a website in Kaunta to get started.</div>
   </div>
@@ -192,7 +195,7 @@
     class="empty-state"
     style="margin-top: 100px"
   >
-    <div class="empty-state-icon">[!]</div>
+    <div class="empty-state-icon">⚠️</div>
     <div class="empty-state-title">Unable to load websites</div>
     <div
       class="empty-state-text"
@@ -216,26 +219,30 @@
 </div>
 
 <style>
-  .empty-state-mini {
-    text-align: center;
-    padding: 32px 16px;
-    color: var(--text-tertiary);
+  .utm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: var(--space-lg);
   }
-  .empty-state-mini > div:first-child {
-    font-size: 32px;
-    margin-bottom: 8px;
-    opacity: 0.5;
-  }
+
   .sortable-header:hover {
     background: var(--bg-accent);
   }
+
   .loading {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    padding: 32px 16px;
+    gap: var(--space-sm);
+    padding: var(--space-xl) var(--space-md);
     color: var(--text-secondary);
+  }
+
+  @media (max-width: 768px) {
+    .utm-grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-md);
+    }
   }
 </style>
 {{end}}
