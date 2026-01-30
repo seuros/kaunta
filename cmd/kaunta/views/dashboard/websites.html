@@ -67,9 +67,9 @@
   >
     <div data-element="websites-grid-content">
       <!-- Website cards rendered server-side via SSE -->
-      <div class="empty-state-mini" style="grid-column: 1/-1">
-        <div>[...]</div>
-        <div>Loading websites...</div>
+      <div class="empty-state" style="grid-column: 1/-1">
+        <div class="empty-state-icon">⋯</div>
+        <div class="empty-state-title">Loading websites...</div>
       </div>
     </div>
   </div>
@@ -80,7 +80,7 @@
     class="empty-state"
     style="margin-top: 100px"
   >
-    <div class="empty-state-icon">&#9888;&#65039;</div>
+    <div class="empty-state-icon">⚠️</div>
     <div class="empty-state-title">Unable to load websites</div>
     <div class="empty-state-text" data-text="$websitesError"></div>
     <button
@@ -104,11 +104,25 @@
       }
     "
   >
-    <div
-      class="modal glass card"
-      data-on:click="evt.stopPropagation()"
-    >
-      <h2 class="modal-title">Add New Website</h2>
+    <div class="modal glass card" data-on:click="evt.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Add New Website</h2>
+        <button
+          type="button"
+          class="modal-close"
+          data-on:click="$showCreateModal = false; $createError = ''"
+          aria-label="Close modal"
+        >
+          <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            ></path>
+          </svg>
+        </button>
+      </div>
       <form
         data-on:submit__prevent="
           $creating = true;
@@ -207,7 +221,7 @@
     width: 100%;
   }
 
-  .websites-grid > [data-element='websites-grid-content'] {
+  .websites-grid > [data-element="websites-grid-content"] {
     display: contents;
   }
 
@@ -245,14 +259,12 @@
     display: flex;
     gap: var(--space-sm);
     flex-wrap: wrap;
-    justify-content: space-between;
+    justify-content: flex-end;
     margin-top: auto;
   }
 
   .website-actions .btn {
-    flex: 1 1 48%;
-    min-width: 0;
-    justify-content: center;
+    flex: 0 1 auto;
   }
 
   .website-name {

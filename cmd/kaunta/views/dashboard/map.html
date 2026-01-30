@@ -39,6 +39,11 @@
   data-signals:lastMapWebsite="''"
   data-init="@get('/api/dashboard/map-init')"
 >
+  <!-- Loading State -->
+  <div data-show="$websitesLoading" class="loading" style="margin-top: 100px">
+    <div class="spinner"></div>
+    <div>Loading map...</div>
+  </div>
 
   <!-- Map Section -->
   <div data-show="!$websitesLoading && !$websitesError && $selectedWebsite && $websites.length > 0">
@@ -64,10 +69,10 @@
       <div
         style="
           height: 600px;
-          border-radius: 8px;
+          border-radius: var(--radius-md);
           overflow: hidden;
           background: var(--bg-secondary);
-          margin-top: 24px;
+          margin-top: var(--space-lg);
           position: relative;
         "
       >
@@ -76,19 +81,13 @@
     </div>
   </div>
 
-  <!-- Loading State -->
-  <div data-show="$websitesLoading" class="loading" style="margin-top: 100px">
-    <div class="spinner"></div>
-    <div>Loading map...</div>
-  </div>
-
   <!-- No Website Selected -->
   <div
     data-show="!$websitesLoading && !$websitesError && !$selectedWebsite && $websites.length > 0"
     class="empty-state"
     style="margin-top: 100px"
   >
-    <div class="empty-state-icon">🌐</div>
+    <div class="empty-state-icon">🗺️</div>
     <div class="empty-state-title">Select a Website</div>
     <div class="empty-state-text">Choose a website from the dropdown above to view visitor map</div>
   </div>
@@ -99,16 +98,23 @@
     class="empty-state"
     style="margin-top: 100px"
   >
-    <div class="empty-state-icon">🛰️</div>
+    <div class="empty-state-icon">🌐</div>
     <div class="empty-state-title">No websites found</div>
     <div class="empty-state-text">Add a website in Kaunta to get started.</div>
   </div>
 
   <!-- Websites Load Error -->
-  <div data-show="!$websitesLoading && $websitesError" class="empty-state" style="margin-top: 100px">
+  <div
+    data-show="!$websitesLoading && $websitesError"
+    class="empty-state"
+    style="margin-top: 100px"
+  >
     <div class="empty-state-icon">⚠️</div>
     <div class="empty-state-title">Unable to load websites</div>
-    <div class="empty-state-text" data-text="$websitesError || 'Check the server logs and try again.'"></div>
+    <div
+      class="empty-state-text"
+      data-text="$websitesError || 'Check the server logs and try again.'"
+    ></div>
   </div>
 
   <!-- Map Error -->

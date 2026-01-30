@@ -745,36 +745,57 @@ tr:last-child td {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 50%);
+  background: rgb(0 0 0 / 60%);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 20px;
+  padding: var(--space-lg);
 }
 
 .modal {
   width: 100%;
-  max-width: 480px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--glass-border);
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: white;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: var(--space-lg);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-xl);
+  position: relative;
+}
+
+.modal-lg {
+  max-width: 1200px;
 }
 
 .modal h2 {
   margin: 0 0 var(--space-lg);
   font-size: var(--font-xl);
-  color: var(--text-primary);
+  color: var(--accent-dark);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.modal-actions .btn {
+  min-width: 120px;
 }
 
 /* Modal-specific components */
@@ -782,8 +803,30 @@ tr:last-child td {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  margin: 0 0 var(--space-lg);
+  margin: 0;
   font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--accent-dark);
+}
+
+.modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  flex-shrink: 0;
+}
+
+.modal-close:hover {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
   color: var(--text-primary);
 }
 
