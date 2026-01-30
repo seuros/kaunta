@@ -14,6 +14,7 @@
   --accent-dark: #1e3a8a;
   --success-color: #10b981;
   --error-color: #dc2626;
+  --error-color-dark: #b91c1c;
 
   /* Glass Effect - Consistent RGB */
   --glass-bg: rgb(230 240 255 / 70%);
@@ -303,17 +304,22 @@ h1 {
   border-color: var(--glass-border);
 }
 
-.btn-ghost,
-.btn-danger {
+.btn-ghost {
   background: transparent;
   color: var(--text-secondary);
   border-color: transparent;
 }
 
+.btn-danger {
+  background: var(--error-color);
+  border-color: var(--error-color);
+  color: #fff;
+}
+
 .btn-danger:hover:not(:disabled) {
-  background: rgb(239 68 68 / 10%);
-  border-color: rgb(239 68 68 / 30%);
-  color: var(--error-color);
+  background: var(--error-color-dark);
+  border-color: var(--error-color-dark);
+  color: #fff;
 }
 
 /* Button Sizes */
@@ -563,10 +569,16 @@ header .btn-primary:hover {
   box-shadow: var(--shadow-md);
 }
 
+header .btn-danger {
+  background: var(--error-color);
+  border-color: var(--error-color);
+  color: #fff;
+}
+
 header .btn-danger:hover:not(:disabled) {
-  background: rgb(239 68 68 / 10%);
-  border-color: rgb(239 68 68 / 30%);
-  color: var(--error-color);
+  background: var(--error-color-dark);
+  border-color: var(--error-color-dark);
+  color: #fff;
 }
 
 /* Override button size classes in header for consistency */
@@ -1423,6 +1435,18 @@ footer .repo-link:hover {
   .base-layout .container {
     padding: var(--space-md);
   }
+}
+
+/* Goals table action buttons */
+.goals-table td.goal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  text-align: right;
+}
+
+.goals-table td.goal-actions .btn {
+  min-width: 0;
 }
 
 /* Extra small screens */

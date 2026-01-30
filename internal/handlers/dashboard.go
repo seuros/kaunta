@@ -1282,11 +1282,11 @@ func countryFlagFromCode(code string) string {
 
 func buildGoalsTableHTML(goals []GoalInfo) string {
 	if len(goals) == 0 {
-		return `<div class="empty-state-mini" style="grid-column: 1/-1;"><div>[+]</div><div>No goals yet. Create one to start tracking.</div></div>`
+		return ` <div id="goals-empty-state" class="empty-state" data-attr:hidden="$goalsLoading || $goalsError || $goals.length !== 0"><div class="empty-state-icon">🎯</div><div class="empty-state-title">No goals yet</div><div class="empty-state-text">Create your first goal to start tracking conversions</div><button data-on:click="$showCreateModal = true" class="btn btn-primary" style="margin-top: 16px"> <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>Add Your First Goal</button></div>`
 	}
 
 	const editAction = `const btn = evt.currentTarget || evt.target; if (!btn) { return; } const data = btn.dataset || {}; $currentGoal = { id: data.goalId || '', name: data.goalName || '', type: data.goalType || '', value: data.goalValue || '' }; $goalForm = { name: data.goalName || '', type: data.goalType || '', value: data.goalValue || '' }; $formError = ''; $showEditModal = true;`
-	const analyticsAction = `const btn = evt.currentTarget || evt.target; if (!btn) { return; } const data = btn.dataset || {}; $currentGoal = { id: data.goalId || '', name: data.goalName || '', type: data.goalType || '', value: data.goalValue || '' }; $analytics = { completions: 0, unique_sessions: 0, conversion_rate: '0.00', total_sessions: 0 }; $breakdownData = []; destroyGoalChart(); $analyticsLoading = true; $lastAnalyticsRequestKey = ''; $showAnalyticsModal = true;`
+	const analyticsAction = `const btn = evt.currentTarget || evt.target; if (!btn) { return; } const data = btn.dataset || {}; $currentGoal = { id: data.goalId || '', name: data.goalName || '', type: data.goalType || '', value: data.goalValue || '' }; $analytics = { completions: 0, unique_sessions: 0, conversion_rate: '0.00', total_sessions: 0 }; $breakdownData = []; destroyGoalChart(); $analyticsLoading = true; $breakdownLoading = true; $lastAnalyticsRequestKey = ''; $lastBreakdownRequestKey = ''; $showAnalyticsModal = true;`
 	const deleteAction = `const btn = evt.currentTarget || evt.target; if (!btn) { return; } const data = btn.dataset || {}; if (confirm('Delete goal &ldquo;' + (data.goalName || '') + '&rdquo;?')) { @delete('/api/dashboard/goals/' + (data.goalId || ''), { headers: { 'X-CSRF-Token': getGoalsCsrfToken() } }); }`
 
 	var rows strings.Builder
@@ -1295,7 +1295,7 @@ func buildGoalsTableHTML(goals []GoalInfo) string {
 		if g.Type == "custom_event" {
 			typeLabel = "Custom Event"
 		}
-		rows.WriteString(fmt.Sprintf(`<tr><td><div class="goal-name">%s</div><div class="goal-meta">%s</div></td><td><span class="badge">%s</span></td><td><code class="goal-target">%s</code></td><td class="goal-actions"><button class="btn btn-xs btn-ghost" data-goal-id="%s" data-goal-name="%s" data-goal-type="%s" data-goal-value="%s" data-on:click="%s">Edit</button><!-- Analytics button temporarily disabled <button class="btn btn-xs btn-ghost" data-goal-id="%s" data-goal-name="%s" data-goal-type="%s" data-goal-value="%s" data-on:click="%s">Analytics</button> --><button class="btn btn-xs btn-danger" data-goal-id="%s" data-goal-name="%s" data-on:click="%s">Delete</button></td></tr>`,
+		rows.WriteString(fmt.Sprintf(`<tr><td><div class="goal-name">%s</div><div class="goal-meta">%s</div></td><td><span class="badge">%s</span></td><td><code class="goal-target">%s</code></td><td class="goal-actions"><button class="btn btn-xs btn-secondary" data-goal-id="%s" data-goal-name="%s" data-goal-type="%s" data-goal-value="%s" data-on:click="%s">Edit</button><button class="btn btn-xs btn-primary" data-goal-id="%s" data-goal-name="%s" data-goal-type="%s" data-goal-value="%s" data-on:click="%s">Analytics</button><button class="btn btn-xs btn-danger" data-goal-id="%s" data-goal-name="%s" data-on:click="%s">Delete</button></td></tr>`,
 			escapeHTML(g.Name),
 			escapeHTML(fmt.Sprintf("ID: %s", g.ID)),
 			typeLabel,

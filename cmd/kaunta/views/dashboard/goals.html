@@ -61,8 +61,10 @@
        analyticsTab: 'pages',
        analytics: { completions: 0, unique_sessions: 0, conversion_rate: 0, total_sessions: 0 },
        breakdownData: [],
+       breakdownLoading: false,
        goalsReload: false,
-       lastAnalyticsRequestKey: ''
+       lastAnalyticsRequestKey: '',
+       lastBreakdownRequestKey: ''
      }"
   data-init="@get('/api/dashboard/goals')"
 >
@@ -77,16 +79,35 @@
     style="display: none"
     data-effect="
       if ($showAnalyticsModal && $currentGoal && $currentGoal.id) {
-        const key = [$currentGoal.id, $analyticsDateRange, $analyticsTab].join('::');
+        const key = [$currentGoal.id, $analyticsDateRange].join('::');
         if ($lastAnalyticsRequestKey !== key) {
           $lastAnalyticsRequestKey = key;
           $analyticsLoading = true;
           const encodedId = encodeURIComponent($currentGoal.id);
           @get('/api/dashboard/goals/' + encodedId + '/analytics?days=' + $analyticsDateRange);
-          @get('/api/dashboard/goals/' + encodedId + '/breakdown/' + $analyticsTab + '?days=' + $analyticsDateRange);
         }
       } else if ($lastAnalyticsRequestKey) {
         $lastAnalyticsRequestKey = '';
+        $analyticsLoading = false;
+      }
+    "
+  ></div>
+
+  <div
+    aria-hidden="true"
+    style="display: none"
+    data-effect="
+      if ($showAnalyticsModal && $currentGoal && $currentGoal.id) {
+        const key = [$currentGoal.id, $analyticsDateRange, $analyticsTab].join('::');
+        if ($lastBreakdownRequestKey !== key) {
+          $lastBreakdownRequestKey = key;
+          $breakdownLoading = true;
+          const encodedId = encodeURIComponent($currentGoal.id);
+          @get('/api/dashboard/goals/' + encodedId + '/breakdown/' + $analyticsTab + '?days=' + $analyticsDateRange);
+        }
+      } else if ($lastBreakdownRequestKey) {
+        $lastBreakdownRequestKey = '';
+        $breakdownLoading = false;
       }
     "
   ></div>
@@ -114,7 +135,7 @@
           <path d="M18 6l-6.5 6.5" />
           <path d="M13.5 6.5L18 6l-1 5.5" />
         </svg>
-        Goals for <span id="website-name-display" data-text="$currentWebsiteName || '—'"></span>
+        <span id="website-name-display" data-text="$currentWebsiteName || ''"></span> Goals
       </h2>
     </div>
 
@@ -125,32 +146,6 @@
         <div class="empty-state-icon">⋯</div>
         <div class="empty-state-title">Loading goals...</div>
       </div>
-    </div>
-
-    <!-- No Goals - shown when goals array is empty -->
-    <div
-      id="goals-empty-state"
-      class="empty-state"
-      data-attr:hidden="$goalsLoading || $goalsError || $goals.length !== 0"
-    >
-      <div class="empty-state-icon">🎯</div>
-      <div class="empty-state-title">No goals yet</div>
-      <div class="empty-state-text">Create your first goal to start tracking conversions</div>
-      <button
-        data-on:click="$showCreateModal = true"
-        class="btn btn-primary"
-        style="margin-top: 16px"
-      >
-        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 4v16m8-8H4"
-          ></path>
-        </svg>
-        Add Your First Goal
-      </button>
     </div>
   </div>
 
@@ -243,6 +238,7 @@
             : @post('/api/dashboard/goals', { contentType: 'form', headers: { 'X-CSRF-Token': getGoalsCsrfToken() } });
         "
       >
+        <input type="hidden" name="website_id" data-attr:value="$selectedWebsite" />
         <div class="form-group">
           <label for="goal-name">Goal Name *</label>
           <input
@@ -259,14 +255,14 @@
           <label for="goal-type">Goal Type *</label>
           <select id="goal-type" name="type" data-bind:goalForm.type required class="input">
             <option value="">Select type...</option>
-            <option value="pageview">Page View</option>
-            <option value="custom">Custom Event</option>
+            <option value="page_view">Page View</option>
+            <option value="custom_event">Custom Event</option>
           </select>
         </div>
         <div class="form-group">
           <label for="goal-value">
-            <span data-show="$goalForm.type === 'pageview'">Page URL *</span>
-            <span data-show="$goalForm.type === 'custom'">Event Name *</span>
+            <span data-show="$goalForm.type === 'page_view'">Page URL *</span>
+            <span data-show="$goalForm.type === 'custom_event'">Event Name *</span>
             <span data-show="!$goalForm.type">Value *</span>
           </label>
           <input
@@ -276,12 +272,12 @@
             data-bind:goalForm.value
             required
             class="input"
-            data-attr:placeholder="$goalForm.type === 'pageview' ? '/thank-you' : ($goalForm.type === 'custom' ? 'signup_completed' : 'Enter value...')"
+            data-attr:placeholder="$goalForm.type === 'page_view' ? '/thank-you' : ($goalForm.type === 'custom_event' ? 'signup_completed' : 'Enter value...')"
           />
-          <small data-show="$goalForm.type === 'pageview'"
+          <small data-show="$goalForm.type === 'page_view'"
             >Enter the URL path (e.g., /thank-you or /success)</small
           >
-          <small data-show="$goalForm.type === 'custom'"
+          <small data-show="$goalForm.type === 'custom_event'"
             >Enter the custom event name you'll track</small
           >
         </div>
