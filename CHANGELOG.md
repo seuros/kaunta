@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.52.2](https://github.com/seuros/kaunta/compare/v0.52.1...v0.52.2) (2026-01-30)
+
+
+### Bug Fixes
+
+* resolve datastar frontend issues ([#135](https://github.com/seuros/kaunta/issues/135)) ([78bab4f](https://github.com/seuros/kaunta/commit/78bab4f882a5cfea4a857813ba487d08f9cb5c2e))
+* **ui:** standardize modals, empty states, and layouts across all pages ([#137](https://github.com/seuros/kaunta/issues/137)) ([d11ffd8](https://github.com/seuros/kaunta/commit/d11ffd879ebb45c492b1e5df69ae5273ed14e6c0))
+
 ## [0.52.1](https://github.com/seuros/kaunta/compare/v0.52.0...v0.52.1) (2026-01-27)
 
 
