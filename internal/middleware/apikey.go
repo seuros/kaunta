@@ -1,11 +1,12 @@
 package middleware
 
 import (
+	"context"
 	"database/sql"
+	"net/http"
 	"strings"
 
-	"github.com/gofiber/fiber/v3"
-
+	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/models"
 )
 
@@ -22,83 +23,73 @@ type APIKeyContext struct {
 // apiKeyValidator is the function used to validate API keys (can be mocked in tests)
 var apiKeyValidator = validateAPIKeyFromDB
 
-// APIKeyAuth middleware validates API keys for the ingest endpoints
-func APIKeyAuth(c fiber.Ctx) error {
-	return apiKeyAuthWithScope(c, "ingest")
+type apiContextKey string
+
+const apiKeyContextKey apiContextKey = "api_key"
+
+// APIKeyAuth middleware validates API keys for the ingest endpoints.
+func APIKeyAuth(next http.Handler) http.Handler {
+	return apiKeyAuthWithScope(next, "ingest")
 }
 
-// APIKeyAuthAny validates API key without checking scope (handler checks scope)
-func APIKeyAuthAny(c fiber.Ctx) error {
-	return apiKeyAuthWithScope(c, "")
+// APIKeyAuthAny validates API key without checking scope (handler checks scope).
+func APIKeyAuthAny(next http.Handler) http.Handler {
+	return apiKeyAuthWithScope(next, "")
 }
 
-// apiKeyAuthWithScope validates API key, optionally checking for specific scope
-func apiKeyAuthWithScope(c fiber.Ctx, requiredScope string) error {
-	// Extract key from Authorization header (Bearer token)
-	key := extractAPIKey(c)
-	if key == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Missing API key",
-		})
-	}
+// apiKeyAuthWithScope validates API key, optionally checking for specific scope.
+func apiKeyAuthWithScope(next http.Handler, requiredScope string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := extractAPIKey(r)
+		if key == "" {
+			httpx.Error(w, http.StatusUnauthorized, "Missing API key")
+			return
+		}
 
-	// Validate key prefix
-	if !strings.HasPrefix(key, "kaunta_live_") {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Invalid API key format",
-		})
-	}
+		if !strings.HasPrefix(key, "kaunta_live_") {
+			httpx.Error(w, http.StatusUnauthorized, "Invalid API key format")
+			return
+		}
 
-	// Hash and lookup
-	keyHash := models.HashAPIKey(key)
-	apiKey, err := apiKeyValidator(keyHash)
+		keyHash := models.HashAPIKey(key)
+		apiKey, err := apiKeyValidator(keyHash)
 
-	if err == sql.ErrNoRows {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Invalid API key",
-		})
-	}
+		if err == sql.ErrNoRows {
+			httpx.Error(w, http.StatusUnauthorized, "Invalid API key")
+			return
+		}
 
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Authentication error",
-		})
-	}
+		if err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "Authentication error")
+			return
+		}
 
-	// Check if key is valid (not revoked, not expired)
-	if !apiKey.IsValid() {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "API key revoked or expired",
-		})
-	}
+		if !apiKey.IsValid() {
+			httpx.Error(w, http.StatusUnauthorized, "API key revoked or expired")
+			return
+		}
 
-	// Check scope if required
-	if requiredScope != "" && !apiKey.HasScope(requiredScope) {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "API key does not have " + requiredScope + " permission",
-		})
-	}
+		if requiredScope != "" && !apiKey.HasScope(requiredScope) {
+			httpx.Error(w, http.StatusForbidden, "API key does not have "+requiredScope+" permission")
+			return
+		}
 
-	// Update last_used_at asynchronously (don't block request)
-	go models.UpdateAPIKeyLastUsed(apiKey.KeyID)
+		go models.UpdateAPIKeyLastUsed(apiKey.KeyID)
 
-	// Store API key context in Fiber locals
-	c.Locals("api_key", apiKey)
-
-	return c.Next()
+		ctx := context.WithValue(r.Context(), apiKeyContextKey, apiKey)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 // extractAPIKey extracts the API key from request headers
 // Supports: Authorization: Bearer <key> or X-API-Key: <key>
-func extractAPIKey(c fiber.Ctx) string {
-	// Try Authorization header first (preferred)
-	authHeader := c.Get("Authorization")
+func extractAPIKey(r *http.Request) string {
+	authHeader := r.Header.Get("Authorization")
 	if strings.HasPrefix(authHeader, "Bearer ") {
 		return strings.TrimPrefix(authHeader, "Bearer ")
 	}
 
-	// Fallback to X-API-Key header
-	if apiKey := c.Get("X-API-Key"); apiKey != "" {
+	if apiKey := r.Header.Get("X-API-Key"); apiKey != "" {
 		return apiKey
 	}
 
@@ -111,8 +102,8 @@ func validateAPIKeyFromDB(keyHash string) (*models.APIKey, error) {
 }
 
 // GetAPIKey retrieves the authenticated API key from context
-func GetAPIKey(c fiber.Ctx) *models.APIKey {
-	if apiKey, ok := c.Locals("api_key").(*models.APIKey); ok {
+func GetAPIKey(r *http.Request) *models.APIKey {
+	if apiKey, ok := r.Context().Value(apiKeyContextKey).(*models.APIKey); ok {
 		return apiKey
 	}
 	return nil

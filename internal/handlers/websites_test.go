@@ -1,14 +1,11 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gofiber/fiber/v3"
-	"github.com/seuros/kaunta/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,27 +22,14 @@ func TestHandleWebsites_Success(t *testing.T) {
 		},
 	}
 
-	queue := newMockQueue(responses)
-	driverName, err := registerMockDriver(queue)
-	require.NoError(t, err)
-
-	db, err := sql.Open(driverName, "")
-	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
-
-	original := database.DB
-	database.DB = db
-	defer func() { database.DB = original }()
-
-	app := fiber.New()
-	app.Get("/api/websites", HandleWebsites)
+	handler, queue, cleanup := setupHTTPTest(t, "/api/websites", HandleWebsites, responses)
+	defer cleanup()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/websites", nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	defer func() { _ = resp.Body.Close() }()
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
 
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.Code)
 
 	var paginatedResp PaginatedResponse
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&paginatedResp))
@@ -77,26 +61,13 @@ func TestHandleWebsites_QueryError(t *testing.T) {
 		},
 	}
 
-	queue := newMockQueue(responses)
-	driverName, err := registerMockDriver(queue)
-	require.NoError(t, err)
-
-	db, err := sql.Open(driverName, "")
-	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
-
-	original := database.DB
-	database.DB = db
-	defer func() { database.DB = original }()
-
-	app := fiber.New()
-	app.Get("/api/websites", HandleWebsites)
+	handler, queue, cleanup := setupHTTPTest(t, "/api/websites", HandleWebsites, responses)
+	defer cleanup()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/websites", nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	defer func() { _ = resp.Body.Close() }()
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
 
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, http.StatusInternalServerError, resp.Code)
 	require.NoError(t, queue.expectationsMet())
 }

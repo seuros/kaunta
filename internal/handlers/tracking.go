@@ -5,18 +5,20 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
 	"github.com/seuros/kaunta/internal/config"
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/geoip"
+	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/logging"
 	"github.com/seuros/kaunta/internal/middleware"
+	"github.com/seuros/kaunta/internal/models"
 	"github.com/seuros/kaunta/internal/realtime"
 	"go.uber.org/zap"
 )
@@ -44,6 +46,12 @@ type TrackingPayload struct {
 	Type    string      `json:"type"` // "event" or "identify"
 	Payload PayloadData `json:"payload"`
 }
+
+type trackingContextKey string
+
+const (
+	pixelPayloadContextKey trackingContextKey = "pixel_payload"
+)
 
 type PayloadData struct {
 	Website   string                 `json:"website"` // website UUID
@@ -75,113 +83,98 @@ type PayloadData struct {
 }
 
 // getTrackingPayload extracts TrackingPayload from either JSON POST body or pixel query params
-func getTrackingPayload(c fiber.Ctx) (*TrackingPayload, error) {
-	// Check for pixel tracking payload (from Locals set by HandlePixelTracking)
-	if payload, ok := c.Locals("pixel_payload").(TrackingPayload); ok {
+func getTrackingPayload(r *http.Request) (*TrackingPayload, error) {
+	if payload, ok := r.Context().Value(pixelPayloadContextKey).(TrackingPayload); ok {
 		return &payload, nil
 	}
 
-	// Default: JSON POST body (existing behavior)
 	var payload TrackingPayload
-	if err := c.Bind().Body(&payload); err != nil {
+	if err := httpx.ReadJSON(r, &payload); err != nil {
 		return nil, err
 	}
 	return &payload, nil
 }
 
+func withPixelPayload(r *http.Request, payload TrackingPayload) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), pixelPayloadContextKey, payload))
+}
+
 // HandleTracking is the /api/send endpoint - compatible with Umami
-func HandleTracking(c fiber.Ctx) error {
-	payload, err := getTrackingPayload(c)
+func HandleTracking(w http.ResponseWriter, r *http.Request) {
+	payload, err := getTrackingPayload(r)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Invalid JSON payload",
-		})
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON payload")
+		return
 	}
 
-	// Validate website UUID
 	websiteID, err := uuid.Parse(payload.Payload.Website)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Invalid website ID",
-		})
+		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		return
 	}
 
-	// Verify website exists and fetch proxy_mode
 	var proxyMode string
-	err = database.DB.QueryRow(
+	if err := database.DB.QueryRow(
 		"SELECT COALESCE(proxy_mode, 'none') FROM website WHERE website_id = $1",
 		websiteID,
-	).Scan(&proxyMode)
-
-	if err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "Website not found",
-		})
+	).Scan(&proxyMode); err != nil {
+		httpx.Error(w, http.StatusNotFound, "Website not found")
+		return
 	}
 
-	// Self website (dogfooding) requires authenticated session to prevent abuse
-	// Since the UUID is well-known, we verify the request comes from a logged-in user
 	if websiteID.String() == config.SelfWebsiteID {
-		sessionToken := c.Cookies("kaunta_session")
-		if sessionToken == "" {
-			return c.Status(403).JSON(fiber.Map{
-				"error": "Self-tracking requires authentication",
-			})
+		sessionToken := ""
+		if cookie, err := r.Cookie("kaunta_session"); err == nil {
+			sessionToken = cookie.Value
 		}
-		// Verify session is valid
+		if sessionToken == "" {
+			httpx.Error(w, http.StatusForbidden, "Self-tracking requires authentication")
+			return
+		}
 		tokenHash := middleware.HashToken(sessionToken)
 		var sessionValid bool
-		err := database.DB.QueryRow(
+		if err := database.DB.QueryRow(
 			"SELECT EXISTS(SELECT 1 FROM user_sessions WHERE token_hash = $1 AND expires_at > NOW())",
 			tokenHash,
-		).Scan(&sessionValid)
-		if err != nil || !sessionValid {
-			return c.Status(403).JSON(fiber.Map{
-				"error": "Invalid session for self-tracking",
-			})
+		).Scan(&sessionValid); err != nil || !sessionValid {
+			httpx.Error(w, http.StatusForbidden, "Invalid session for self-tracking")
+			return
 		}
 	}
 
-	// Origin validation (CORS security)
-	origin := c.Get("Origin")
+	origin := r.Header.Get("Origin")
 	if origin == "" {
-		origin = c.Get("Referer") // Fallback to Referer header
+		origin = r.Header.Get("Referer")
 	}
 
 	var originAllowed bool
-	err = database.DB.QueryRow(
+	if err := database.DB.QueryRow(
 		"SELECT validate_origin($1, $2)",
 		websiteID, origin,
-	).Scan(&originAllowed)
-
-	if err != nil {
+	).Scan(&originAllowed); err != nil {
 		logging.L().Warn("origin validation error", zap.String("website_id", websiteID.String()), zap.Error(err))
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Origin validation failed",
-		})
+		httpx.Error(w, http.StatusInternalServerError, "Origin validation failed")
+		return
 	}
 
 	if !originAllowed {
 		logging.L().Warn("origin blocked", zap.String("origin", origin), zap.String("website_id", websiteID.String()))
-		return c.Status(403).JSON(fiber.Map{
+		httpx.WriteJSON(w, http.StatusForbidden, map[string]any{
 			"error":  "Origin not allowed",
 			"origin": origin,
 			"hint":   "Add this domain to the allowed list using: kaunta website add-domain",
 		})
+		return
 	}
 
-	// Set proper CORS header for allowed origin
 	if origin != "" && origin != "null" {
-		c.Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Origin", origin)
 	} else {
-		c.Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 	}
 
-	// Get client info
-	ip := getClientIP(c, proxyMode)
-	userAgent := c.Get("User-Agent")
-
-	// Override with payload if provided
+	ip := clientIPFromRequest(r, proxyMode)
+	userAgent := r.Header.Get("User-Agent")
 	if payload.Payload.IP != nil {
 		ip = *payload.Payload.IP
 	}
@@ -189,49 +182,51 @@ func HandleTracking(c fiber.Ctx) error {
 		userAgent = *payload.Payload.UserAgent
 	}
 
-	// Bot detection using PostgreSQL (dictatorship approach - all logic in DB)
-	// This updates IP metadata and returns bot status in one call
-	var isBot *bool // Use pointer to handle NULL values
-	err = database.DB.QueryRow(`
+	var isBot *bool
+	if err := database.DB.QueryRow(`
 		SELECT update_ip_metadata($1::inet, $2, NULL)
-	`, ip, userAgent).Scan(&isBot)
-
-	if err != nil {
-		// Log error but don't block traffic on bot detection failure
+	`, ip, userAgent).Scan(&isBot); err != nil {
 		logging.L().Warn("bot detection error", zap.String("ip", ip), zap.Error(err))
-		// Default to not a bot if detection fails
 		isBotVal := false
 		isBot = &isBotVal
 	}
 
-	// Check if it's a bot (handle nil gracefully)
 	if isBot != nil && *isBot {
-		// Return 202 for bots (acknowledged but not processed)
-		return c.Status(202).JSON(fiber.Map{"beep": "boop", "bot_detected": true})
+		httpx.WriteJSON(w, http.StatusAccepted, map[string]any{"beep": "boop", "bot_detected": true})
+		return
 	}
 
-	// Validate URL length
+	if payload.Payload.ID != nil {
+		if eventUUID, parseErr := uuid.Parse(*payload.Payload.ID); parseErr == nil {
+			exists, checkErr := models.CheckEventIDExists(eventUUID, websiteID)
+			if checkErr != nil {
+				logging.L().Warn("idempotency check failed", zap.Error(checkErr))
+			} else if exists {
+				httpx.WriteJSON(w, http.StatusAccepted, map[string]any{
+					"status":     "accepted",
+					"idempotent": true,
+				})
+				return
+			}
+		}
+	}
+
 	if payload.Payload.URL != nil && len(*payload.Payload.URL) > MaxURLSize {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "URL too long (max 2000 characters)",
-		})
+		httpx.Error(w, http.StatusBadRequest, "URL too long (max 2000 characters)")
+		return
 	}
 
-	// Check spam referrer
 	if payload.Payload.Referrer != nil && isSpamReferrer(*payload.Payload.Referrer) {
-		return c.Status(202).JSON(fiber.Map{"dropped": "spam_referrer"})
+		httpx.WriteJSON(w, http.StatusAccepted, map[string]any{"dropped": "spam_referrer"})
+		return
 	}
 
-	// Parse client info
-	browser, os, device := parseUserAgent(userAgent)
-
-	// GeoIP lookup from IP address
+	browser, osName, device := parseUserAgent(userAgent)
 	countryStr, cityStr, regionStr := geoIPLookup(ip)
 	country := &countryStr
 	region := &regionStr
 	city := &cityStr
 
-	// Generate session ID (deterministic based on IP + UA + date)
 	createdAt := time.Now()
 	if payload.Payload.Timestamp != nil {
 		createdAt = time.Unix(*payload.Payload.Timestamp, 0)
@@ -240,57 +235,44 @@ func HandleTracking(c fiber.Ctx) error {
 	sessionSalt := hashDate(createdAt, "month")
 	sessionID := generateUUID(websiteID.String(), ip, userAgent, sessionSalt)
 
-	// Parse URL path for entry/exit page tracking
-	var urlPath *string
+	var entryPath *string
 	if payload.Payload.URL != nil {
 		if u, err := url.Parse(*payload.Payload.URL); err == nil {
 			path := u.Path
-			urlPath = &path
+			entryPath = &path
 		}
 	}
 
-	// Create or update session (also tracks entry/exit pages)
 	distinctID := payload.Payload.ID
-	err = upsertSession(sessionID, websiteID, browser, os, device,
-		payload.Payload.Screen, payload.Payload.Language,
-		country, region, city, distinctID, urlPath)
-
-	if err != nil {
+	if err := upsertSession(sessionID, websiteID, browser, osName, device,
+		payload.Payload.Screen, payload.Payload.Language, country, region, city, distinctID, entryPath); err != nil {
 		logging.L().Error("session creation error",
 			zap.String("website_id", websiteID.String()),
 			zap.String("session_id", sessionID.String()),
 			zap.Error(err))
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to create session: " + err.Error(),
-		})
+		httpx.Error(w, http.StatusInternalServerError, "Failed to create session: "+err.Error())
+		return
 	}
 
-	// Handle event type
 	if payload.Type == "event" {
 		visitSalt := hashDate(createdAt, "hour")
 		visitID := generateUUID(sessionID.String(), visitSalt)
 
-		// CHANGED: saveEvent now returns eventID
 		eventID, err := saveEvent(websiteID, sessionID, visitID, createdAt, payload.Payload,
-			browser, os, device, country, region, city)
-
+			browser, osName, device, country, region, city)
 		if err != nil {
-			return c.Status(500).JSON(fiber.Map{
-				"error": "Failed to save event: " + err.Error(),
-			})
+			httpx.Error(w, http.StatusInternalServerError, "Failed to save event: "+err.Error())
+			return
 		}
 
-		// NEW: Check and record goal completion
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
-		// Determine event type
-		eventType := 1 // pageview
+		eventType := 1
 		if payload.Payload.Name != nil && strings.TrimSpace(*payload.Payload.Name) != "" {
-			eventType = 2 // custom event
+			eventType = 2
 		}
 
-		// Extract url_path for goal matching
 		var urlPath *string
 		if payload.Payload.URL != nil {
 			if u, err := url.Parse(*payload.Payload.URL); err == nil {
@@ -309,7 +291,6 @@ func HandleTracking(c fiber.Ctx) error {
 			payload.Payload.Name,
 		)
 
-		// NEW: If goal matched, update event with goal_id
 		if goalID != nil {
 			_, _ = database.DB.ExecContext(ctx,
 				`UPDATE website_event SET goal_id = $1 WHERE event_id = $2`,
@@ -325,6 +306,7 @@ func HandleTracking(c fiber.Ctx) error {
 		if payload.Payload.Title != nil {
 			eventTitle = *payload.Payload.Title
 		}
+
 		realtime.NotifyEvent(
 			context.Background(),
 			realtime.NewEventPayload(
@@ -338,24 +320,21 @@ func HandleTracking(c fiber.Ctx) error {
 			),
 		)
 
-		// Return 202 Accepted (acknowledges receipt, not completion)
-		return c.Status(202).JSON(fiber.Map{
+		httpx.WriteJSON(w, http.StatusAccepted, map[string]any{
 			"sessionId": sessionID.String(),
 			"visitId":   visitID.String(),
 		})
+		return
 	}
 
-	// Handle identify type
 	if payload.Type == "identify" && payload.Payload.Data != nil {
-		// TODO: Save session_data
-		return c.Status(202).JSON(fiber.Map{
+		httpx.WriteJSON(w, http.StatusAccepted, map[string]any{
 			"sessionId": sessionID.String(),
 		})
+		return
 	}
 
-	return c.Status(400).JSON(fiber.Map{
-		"error": "Invalid type",
-	})
+	httpx.Error(w, http.StatusBadRequest, "Invalid type")
 }
 
 // upsertSession creates or updates a session
@@ -718,26 +697,4 @@ func parseUserAgent(ua string) (browser, os, device *string) {
 func geoIPLookup(ip string) (country, city, region string) {
 	country, city, region = geoip.LookupIP(ip)
 	return
-}
-
-// getClientIP extracts client IP based on proxy_mode configuration
-// Supports:
-// - "none": direct connection IP (default)
-// - "xforwarded": X-Forwarded-For header (first IP from comma-separated list)
-// - "cloudflare": CF-Connecting-IP header (Cloudflare)
-func getClientIP(c fiber.Ctx, proxyMode string) string {
-	switch proxyMode {
-	case "cloudflare":
-		if cfIP := c.Get("CF-Connecting-IP"); cfIP != "" {
-			// Take first IP from comma-separated list and trim whitespace
-			return strings.TrimSpace(strings.Split(cfIP, ",")[0])
-		}
-	case "xforwarded":
-		if xff := c.Get("X-Forwarded-For"); xff != "" {
-			// Take first IP from comma-separated list and trim whitespace
-			return strings.TrimSpace(strings.Split(xff, ",")[0])
-		}
-	}
-	// Default: use direct connection IP
-	return c.IP()
 }

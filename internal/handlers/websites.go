@@ -5,12 +5,15 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+
 	"github.com/seuros/kaunta/internal/database"
+	"github.com/seuros/kaunta/internal/httpx"
 )
 
 // WebsiteDetail holds complete website information for API operations
@@ -402,9 +405,8 @@ func removeAllowedDomain(ctx context.Context, websiteDomain, domainToRemove stri
 }
 
 // HandleWebsites returns list of all websites with pagination
-func HandleWebsites(c fiber.Ctx) error {
-	// Parse pagination parameters
-	pagination := ParsePaginationParams(c)
+func HandleWebsites(w http.ResponseWriter, r *http.Request) {
+	pagination := ParsePaginationParams(r)
 
 	// Query with COUNT and pagination
 	rows, err := database.DB.Query(`
@@ -419,9 +421,8 @@ func HandleWebsites(c fiber.Ctx) error {
 	`, pagination.Per, pagination.Offset)
 
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to query websites",
-		})
+		httpx.Error(w, http.StatusInternalServerError, "Failed to query websites")
+		return
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -443,16 +444,15 @@ func HandleWebsites(c fiber.Ctx) error {
 		websites = append(websites, website)
 	}
 
-	// Return paginated response
-	return c.JSON(NewPaginatedResponse(websites, pagination, totalCount))
+	httpx.WriteJSON(w, http.StatusOK, NewPaginatedResponse(websites, pagination, totalCount))
 }
 
 // HandleWebsiteShow returns a single website with its allowed domains
-func HandleWebsiteShow(c fiber.Ctx) error {
-	websiteIDStr := c.Params("website_id")
-	_, err := uuid.Parse(websiteIDStr)
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid website ID"})
+func HandleWebsiteShow(w http.ResponseWriter, r *http.Request) {
+	websiteIDStr := chi.URLParam(r, "website_id")
+	if _, err := uuid.Parse(websiteIDStr); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -460,10 +460,11 @@ func HandleWebsiteShow(c fiber.Ctx) error {
 
 	website, err := getWebsiteByID(ctx, websiteIDStr)
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": err.Error()})
+		httpx.Error(w, http.StatusNotFound, err.Error())
+		return
 	}
 
-	return c.JSON(WebsiteDetailResponse{
+	httpx.WriteJSON(w, http.StatusOK, WebsiteDetailResponse{
 		ID:                 website.WebsiteID,
 		Domain:             website.Domain,
 		Name:               website.Name,
@@ -474,13 +475,14 @@ func HandleWebsiteShow(c fiber.Ctx) error {
 }
 
 // HandleWebsiteList returns all websites with allowed domains
-func HandleWebsiteList(c fiber.Ctx) error {
+func HandleWebsiteList(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	websites, err := listWebsites(ctx)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		httpx.Error(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	result := make([]WebsiteDetailResponse, 0, len(websites))
@@ -495,18 +497,20 @@ func HandleWebsiteList(c fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(result)
+	httpx.WriteJSON(w, http.StatusOK, result)
 }
 
 // HandleWebsiteCreate creates a new website
-func HandleWebsiteCreate(c fiber.Ctx) error {
+func HandleWebsiteCreate(w http.ResponseWriter, r *http.Request) {
 	var req CreateWebsiteRequest
-	if err := c.Bind().JSON(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	if err := httpx.ReadJSON(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	if req.Domain == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Domain is required"})
+		httpx.Error(w, http.StatusBadRequest, "Domain is required")
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -524,10 +528,11 @@ func HandleWebsiteCreate(c fiber.Ctx) error {
 
 	website, err := createWebsite(ctx, req.Domain, req.Name, allowedDomains)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
-	return c.Status(201).JSON(WebsiteDetailResponse{
+	httpx.WriteJSON(w, http.StatusCreated, WebsiteDetailResponse{
 		ID:                 website.WebsiteID,
 		Domain:             website.Domain,
 		Name:               website.Name,
@@ -538,34 +543,35 @@ func HandleWebsiteCreate(c fiber.Ctx) error {
 }
 
 // HandleWebsiteUpdate updates a website's name
-func HandleWebsiteUpdate(c fiber.Ctx) error {
-	websiteIDStr := c.Params("website_id")
-	_, err := uuid.Parse(websiteIDStr)
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid website ID"})
+func HandleWebsiteUpdate(w http.ResponseWriter, r *http.Request) {
+	websiteIDStr := chi.URLParam(r, "website_id")
+	if _, err := uuid.Parse(websiteIDStr); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		return
 	}
 
 	var req UpdateWebsiteRequest
-	if err := c.Bind().JSON(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	if err := httpx.ReadJSON(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Get website by ID first
 	existingWebsite, err := getWebsiteByID(ctx, websiteIDStr)
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": err.Error()})
+		httpx.Error(w, http.StatusNotFound, err.Error())
+		return
 	}
 
-	// Update using domain
 	website, err := updateWebsite(ctx, existingWebsite.Domain, &req.Name)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
-	return c.JSON(WebsiteDetailResponse{
+	httpx.WriteJSON(w, http.StatusOK, WebsiteDetailResponse{
 		ID:                 website.WebsiteID,
 		Domain:             website.Domain,
 		Name:               website.Name,
@@ -576,38 +582,40 @@ func HandleWebsiteUpdate(c fiber.Ctx) error {
 }
 
 // HandleAddDomain adds an allowed domain to a website
-func HandleAddDomain(c fiber.Ctx) error {
-	websiteIDStr := c.Params("website_id")
-	_, err := uuid.Parse(websiteIDStr)
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid website ID"})
+func HandleAddDomain(w http.ResponseWriter, r *http.Request) {
+	websiteIDStr := chi.URLParam(r, "website_id")
+	if _, err := uuid.Parse(websiteIDStr); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		return
 	}
 
 	var req DomainRequest
-	if err := c.Bind().JSON(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	if err := httpx.ReadJSON(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	if req.Domain == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Domain is required"})
+		httpx.Error(w, http.StatusBadRequest, "Domain is required")
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Get website by ID first
 	existingWebsite, err := getWebsiteByID(ctx, websiteIDStr)
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": err.Error()})
+		httpx.Error(w, http.StatusNotFound, err.Error())
+		return
 	}
 
-	// Add domain
 	website, err := addAllowedDomains(ctx, existingWebsite.Domain, []string{req.Domain})
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
-	return c.JSON(WebsiteDetailResponse{
+	httpx.WriteJSON(w, http.StatusOK, WebsiteDetailResponse{
 		ID:                 website.WebsiteID,
 		Domain:             website.Domain,
 		Name:               website.Name,
@@ -618,38 +626,40 @@ func HandleAddDomain(c fiber.Ctx) error {
 }
 
 // HandleRemoveDomain removes an allowed domain from a website
-func HandleRemoveDomain(c fiber.Ctx) error {
-	websiteIDStr := c.Params("website_id")
-	_, err := uuid.Parse(websiteIDStr)
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid website ID"})
+func HandleRemoveDomain(w http.ResponseWriter, r *http.Request) {
+	websiteIDStr := chi.URLParam(r, "website_id")
+	if _, err := uuid.Parse(websiteIDStr); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		return
 	}
 
 	var req DomainRequest
-	if err := c.Bind().JSON(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	if err := httpx.ReadJSON(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	if req.Domain == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Domain is required"})
+		httpx.Error(w, http.StatusBadRequest, "Domain is required")
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Get website by ID first
 	existingWebsite, err := getWebsiteByID(ctx, websiteIDStr)
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": err.Error()})
+		httpx.Error(w, http.StatusNotFound, err.Error())
+		return
 	}
 
-	// Remove domain
 	website, err := removeAllowedDomain(ctx, existingWebsite.Domain, req.Domain)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
-	return c.JSON(WebsiteDetailResponse{
+	httpx.WriteJSON(w, http.StatusOK, WebsiteDetailResponse{
 		ID:                 website.WebsiteID,
 		Domain:             website.Domain,
 		Name:               website.Name,
@@ -661,30 +671,30 @@ func HandleRemoveDomain(c fiber.Ctx) error {
 
 // HandleSetPublicStats enables or disables public stats for a website
 // PATCH /api/websites/:website_id/public-stats
-func HandleSetPublicStats(c fiber.Ctx) error {
-	websiteIDStr := c.Params("website_id")
-	_, err := uuid.Parse(websiteIDStr)
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid website ID"})
+func HandleSetPublicStats(w http.ResponseWriter, r *http.Request) {
+	websiteIDStr := chi.URLParam(r, "website_id")
+	if _, err := uuid.Parse(websiteIDStr); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		return
 	}
 
 	var req struct {
 		Enabled bool `json:"enabled"`
 	}
-	if err := c.Bind().JSON(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	if err := httpx.ReadJSON(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Get website by ID first
 	existingWebsite, err := getWebsiteByID(ctx, websiteIDStr)
 	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": err.Error()})
+		httpx.Error(w, http.StatusNotFound, err.Error())
+		return
 	}
 
-	// Update public_stats_enabled
 	query := `
 		UPDATE website
 		SET public_stats_enabled = $1, updated_at = NOW()
@@ -708,7 +718,8 @@ func HandleSetPublicStats(c fiber.Ctx) error {
 	)
 
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to update website"})
+		httpx.Error(w, http.StatusInternalServerError, "Failed to update website")
+		return
 	}
 
 	website.ShareID = shareID
@@ -717,7 +728,7 @@ func HandleSetPublicStats(c fiber.Ctx) error {
 		_ = json.Unmarshal(allowedDomainsResult, &website.AllowedDomains)
 	}
 
-	return c.JSON(WebsiteDetailResponse{
+	httpx.WriteJSON(w, http.StatusOK, WebsiteDetailResponse{
 		ID:                 website.WebsiteID,
 		Domain:             website.Domain,
 		Name:               website.Name,

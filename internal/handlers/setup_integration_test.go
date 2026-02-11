@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -52,20 +52,20 @@ func TestSetupFlow_Integration(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, hasUsers)
 
-	// Create Fiber app for testing
-	app := fiber.New()
+	// Create router for testing
+	router := chi.NewRouter()
 
 	// Add setup routes
 	setupTemplate := []byte(`<!DOCTYPE html><html><body>Setup Page</body></html>`)
-	app.Get("/setup", ShowSetup(setupTemplate))
-	app.Post("/setup", SubmitSetup())
-	app.Post("/setup/test-db", TestDatabase())
+	router.Get("/setup", ShowSetup(setupTemplate))
+	router.Post("/setup", SubmitSetup())
+	router.Post("/setup/test-db", TestDatabase())
 
 	// Test 1: GET /setup should show the setup page
 	req := httptest.NewRequest("GET", "/setup", nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	assert.Equal(t, 200, resp.Code)
 
 	body, _ := io.ReadAll(resp.Body)
 	assert.Contains(t, string(body), "Setup Page")
@@ -84,9 +84,9 @@ func TestSetupFlow_Integration(t *testing.T) {
 	req = httptest.NewRequest("POST", "/setup/test-db", bytes.NewReader(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err = app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	assert.Equal(t, 200, resp.Code)
 
 	var testResult map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&testResult)
@@ -113,15 +113,14 @@ func TestSetupFlow_Integration(t *testing.T) {
 	req = httptest.NewRequest("POST", "/setup", bytes.NewReader(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err = app.Test(req, -1) // -1 for no timeout
-	require.NoError(t, err)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-	// Check response
 	body, _ = io.ReadAll(resp.Body)
-	if resp.StatusCode != 200 {
+	if resp.Code != 200 {
 		t.Logf("Response body: %s", string(body))
 	}
-	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, 200, resp.Code)
 
 	var setupResult map[string]interface{}
 	err = json.Unmarshal(body, &setupResult)
@@ -157,9 +156,9 @@ func TestSetupFlow_Integration(t *testing.T) {
 	req = httptest.NewRequest("POST", "/setup", bytes.NewReader(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err = app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, 400, resp.StatusCode)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	assert.Equal(t, 400, resp.Code)
 
 	var errorResult map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&errorResult)
@@ -171,9 +170,9 @@ func TestSetupValidation_Integration(t *testing.T) {
 	testDB := test.GetTestDatabase(t)
 	defer test.CleanupTestDatabase(t, testDB)
 
-	// Create Fiber app
-	app := fiber.New()
-	app.Post("/setup", SubmitSetup())
+	// Create router
+	router := chi.NewRouter()
+	router.Post("/setup", SubmitSetup())
 
 	// Test various validation errors
 	tests := []struct {
@@ -234,9 +233,9 @@ func TestSetupValidation_Integration(t *testing.T) {
 			req := httptest.NewRequest("POST", "/setup", bytes.NewReader(jsonBody))
 			req.Header.Set("Content-Type", "application/json")
 
-			resp, err := app.Test(req)
-			require.NoError(t, err)
-			assert.Equal(t, 400, resp.StatusCode)
+			resp := httptest.NewRecorder()
+			router.ServeHTTP(resp, req)
+			assert.Equal(t, 400, resp.Code)
 
 			var result map[string]interface{}
 			json.NewDecoder(resp.Body).Decode(&result)

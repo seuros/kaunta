@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -100,9 +100,8 @@ func TestAuthIntegration_LoginLogoutFlow(t *testing.T) {
 
 	meReq := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
 	meReq.AddCookie(sessionCookie)
-	meResp, err := testRequest(app, meReq)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, meResp.StatusCode)
+	meResp := executeIntegrationRequest(app, meReq)
+	assert.Equal(t, http.StatusOK, meResp.Code)
 
 	var mePayload map[string]any
 	meBody, err := io.ReadAll(meResp.Body)
@@ -112,15 +111,13 @@ func TestAuthIntegration_LoginLogoutFlow(t *testing.T) {
 
 	logoutReq := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 	logoutReq.AddCookie(sessionCookie)
-	logoutResp, err := testRequest(app, logoutReq)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, logoutResp.StatusCode)
+	logoutResp := executeIntegrationRequest(app, logoutReq)
+	assert.Equal(t, http.StatusOK, logoutResp.Code)
 
 	meReqAfterLogout := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
 	meReqAfterLogout.AddCookie(sessionCookie)
-	meRespAfterLogout, err := testRequest(app, meReqAfterLogout)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusUnauthorized, meRespAfterLogout.StatusCode)
+	meRespAfterLogout := executeIntegrationRequest(app, meReqAfterLogout)
+	assert.Equal(t, http.StatusUnauthorized, meRespAfterLogout.Code)
 }
 
 func TestAuthIntegration_ProtectedRouteAuthorization(t *testing.T) {
@@ -136,57 +133,60 @@ func TestAuthIntegration_ProtectedRouteAuthorization(t *testing.T) {
 	app := newIntegrationAuthApp()
 
 	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	resp, err := testRequest(app, req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	resp := executeIntegrationRequest(app, req)
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 
 	sessionCookie, _ := loginIntegrationUser(t, app, "integration-protected", "integration-secret")
 
 	protectedReq := httptest.NewRequest(http.MethodGet, "/protected", nil)
 	protectedReq.AddCookie(sessionCookie)
-	protectedResp, err := testRequest(app, protectedReq)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, protectedResp.StatusCode)
+	protectedResp := executeIntegrationRequest(app, protectedReq)
+	assert.Equal(t, http.StatusOK, protectedResp.Code)
 
 	logoutReq := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 	logoutReq.AddCookie(sessionCookie)
-	_, err = testRequest(app, logoutReq)
-	require.NoError(t, err)
+	_ = executeIntegrationRequest(app, logoutReq)
 
 	protectedReqAfter := httptest.NewRequest(http.MethodGet, "/protected", nil)
 	protectedReqAfter.AddCookie(sessionCookie)
-	protectedRespAfter, err := testRequest(app, protectedReqAfter)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusUnauthorized, protectedRespAfter.StatusCode)
+	protectedRespAfter := executeIntegrationRequest(app, protectedReqAfter)
+	assert.Equal(t, http.StatusUnauthorized, protectedRespAfter.Code)
 }
 
-func newIntegrationAuthApp() *fiber.App {
-	app := fiber.New()
-	app.Post("/api/auth/login", HandleLogin)
-	app.Post("/api/auth/logout", middleware.Auth, HandleLogoutSSE)
-	app.Get("/api/auth/me", middleware.Auth, HandleMe)
-	app.Get("/protected", middleware.Auth, func(c fiber.Ctx) error {
-		return c.JSON(fiber.Map{"ok": true})
-	})
-	return app
+func newIntegrationAuthApp() http.Handler {
+	router := chi.NewRouter()
+	router.Post("/api/auth/login", HandleLogin)
+	router.With(middleware.Auth).Post("/api/auth/logout", HandleLogoutSSE)
+	router.With(middleware.Auth).Get("/api/auth/me", HandleMe)
+	router.With(middleware.Auth).Get("/protected", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	return router
 }
 
-func testRequest(app *fiber.App, req *http.Request) (*http.Response, error) {
-	return app.Test(req, fiber.TestConfig{Timeout: 5 * time.Second})
+func executeIntegrationRequest(handler http.Handler, req *http.Request) *httptest.ResponseRecorder {
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
+	return resp
 }
 
-func loginIntegrationUser(t *testing.T, app *fiber.App, username, password string) (*http.Cookie, LoginResponse) {
+func loginIntegrationUser(t *testing.T, handler http.Handler, username, password string) (*http.Cookie, LoginResponse) {
 	t.Helper()
 
 	loginReq := httptest.NewRequest(http.MethodPost, "/api/auth/login",
 		strings.NewReader(fmt.Sprintf(`{"username":"%s","password":"%s"}`, username, password)))
 	loginReq.Header.Set("Content-Type", "application/json")
 
-	resp, err := testRequest(app, loginReq)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	resp := executeIntegrationRequest(handler, loginReq)
+	result := resp.Result()
+	defer func() {
+		_ = result.Body.Close()
+	}()
 
-	body, err := io.ReadAll(resp.Body)
+	require.Equal(t, http.StatusOK, result.StatusCode)
+
+	body, err := io.ReadAll(result.Body)
 	require.NoError(t, err)
 
 	var loginResp LoginResponse
@@ -194,7 +194,7 @@ func loginIntegrationUser(t *testing.T, app *fiber.App, username, password strin
 	require.NotNil(t, loginResp.User)
 
 	var sessionCookie *http.Cookie
-	for _, c := range resp.Cookies() {
+	for _, c := range result.Cookies() {
 		if c.Name == "kaunta_session" {
 			sessionCookie = c
 			break

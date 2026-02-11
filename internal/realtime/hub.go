@@ -1,10 +1,10 @@
 package realtime
 
 import (
+	"net/http"
 	"time"
 
-	"github.com/gofiber/contrib/v3/websocket"
-	"github.com/gofiber/fiber/v3"
+	"github.com/gorilla/websocket"
 
 	"github.com/seuros/kaunta/internal/logging"
 	"go.uber.org/zap"
@@ -101,8 +101,20 @@ func (h *Hub) GetClientCount() int {
 	return <-response
 }
 
-func (h *Hub) Handler() fiber.Handler {
-	return websocket.New(func(conn *websocket.Conn) {
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+func (h *Hub) Handler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			logging.L().Warn("websocket upgrade failed", zap.Error(err))
+			return
+		}
+
 		client := &Client{
 			hub:  h,
 			conn: conn,
@@ -113,7 +125,7 @@ func (h *Hub) Handler() fiber.Handler {
 
 		go client.writePump()
 		client.readPump()
-	})
+	}
 }
 
 func (c *Client) readPump() {

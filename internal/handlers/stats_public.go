@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"database/sql"
+	"net/http"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	"github.com/seuros/kaunta/internal/database"
+	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/middleware"
 )
 
@@ -53,23 +55,21 @@ func getPublicStatsData(websiteID uuid.UUID) (*PublicStats, error) {
 // HandlePublicStats returns public stats for a website (no auth required)
 // Only works if public_stats_enabled is true for the website
 // GET /api/public/stats/:website_id
-func HandlePublicStats(c fiber.Ctx) error {
-	// Set CORS headers for public endpoint
-	c.Set("Access-Control-Allow-Origin", "*")
-	c.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	c.Set("Access-Control-Allow-Headers", "Content-Type")
+func HandlePublicStats(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
-	// Handle preflight
-	if c.Method() == "OPTIONS" {
-		return c.SendStatus(204)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
 	}
 
-	websiteIDStr := c.Params("website_id")
+	websiteIDStr := chi.URLParam(r, "website_id")
 	websiteID, err := uuid.Parse(websiteIDStr)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Invalid website ID",
-		})
+		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		return
 	}
 
 	// Check if website exists and has public stats enabled
@@ -82,81 +82,70 @@ func HandlePublicStats(c fiber.Ctx) error {
 	`
 	err = database.DB.QueryRow(query, websiteID).Scan(&publicStatsEnabled)
 	if err == sql.ErrNoRows {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "Website not found",
-		})
+		httpx.Error(w, http.StatusNotFound, "Website not found")
+		return
 	}
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Database error",
-		})
+		httpx.Error(w, http.StatusInternalServerError, "Database error")
+		return
 	}
 
 	if !publicStatsEnabled {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "Public stats not enabled for this website",
-		})
+		httpx.Error(w, http.StatusNotFound, "Public stats not enabled for this website")
+		return
 	}
 
 	stats, err := getPublicStatsData(websiteID)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to fetch stats",
-		})
+		httpx.Error(w, http.StatusInternalServerError, "Failed to fetch stats")
+		return
 	}
 
-	return c.JSON(stats)
+	httpx.WriteJSON(w, http.StatusOK, stats)
 }
 
 // HandleAPIStats returns stats for a website via API key (always available)
 // Requires API key with 'stats' scope
 // GET /api/v1/stats/:website_id
-func HandleAPIStats(c fiber.Ctx) error {
-	websiteIDStr := c.Params("website_id")
+func HandleAPIStats(w http.ResponseWriter, r *http.Request) {
+	websiteIDStr := chi.URLParam(r, "website_id")
 	websiteID, err := uuid.Parse(websiteIDStr)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Invalid website ID",
-		})
+		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		return
 	}
 
-	// Verify API key has access to this website
-	apiKey := middleware.GetAPIKey(c)
+	apiKey := middleware.GetAPIKey(r)
 	if apiKey == nil {
-		return c.Status(401).JSON(fiber.Map{
-			"error": "Unauthorized",
-		})
+		httpx.Error(w, http.StatusUnauthorized, "Unauthorized")
+		return
 	}
 
 	// Check if API key has stats scope
 	if !apiKey.HasScope("stats") {
-		return c.Status(403).JSON(fiber.Map{
-			"error": "API key does not have stats permission",
-		})
+		httpx.Error(w, http.StatusForbidden, "API key does not have stats permission")
+		return
 	}
 
 	// Verify website matches API key's website
 	if apiKey.WebsiteID != websiteID {
-		return c.Status(403).JSON(fiber.Map{
-			"error": "API key not authorized for this website",
-		})
+		httpx.Error(w, http.StatusForbidden, "API key not authorized for this website")
+		return
 	}
 
 	// Check if website exists
 	var exists bool
 	query := `SELECT EXISTS(SELECT 1 FROM website WHERE website_id = $1 AND deleted_at IS NULL)`
 	if err := database.DB.QueryRow(query, websiteID).Scan(&exists); err != nil || !exists {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "Website not found",
-		})
+		httpx.Error(w, http.StatusNotFound, "Website not found")
+		return
 	}
 
 	stats, err := getPublicStatsData(websiteID)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to fetch stats",
-		})
+		httpx.Error(w, http.StatusInternalServerError, "Failed to fetch stats")
+		return
 	}
 
-	return c.JSON(stats)
+	httpx.WriteJSON(w, http.StatusOK, stats)
 }

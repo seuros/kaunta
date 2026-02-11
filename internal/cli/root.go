@@ -2,37 +2,34 @@ package cli
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"embed"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"html/template"
 	"io/fs"
+	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/gofiber/contrib/v3/websocket"
-	zapmiddleware "github.com/gofiber/contrib/v3/zap"
-	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/extractors"
-	"github.com/gofiber/fiber/v3/middleware/cors"
-	"github.com/gofiber/fiber/v3/middleware/csrf"
-	"github.com/gofiber/fiber/v3/middleware/healthcheck"
-	"github.com/gofiber/fiber/v3/middleware/limiter"
-	"github.com/gofiber/fiber/v3/middleware/recover"
-	"github.com/gofiber/fiber/v3/middleware/static"
+	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/spf13/cobra"
-
-	"html/template"
 
 	"github.com/seuros/kaunta/internal/config"
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/geoip"
 	"github.com/seuros/kaunta/internal/handlers"
+	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/logging"
-	"github.com/seuros/kaunta/internal/middleware"
+	appmiddleware "github.com/seuros/kaunta/internal/middleware"
 	"github.com/seuros/kaunta/internal/realtime"
 	"go.uber.org/zap"
 )
@@ -135,7 +132,7 @@ var (
 )
 
 // render creates an isolated template instance for each request to prevent definition clashes.
-func render(c fiber.Ctx, pagePath, layoutPath string, data fiber.Map) error {
+func render(w http.ResponseWriter, pagePath, layoutPath string, data map[string]any) error {
 	viewsEmbedFS, ok := ViewsFS.(embed.FS)
 	if !ok {
 		return fmt.Errorf("ViewsFS is not an embed.FS")
@@ -167,9 +164,8 @@ func render(c fiber.Ctx, pagePath, layoutPath string, data fiber.Map) error {
 		return fmt.Errorf("could not parse page %s: %w", pageFile, err)
 	}
 
-	// Set content type and execute the layout template by its name.
-	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-	return tmpl.ExecuteTemplate(c.Response().BodyWriter(), layoutFile, data)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	return tmpl.ExecuteTemplate(w, layoutFile, data)
 }
 
 // serveAnalytics runs the Kaunta server
@@ -274,7 +270,7 @@ func serveAnalytics(
 
 	// Initialize trusted origins cache from database
 	logging.L().Info("initializing trusted origins cache")
-	if err := middleware.InitTrustedOriginsCache(); err != nil {
+	if err := appmiddleware.InitTrustedOriginsCache(); err != nil {
 		logging.L().Warn("failed to initialize trusted origins cache", zap.Error(err))
 	}
 
@@ -292,49 +288,15 @@ func serveAnalytics(
 		}
 	}()
 
-	// Create Fiber app without a default template engine
-	appName := "Kaunta - Analytics without bloat"
-	if Version != "" {
-		appName = fmt.Sprintf("Kaunta v%s - Analytics without bloat", Version)
-	}
-	app := fiber.New(createFiberConfig(appName, nil))
-
-	// Middleware
-	app.Use(recover.New())
-	app.Use(zapmiddleware.New(zapmiddleware.Config{
-		Logger: logging.L(),
-		Next: func(c fiber.Ctx) bool {
-			path := c.Path()
-			return path == "/up" || path == "/health" // Skip healthcheck logs
-		},
-	}))
-	app.Use(cors.New(cors.Config{
-		AllowOriginsFunc: func(origin string) bool {
-			return true // Allow all origins
-		},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "X-CSRF-Token"},
-		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
-		AllowCredentials: true,
-	}))
-
-	// Add version header to all responses
-	app.Use(func(c fiber.Ctx) error {
-		c.Set("X-Kaunta-Version", Version)
-		return c.Next()
-	})
-
-	// Realtime WebSocket endpoint
-	app.Use("/ws/realtime", func(c fiber.Ctx) error {
-		if websocket.IsWebSocketUpgrade(c) {
-			return c.Next()
-		}
-		return fiber.ErrUpgradeRequired
-	})
-	app.Get("/ws/realtime", realtimeHub.Handler())
+	r := chi.NewRouter()
+	r.Use(chimiddleware.Recoverer)
+	r.Use(requestLoggerMiddleware())
+	r.Use(corsMiddleware())
+	r.Use(addVersionHeader())
 
 	// CSRF protection middleware - use database-backed trusted origins
 	// Get initial trusted origins from cache
-	trustedOrigins, err := middleware.GetTrustedOrigins()
+	trustedOrigins, err := appmiddleware.GetTrustedOrigins()
 	if err != nil {
 		logging.L().Warn("failed to get trusted origins", zap.Error(err))
 		trustedOrigins = []string{} // Empty list if error
@@ -353,267 +315,210 @@ func serveAnalytics(
 	// Determine if we should use secure cookies (HTTPS required)
 	secureEnabled := secureCookiesEnabled(cfg)
 
-	app.Use(csrf.New(csrf.Config{
-		Extractor:      extractors.FromHeader("X-CSRF-Token"),
-		CookieName:     "kaunta_csrf",
-		CookieSameSite: "Lax",         // Lax works for same-site requests
-		CookieHTTPOnly: false,         // Must be false to allow JavaScript to read token
-		CookieSecure:   secureEnabled, // Only enable for HTTPS deployments
-		IdleTimeout:    7 * 24 * time.Hour,
-		Session:        nil,               // Use cookie-based tokens, not session
-		TrustedOrigins: trustedOriginURLs, // Loaded from database, transformed to URLs
-		// Skip CSRF protection for public endpoints and static assets
-		Next: func(c fiber.Ctx) bool {
-			// Skip for tracking API endpoint
-			if c.Path() == "/api/send" {
-				return true
-			}
-			// Skip for server-side ingest API (uses API key auth)
-			if strings.HasPrefix(c.Path(), "/api/ingest") {
-				return true
-			}
-			// Skip for GET requests to static assets (JS, CSS)
-			if c.Method() == "GET" {
-				path := c.Path()
-				if strings.HasSuffix(path, ".js") || strings.HasSuffix(path, ".css") {
-					return true
-				}
-			}
-			return false
-		},
+	r.Use(csrfMiddleware(csrfOptions{
+		Secure:        secureEnabled,
+		TrustedOrigin: trustedOriginURLs,
 	}))
 
 	// Static assets - serve embedded JS/CSS files
-	app.Get("/assets/vendor/:filename<*>", func(c fiber.Ctx) error {
-		filename := c.Params("filename")
-		// Strip query string if present
-		if idx := strings.Index(filename, "?"); idx > -1 {
-			filename = filename[:idx]
-		}
-
-		c.Set("Cache-Control", "public, max-age=31536000, immutable")
-		c.Set("CF-Cache-Tag", "kaunta-assets")
-
-		switch filename {
-		case "vendor.js":
-			c.Set("Content-Type", "application/javascript; charset=utf-8")
-			return c.Send(vendorJS)
-		case "vendor.css":
-			c.Set("Content-Type", "text/css; charset=utf-8")
-			return c.Send(vendorCSS)
-		default:
-			return c.Status(404).SendString("Not found")
-		}
-	})
-
-	// Static data files
-	app.Get("/assets/data/:filename<*>", func(c fiber.Ctx) error {
-		filename := c.Params("filename")
-		// Strip query string if present
-		if idx := strings.Index(filename, "?"); idx > -1 {
-			filename = filename[:idx]
-		}
-
-		c.Set("Cache-Control", "public, max-age=86400, immutable")
-		c.Set("CF-Cache-Tag", "kaunta-data")
-
-		switch filename {
-		case "countries-110m.json":
-			c.Set("Content-Type", "application/json; charset=utf-8")
-			return c.Send(countriesGeoJSON)
-		default:
-			return c.Status(404).SendString("Not found")
-		}
-	})
+	r.Get("/ws/realtime", realtimeHub.Handler())
+	r.Get("/assets/vendor/{filename:.+}", vendorAssetHandler(vendorJS, vendorCSS))
+	r.Get("/assets/data/{filename:.+}", staticDataHandler(countriesGeoJSON))
 
 	// Routes
-	app.Get("/", func(c fiber.Ctx) error {
-		return render(c, "views/index", "views/layouts/base", fiber.Map{
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		if err := render(w, "views/index", "views/layouts/base", map[string]any{
 			"Title": "Kaunta - Analytics without bloat",
-		})
+		}); err != nil {
+			http.Error(w, "Failed to render index", http.StatusInternalServerError)
+		}
 	})
-	app.Get("/health", handleHealth)
-	app.Get("/up", healthcheck.New(healthcheck.Config{
-		Probe: func(c fiber.Ctx) bool {
-			return pingDatabase() == nil
-		},
-	}))
-	app.Get("/api/version", handleVersion)
+	r.Get("/health", handleHealth)
+	r.Get("/up", upHandler)
+	r.Get("/api/version", handleVersion)
 
 	// Tracker script
-	app.Get("/k.js", handleTrackerScript(trackerScript))
-	app.Get("/kaunta.js", handleTrackerScript(trackerScript)) // Long form
-	app.Get("/script.js", handleTrackerScript(trackerScript)) // Umami-compatible alias
+	trackerHandler := handleTrackerScript(trackerScript)
+	r.Handle("/k.js", trackerHandler)
+	r.Handle("/kaunta.js", trackerHandler)
+	r.Handle("/script.js", trackerHandler)
 
 	// Static assets (favicon, etc.) from embedded FS
 	assetsSubFS, err := fs.Sub(assetsFS.(embed.FS), "assets")
 	if err != nil {
 		return fmt.Errorf("failed to create sub filesystem: %w", err)
 	}
-	app.Get("/assets/*", static.New("", static.Config{
-		FS:            assetsSubFS,
-		MaxAge:        31536000, // 1 year cache
-		CacheDuration: 365 * 24 * time.Hour,
-	}))
-	// Serve favicon.ico from root
-	app.Get("/favicon.ico", func(c fiber.Ctx) error {
+	fileServer := http.StripPrefix("/assets", http.FileServer(http.FS(assetsSubFS)))
+	r.Get("/assets/*", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		fileServer.ServeHTTP(w, req)
+	})
+	r.Get("/favicon.ico", func(w http.ResponseWriter, req *http.Request) {
 		data, err := fs.ReadFile(assetsFS.(embed.FS), "assets/favicon.ico")
 		if err != nil {
-			return c.Status(404).SendString("Not found")
+			http.NotFound(w, req)
+			return
 		}
-		c.Set("Content-Type", "image/x-icon")
-		c.Set("Cache-Control", "public, max-age=31536000, immutable")
-		return c.Send(data)
+		w.Header().Set("Content-Type", "image/x-icon")
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		_, _ = w.Write(data)
 	})
 
 	// Tracking API (Umami-compatible)
-	app.Options("/api/send", func(c fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusOK)
-	})
-	app.Post("/api/send", handlers.HandleTracking)
+	r.Options("/api/send", optionsOK)
+	r.Post("/api/send", handlers.HandleTracking)
 
 	// Pixel tracking (for email, RSS, no-JS environments)
-	app.Get("/p/:id.gif", handlers.HandlePixelTracking)
+	r.Get("/p/{id}.gif", handlers.HandlePixelTracking)
 
 	// Server-side Ingest API (for backend event ingestion)
 	// Uses API key authentication instead of session-based auth
-	app.Options("/api/ingest", func(c fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusOK)
-	})
-	app.Options("/api/ingest/batch", func(c fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusOK)
-	})
-	app.Post("/api/ingest", middleware.APIKeyAuth, handlers.HandleIngest)
-	app.Post("/api/ingest/batch", middleware.APIKeyAuth, handlers.HandleIngestBatch)
+	r.Options("/api/ingest", optionsOK)
+	r.Options("/api/ingest/batch", optionsOK)
+	r.With(appmiddleware.APIKeyAuth).Post("/api/ingest", handlers.HandleIngest)
+	r.With(appmiddleware.APIKeyAuth).Post("/api/ingest/batch", handlers.HandleIngestBatch)
 
 	// Stats API (Plausible-inspired) - protected
-	app.Get("/api/stats/realtime/:website_id", middleware.Auth, handlers.HandleCurrentVisitors)
+	r.With(appmiddleware.Auth).Get("/api/stats/realtime/{website_id}", handlers.HandleCurrentVisitors)
 
 	// Auth API endpoints (public)
 	// Rate limiter for login endpoint (5 requests per minute per IP)
-	loginLimiter := limiter.New(limiter.Config{
-		Max:        5,
-		Expiration: 1 * time.Minute,
-		KeyGenerator: func(c fiber.Ctx) string {
-			return c.IP()
+	loginLimiter := rateLimitMiddleware(rateLimitConfig{
+		Limit:  5,
+		Window: time.Minute,
+		KeyFunc: func(r *http.Request) string {
+			return httpx.ClientIP(r)
 		},
-		LimitReached: func(c fiber.Ctx) error {
-			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+		OnLimit: func(w http.ResponseWriter, r *http.Request) {
+			httpx.WriteJSON(w, http.StatusTooManyRequests, map[string]any{
 				"success": false,
 				"error":   "Too many login attempts. Please try again later.",
 			})
 		},
 	})
-
-	app.Post("/api/auth/login", loginLimiter, handlers.HandleLogin)   // JSON login (fallback)
-	app.Get("/api/auth/login", loginLimiter, handlers.HandleLoginSSE) // Datastar SSE login
+	r.With(loginLimiter).Post("/api/auth/login", handlers.HandleLogin)
+	r.With(loginLimiter).Get("/api/auth/login", handlers.HandleLoginSSE)
 
 	// Login page (public)
-	app.Get("/login", func(c fiber.Ctx) error {
-		return render(c, "views/login", "views/layouts/base", fiber.Map{
+	r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
+		if err := render(w, "views/login", "views/layouts/base", map[string]any{
 			"Title": "Login - Kaunta",
-		})
+		}); err != nil {
+			http.Error(w, "Failed to render login view", http.StatusInternalServerError)
+		}
 	})
 
 	// Dashboard UI (protected)
-	app.Get("/dashboard", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
-		return render(c, "views/dashboard/home", "views/layouts/dashboard", fiber.Map{
+	r.With(appmiddleware.AuthWithRedirect).Get("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		if err := render(w, "views/dashboard/home", "views/layouts/dashboard", map[string]any{
 			"Title":         "Dashboard",
 			"Version":       Version,
 			"SelfWebsiteID": config.SelfWebsiteID,
-		})
+		}); err != nil {
+			http.Error(w, "Failed to render dashboard", http.StatusInternalServerError)
+		}
 	})
 
 	// Map UI (protected)
-	app.Get("/dashboard/map", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
-		return render(c, "views/dashboard/map", "views/layouts/dashboard", fiber.Map{
+	r.With(appmiddleware.AuthWithRedirect).Get("/dashboard/map", func(w http.ResponseWriter, r *http.Request) {
+		if err := render(w, "views/dashboard/map", "views/layouts/dashboard", map[string]any{
 			"Title":         "Map",
 			"Version":       Version,
 			"SelfWebsiteID": config.SelfWebsiteID,
-		})
+		}); err != nil {
+			http.Error(w, "Failed to render map view", http.StatusInternalServerError)
+		}
 	})
 
 	// Campaigns UI (protected)
-	app.Get("/dashboard/campaigns", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
-		return render(c, "views/dashboard/campaigns", "views/layouts/dashboard", fiber.Map{
+	r.With(appmiddleware.AuthWithRedirect).Get("/dashboard/campaigns", func(w http.ResponseWriter, r *http.Request) {
+		if err := render(w, "views/dashboard/campaigns", "views/layouts/dashboard", map[string]any{
 			"Title":         "Campaigns",
 			"Version":       Version,
 			"SelfWebsiteID": config.SelfWebsiteID,
-		})
+		}); err != nil {
+			http.Error(w, "Failed to render campaigns view", http.StatusInternalServerError)
+		}
 	})
 
 	// Protected API endpoints
-	app.Post("/api/auth/logout", middleware.Auth, handlers.HandleLogoutSSE) // Datastar SSE logout
-	app.Get("/api/auth/me", middleware.Auth, handlers.HandleMe)
+	authProtected := r.With(appmiddleware.Auth)
+	authProtected.Post("/api/auth/logout", handlers.HandleLogoutSSE)
+	authProtected.Get("/api/auth/me", handlers.HandleMe)
 
 	// Dashboard API endpoints (protected, SSE-based)
-	app.Get("/api/websites", middleware.Auth, handlers.HandleWebsites)
-	app.Get("/api/dashboard/init", middleware.Auth, handlers.HandleDashboardInit)
-	app.Get("/api/dashboard/stats", middleware.Auth, handlers.HandleDashboardStats)
-	app.Get("/api/dashboard/timeseries", middleware.Auth, handlers.HandleTimeSeries)
-	app.Get("/api/dashboard/chart", middleware.Auth, handlers.HandleTimeSeries) // Alias for timeseries
-	app.Get("/api/dashboard/breakdown", middleware.Auth, handlers.HandleBreakdown)
-	app.Get("/api/dashboard/map", middleware.Auth, handlers.HandleMapData)
-	app.Get("/api/dashboard/realtime", middleware.Auth, handlers.HandleRealtimeVisitors)
-	app.Get("/api/dashboard/campaigns-init", middleware.Auth, handlers.HandleCampaignsInit)
-	app.Get("/api/dashboard/campaigns", middleware.Auth, handlers.HandleCampaigns)
-	app.Get("/api/dashboard/websites-init", middleware.Auth, handlers.HandleWebsitesInit)
-	app.Post("/api/dashboard/websites-create", middleware.Auth, handlers.HandleWebsitesCreate)
-	app.Get("/api/dashboard/map-init", middleware.Auth, handlers.HandleMapInit)
-	app.Get("/api/dashboard/goals", middleware.Auth, handlers.HandleGoals)
-	app.Post("/api/dashboard/goals", middleware.Auth, handlers.HandleGoalsCreate)
-	app.Put("/api/dashboard/goals/:id", middleware.Auth, handlers.HandleGoalsUpdate)
-	app.Delete("/api/dashboard/goals/:id", middleware.Auth, handlers.HandleGoalsDelete)
-	app.Get("/api/dashboard/goals/:id/analytics", middleware.Auth, handlers.HandleGoalsAnalytics)
-	app.Get("/api/dashboard/goals/:id/breakdown/:type", middleware.Auth, handlers.HandleGoalsBreakdown)
+	authProtected.Get("/api/websites", handlers.HandleWebsites)
+	authProtected.Get("/api/dashboard/init", handlers.HandleDashboardInit)
+	authProtected.Get("/api/dashboard/stats", handlers.HandleDashboardStats)
+	authProtected.Get("/api/dashboard/timeseries", handlers.HandleTimeSeries)
+	authProtected.Get("/api/dashboard/chart", handlers.HandleTimeSeries)
+	authProtected.Get("/api/dashboard/breakdown", handlers.HandleBreakdown)
+	authProtected.Get("/api/dashboard/map", handlers.HandleMapData)
+	authProtected.Get("/api/dashboard/realtime", handlers.HandleRealtimeVisitors)
+	authProtected.Get("/api/dashboard/campaigns-init", handlers.HandleCampaignsInit)
+	authProtected.Get("/api/dashboard/campaigns", handlers.HandleCampaigns)
+	authProtected.Get("/api/dashboard/websites-init", handlers.HandleWebsitesInit)
+	authProtected.Post("/api/dashboard/websites-create", handlers.HandleWebsitesCreate)
+	authProtected.Get("/api/dashboard/map-init", handlers.HandleMapInit)
+	authProtected.Get("/api/dashboard/goals", handlers.HandleGoals)
+	authProtected.Post("/api/dashboard/goals", handlers.HandleGoalsCreate)
+	authProtected.Put("/api/dashboard/goals/{id}", handlers.HandleGoalsUpdate)
+	authProtected.Delete("/api/dashboard/goals/{id}", handlers.HandleGoalsDelete)
+	authProtected.Get("/api/dashboard/goals/{id}/analytics", handlers.HandleGoalsAnalytics)
+	authProtected.Get("/api/dashboard/goals/{id}/breakdown/{type}", handlers.HandleGoalsBreakdown)
 
 	// Website Management API (protected)
-	app.Get("/api/websites/list", middleware.Auth, handlers.HandleWebsiteList)
-	app.Get("/api/websites/:website_id", middleware.Auth, handlers.HandleWebsiteShow)
-	app.Post("/api/websites", middleware.Auth, handlers.HandleWebsiteCreate)
-	app.Put("/api/websites/:website_id", middleware.Auth, handlers.HandleWebsiteUpdate)
-	app.Post("/api/websites/:website_id/domains", middleware.Auth, handlers.HandleAddDomain)
-	app.Delete("/api/websites/:website_id/domains", middleware.Auth, handlers.HandleRemoveDomain)
-	app.Patch("/api/websites/:website_id/public-stats", middleware.Auth, handlers.HandleSetPublicStats)
+	authProtected.Get("/api/websites/list", handlers.HandleWebsiteList)
+	authProtected.Get("/api/websites/{website_id}", handlers.HandleWebsiteShow)
+	authProtected.Post("/api/websites", handlers.HandleWebsiteCreate)
+	authProtected.Put("/api/websites/{website_id}", handlers.HandleWebsiteUpdate)
+	authProtected.Post("/api/websites/{website_id}/domains", handlers.HandleAddDomain)
+	authProtected.Delete("/api/websites/{website_id}/domains", handlers.HandleRemoveDomain)
+	authProtected.Patch("/api/websites/{website_id}/public-stats", handlers.HandleSetPublicStats)
 
 	// Public Stats API (no auth, opt-in per website)
-	app.Get("/api/public/stats/:website_id", handlers.HandlePublicStats)
+	r.Get("/api/public/stats/{website_id}", handlers.HandlePublicStats)
 
 	// API Key Stats API (requires API key with stats scope)
-	app.Get("/api/v1/stats/:website_id", middleware.APIKeyAuthAny, handlers.HandleAPIStats)
+	r.With(appmiddleware.APIKeyAuthAny).Get("/api/v1/stats/{website_id}", handlers.HandleAPIStats)
 
 	// Website Management Dashboard page (protected)
-	app.Get("/dashboard/websites", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
-		return render(c, "views/dashboard/websites", "views/layouts/dashboard", fiber.Map{
+	r.With(appmiddleware.AuthWithRedirect).Get("/dashboard/websites", func(w http.ResponseWriter, r *http.Request) {
+		if err := render(w, "views/dashboard/websites", "views/layouts/dashboard", map[string]any{
 			"Title":         "Websites",
 			"Version":       Version,
 			"SelfWebsiteID": config.SelfWebsiteID,
-		})
+		}); err != nil {
+			http.Error(w, "Failed to render websites view", http.StatusInternalServerError)
+		}
 	})
 
-	// Goals Management Dashboard page (proctected)
-	app.Get("/dashboard/goals", middleware.AuthWithRedirect, func(c fiber.Ctx) error {
-		return render(c, "views/dashboard/goals", "views/layouts/dashboard", fiber.Map{
+	r.With(appmiddleware.AuthWithRedirect).Get("/dashboard/goals", func(w http.ResponseWriter, r *http.Request) {
+		if err := render(w, "views/dashboard/goals", "views/layouts/dashboard", map[string]any{
 			"Title":         "Goals",
 			"Version":       Version,
 			"SelfWebsiteID": config.SelfWebsiteID,
-		})
+		}); err != nil {
+			http.Error(w, "Failed to render goals view", http.StatusInternalServerError)
+		}
 	})
 
-	// Start server
 	port := getEnv("PORT", "3000")
-	logging.L().Info("starting kaunta server", zap.String("port", port))
-	if err := app.Listen(":" + port); err != nil {
-		logging.Fatal("fiber server exited", zap.Error(err))
+	server := &http.Server{
+		Addr:    ":" + port,
+		Handler: r,
 	}
-
+	logging.L().Info("starting kaunta server", zap.String("port", port))
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		logging.Fatal("http server exited", zap.Error(err))
+	}
 	return nil
 }
 
 // Handler functions
 
-func handleHealth(c fiber.Ctx) error {
-	return c.JSON(fiber.Map{
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"status":  "healthy",
 		"service": "kaunta",
 	})
@@ -626,38 +531,34 @@ var pingDatabase = func() error {
 	return database.DB.Ping()
 }
 
-func handleVersion(c fiber.Ctx) error {
-	return c.JSON(fiber.Map{
+func handleVersion(w http.ResponseWriter, r *http.Request) {
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"version": Version,
 	})
 }
 
-func handleTrackerScript(trackerScript []byte) fiber.Handler {
-	// Compute ETag once from actual content hash
+func handleTrackerScript(trackerScript []byte) http.Handler {
 	hash := sha256.Sum256(trackerScript)
-	etag := "\"" + hex.EncodeToString(hash[:8]) + "\""
+	etag := `"` + hex.EncodeToString(hash[:8]) + `"`
 
-	return func(c fiber.Ctx) error {
-		// Security headers
-		c.Set("Content-Type", "application/javascript; charset=utf-8")
-		c.Set("X-Content-Type-Options", "nosniff")
-		c.Set("X-Frame-Options", "DENY")
-		c.Set("X-XSS-Protection", "1; mode=block")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Timing-Allow-Origin", "*")
+		w.Header().Set("Cache-Control", "public, max-age=3600, immutable")
+		w.Header().Set("ETag", etag)
 
-		// Cache headers (1 hour)
-		c.Set("Cache-Control", "public, max-age=3600, immutable")
-		c.Set("ETag", etag)
+		if match := r.Header.Get("If-None-Match"); match == etag {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
 
-		// CORS headers - allow from anywhere (JS file is public)
-		// Origin validation happens at /api/send endpoint
-		c.Set("Access-Control-Allow-Origin", "*")
-		c.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-
-		// Timing headers
-		c.Set("Timing-Allow-Origin", "*")
-
-		return c.Send(trackerScript)
-	}
+		_, _ = w.Write(trackerScript)
+	})
 }
 
 func getEnv(key, defaultValue string) string {
@@ -678,6 +579,299 @@ func secureCookiesEnabled(cfg *config.Config) bool {
 		return true // Default to secure (safer for production)
 	}
 	return env == "true"
+}
+
+func upHandler(w http.ResponseWriter, r *http.Request) {
+	if err := pingDatabase(); err != nil {
+		http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("OK"))
+}
+
+func optionsOK(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func addVersionHeader() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Kaunta-Version", Version)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+type responseLogger struct {
+	http.ResponseWriter
+	status int
+	size   int64
+}
+
+func (l *responseLogger) WriteHeader(statusCode int) {
+	l.status = statusCode
+	l.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (l *responseLogger) Write(b []byte) (int, error) {
+	if l.status == 0 {
+		l.status = http.StatusOK
+	}
+	n, err := l.ResponseWriter.Write(b)
+	l.size += int64(n)
+	return n, err
+}
+
+func (l *responseLogger) Flush() {
+	if flusher, ok := l.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func requestLoggerMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/up" || r.URL.Path == "/health" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			start := time.Now()
+			lrw := &responseLogger{ResponseWriter: w}
+			next.ServeHTTP(lrw, r)
+
+			logging.L().Info("http request",
+				zap.String("method", r.Method),
+				zap.String("path", r.URL.Path),
+				zap.Int("status", lrw.status),
+				zap.Int64("bytes", lrw.size),
+				zap.String("ip", httpx.ClientIP(r)),
+				zap.Duration("duration", time.Since(start)),
+			)
+		})
+	}
+}
+
+func corsMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+			if origin != "" {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Add("Vary", "Origin")
+			} else {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			}
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-CSRF-Token")
+
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+type rateLimitConfig struct {
+	Limit   int
+	Window  time.Duration
+	KeyFunc func(*http.Request) string
+	OnLimit func(http.ResponseWriter, *http.Request)
+}
+
+func rateLimitMiddleware(cfg rateLimitConfig) func(http.Handler) http.Handler {
+	type bucket struct {
+		count int
+		reset time.Time
+	}
+
+	var (
+		mu      sync.Mutex
+		buckets = make(map[string]*bucket)
+	)
+
+	if cfg.KeyFunc == nil {
+		cfg.KeyFunc = func(*http.Request) string { return "default" }
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			key := cfg.KeyFunc(r)
+			if key == "" {
+				key = "default"
+			}
+
+			now := time.Now()
+
+			mu.Lock()
+			b := buckets[key]
+			if b == nil || now.After(b.reset) {
+				b = &bucket{reset: now.Add(cfg.Window)}
+				buckets[key] = b
+			}
+			b.count++
+			count := b.count
+			reset := b.reset
+			mu.Unlock()
+
+			if cfg.Limit > 0 {
+				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(cfg.Limit))
+				remaining := cfg.Limit - count
+				if remaining < 0 {
+					remaining = 0
+				}
+				w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))
+			}
+			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(reset.Unix(), 10))
+
+			if cfg.Limit > 0 && count > cfg.Limit {
+				if cfg.OnLimit != nil {
+					cfg.OnLimit(w, r)
+				} else {
+					http.Error(w, "Too many requests", http.StatusTooManyRequests)
+				}
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+type csrfOptions struct {
+	Secure        bool
+	TrustedOrigin []string
+}
+
+func csrfMiddleware(opts csrfOptions) func(http.Handler) http.Handler {
+	trusted := make(map[string]struct{}, len(opts.TrustedOrigin))
+	for _, origin := range opts.TrustedOrigin {
+		trusted[strings.ToLower(origin)] = struct{}{}
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token := ensureCSRFToken(w, r, opts.Secure)
+
+			if shouldSkipCSRF(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if isSafeMethod(r.Method) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if origin := r.Header.Get("Origin"); origin != "" && len(trusted) > 0 {
+				if _, ok := trusted[strings.ToLower(origin)]; !ok {
+					http.Error(w, "origin not allowed", http.StatusForbidden)
+					return
+				}
+			}
+
+			headerToken := r.Header.Get("X-CSRF-Token")
+			if headerToken == "" || headerToken != token {
+				http.Error(w, "invalid CSRF token", http.StatusForbidden)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func ensureCSRFToken(w http.ResponseWriter, r *http.Request, secure bool) string {
+	if cookie, err := r.Cookie("kaunta_csrf"); err == nil && cookie.Value != "" {
+		return cookie.Value
+	}
+
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		panic(err)
+	}
+	token := base64.RawStdEncoding.EncodeToString(tokenBytes)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "kaunta_csrf",
+		Value:    token,
+		Path:     "/",
+		Secure:   secure,
+		HttpOnly: false,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Now().Add(7 * 24 * time.Hour),
+	})
+	return token
+}
+
+func isSafeMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return true
+	default:
+		return false
+	}
+}
+
+func shouldSkipCSRF(r *http.Request) bool {
+	path := r.URL.Path
+	if path == "/api/send" {
+		return true
+	}
+	if strings.HasPrefix(path, "/api/ingest") {
+		return true
+	}
+	if isSafeMethod(r.Method) && (strings.HasSuffix(path, ".js") || strings.HasSuffix(path, ".css")) {
+		return true
+	}
+	return false
+}
+
+func vendorAssetHandler(vendorJS, vendorCSS []byte) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		filename := chi.URLParam(r, "filename")
+		if idx := strings.Index(filename, "?"); idx > -1 {
+			filename = filename[:idx]
+		}
+		base := path.Base(filename)
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		w.Header().Set("CF-Cache-Tag", "kaunta-assets")
+
+		switch base {
+		case "vendor.js":
+			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+			_, _ = w.Write(vendorJS)
+		case "vendor.css":
+			w.Header().Set("Content-Type", "text/css; charset=utf-8")
+			_, _ = w.Write(vendorCSS)
+		default:
+			http.NotFound(w, r)
+		}
+	}
+}
+
+func staticDataHandler(countriesGeoJSON []byte) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		filename := chi.URLParam(r, "filename")
+		if idx := strings.Index(filename, "?"); idx > -1 {
+			filename = filename[:idx]
+		}
+
+		w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
+		w.Header().Set("CF-Cache-Tag", "kaunta-data")
+
+		switch filename {
+		case "countries-110m.json":
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			_, _ = w.Write(countriesGeoJSON)
+		default:
+			http.NotFound(w, r)
+		}
+	}
 }
 
 // loginPageHTML returns a simple login page with injected CSRF token
@@ -1186,103 +1380,103 @@ func runSetupServer() error {
 	// Channel to signal setup completion
 	setupDone := make(chan struct{})
 
-	// Create minimal Fiber app for setup
-	app := fiber.New(createFiberConfig("Kaunta Setup", nil))
+	r := chi.NewRouter()
+	r.Use(chimiddleware.Recoverer)
+	r.Use(requestLoggerMiddleware())
 
-	// Middleware
-	app.Use(recover.New())
-	app.Use(zapmiddleware.New(zapmiddleware.Config{
-		Logger: logging.L(),
-	}))
-
-	// Rate limiter for setup endpoints (5 requests per minute per IP)
-	setupLimiter := limiter.New(limiter.Config{
-		Max:        5,
-		Expiration: 1 * time.Minute,
-		KeyGenerator: func(c fiber.Ctx) string {
-			return c.IP()
+	setupLimiter := rateLimitMiddleware(rateLimitConfig{
+		Limit:  5,
+		Window: time.Minute,
+		KeyFunc: func(r *http.Request) string {
+			return httpx.ClientIP(r)
+		},
+		OnLimit: func(w http.ResponseWriter, r *http.Request) {
+			httpx.WriteJSON(w, http.StatusTooManyRequests, map[string]any{
+				"error": "Too many requests, slow down.",
+			})
 		},
 	})
 
-	// Setup routes
-	app.Get("/setup", handlers.ShowSetup(SetupTemplate))
-	app.Post("/setup", setupLimiter, handlers.SubmitSetup(func() {
-		// Signal setup completion after response is sent
+	r.Get("/setup", handlers.ShowSetup(SetupTemplate))
+	r.With(setupLimiter).Post("/setup", handlers.SubmitSetup(func() {
 		go func() {
-			time.Sleep(500 * time.Millisecond) // Allow response to be sent
+			time.Sleep(500 * time.Millisecond)
 			close(setupDone)
 		}()
 	}))
-	app.Post("/setup/test-db", setupLimiter, handlers.TestDatabase())
-	app.Get("/setup/complete", func(c fiber.Ctx) error {
-		return c.Type("html").Send(SetupCompleteTemplate)
+	r.With(setupLimiter).Post("/setup/test-db", handlers.TestDatabase())
+	r.Get("/setup/complete", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(SetupCompleteTemplate)
 	})
 
-	// Redirect root to setup
-	app.Get("/", func(c fiber.Ctx) error {
-		return c.Redirect().To("/setup")
+	r.Get("/", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, "/setup", http.StatusFound)
 	})
 
-	// Health check endpoint (for Docker healthcheck during setup)
-	app.Get("/up", func(c fiber.Ctx) error {
-		return c.SendString("OK")
+	r.Get("/up", func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK"))
 	})
 
-	// Static assets (for favicon and CSS)
-	app.Get("/assets/favicon.ico", func(c fiber.Ctx) error {
+	r.Get("/assets/favicon.ico", func(w http.ResponseWriter, req *http.Request) {
 		data, err := fs.ReadFile(AssetsFS.(embed.FS), "assets/favicon.ico")
 		if err != nil {
-			return c.Status(404).SendString("Not found")
+			http.NotFound(w, req)
+			return
 		}
-		c.Set("Content-Type", "image/x-icon")
-		return c.Send(data)
+		w.Header().Set("Content-Type", "image/x-icon")
+		_, _ = w.Write(data)
 	})
 
-	app.Get("/assets/global.css", func(c fiber.Ctx) error {
+	r.Get("/assets/global.css", func(w http.ResponseWriter, req *http.Request) {
 		data, err := fs.ReadFile(AssetsFS.(embed.FS), "assets/global.css")
 		if err != nil {
-			return c.Status(404).SendString("Not found")
+			http.NotFound(w, req)
+			return
 		}
-		c.Set("Content-Type", "text/css")
-		c.Set("Cache-Control", "public, max-age=3600")
-		return c.Send(data)
+		w.Header().Set("Content-Type", "text/css")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		_, _ = w.Write(data)
 	})
 
-	// Vendor assets (for Datastar, Chart.js, Leaflet, etc.)
-	app.Get("/assets/vendor/vendor.js", func(c fiber.Ctx) error {
-		c.Set("Content-Type", "application/javascript; charset=utf-8")
-		c.Set("Cache-Control", "public, max-age=31536000, immutable")
-		return c.Send(VendorJS)
+	r.Get("/assets/vendor/vendor.js", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		_, _ = w.Write(VendorJS)
 	})
 
-	app.Get("/assets/vendor/vendor.css", func(c fiber.Ctx) error {
-		c.Set("Content-Type", "text/css; charset=utf-8")
-		c.Set("Cache-Control", "public, max-age=31536000, immutable")
-		return c.Send(VendorCSS)
+	r.Get("/assets/vendor/vendor.css", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		_, _ = w.Write(VendorCSS)
 	})
 
-	// Get port from config or environment
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
 	}
 
-	// Start server in goroutine
 	addr := fmt.Sprintf(":%s", port)
 	logging.L().Info("setup wizard available", zap.String("url", fmt.Sprintf("http://localhost:%s/setup", port)))
 
+	server := &http.Server{
+		Addr:    addr,
+		Handler: r,
+	}
+
 	go func() {
-		if err := app.Listen(addr); err != nil {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logging.L().Debug("setup server stopped", zap.Error(err))
 		}
 	}()
 
-	// Wait for setup completion
 	<-setupDone
 	logging.L().Info("setup completed, shutting down setup server")
 
-	// Graceful shutdown
-	if err := app.ShutdownWithTimeout(5 * time.Second); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
 		logging.L().Warn("error shutting down setup server", zap.Error(err))
 	}
 

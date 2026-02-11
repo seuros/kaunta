@@ -7,11 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"sync"
 	"testing"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/go-chi/chi/v5"
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/stretchr/testify/require"
 )
@@ -163,7 +164,7 @@ func normalizeWhitespace(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
-func setupFiberTest(t *testing.T, route string, handler fiber.Handler, responses []mockResponse) (*fiber.App, *mockQueue, func()) {
+func setupHTTPTest(t *testing.T, route string, handler http.HandlerFunc, responses []mockResponse) (http.Handler, *mockQueue, func()) {
 	t.Helper()
 
 	queue := newMockQueue(responses)
@@ -177,13 +178,13 @@ func setupFiberTest(t *testing.T, route string, handler fiber.Handler, responses
 	originalDB := database.DB
 	database.DB = db
 
-	app := fiber.New()
-	app.Get(route, handler)
+	router := chi.NewRouter()
+	router.Get(route, handler)
 
 	cleanup := func() {
 		database.DB = originalDB
 		_ = db.Close()
 	}
 
-	return app, queue, cleanup
+	return router, queue, cleanup
 }

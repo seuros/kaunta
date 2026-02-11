@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strconv"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+
+	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/logging"
 	"go.uber.org/zap"
 )
@@ -23,39 +27,35 @@ var pixelGIF = []byte{
 // HandlePixelTracking serves a 1x1 transparent GIF and tracks the pageview/event
 // Endpoint: GET /p/:id.gif?url=...&title=...
 // Used for email campaigns, RSS feeds, and no-JS environments
-func HandlePixelTracking(c fiber.Ctx) error {
-	// Validate website UUID from path parameter
-	websiteID := c.Params("id")
+func HandlePixelTracking(w http.ResponseWriter, r *http.Request) {
+	websiteID := chi.URLParam(r, "id")
 	if _, err := uuid.Parse(websiteID); err != nil {
 		logging.L().Warn("pixel tracking: invalid website ID",
 			zap.String("id", websiteID),
-			zap.String("ip", c.IP()),
+			zap.String("ip", httpx.ClientIP(r)),
 		)
-		// Still return GIF to avoid breaking email rendering
-		return servePixel(c)
+		servePixel(w)
+		return
 	}
 
-	// Build payload from query parameters
-	payload := buildPixelPayload(c, websiteID)
+	payload := buildPixelPayload(r, websiteID)
+	req := withPixelPayload(r, payload)
 
-	// Store in context for HandleTracking to consume
-	c.Locals("pixel_payload", payload)
+	recorder := httptest.NewRecorder()
+	HandleTracking(recorder, req)
 
-	// Call existing tracking handler (reuse all validation, bot detection, GeoIP, etc.)
-	if err := HandleTracking(c); err != nil {
-		// Log errors but still return GIF (silent tracking for emails/RSS)
+	if recorder.Code >= 400 {
 		logging.L().Debug("pixel tracking failed",
 			zap.String("website_id", websiteID),
-			zap.Error(err),
+			zap.Int("status", recorder.Code),
 		)
 	}
 
-	// Always return pixel image
-	return servePixel(c)
+	servePixel(w)
 }
 
 // buildPixelPayload constructs TrackingPayload from path parameter and query params
-func buildPixelPayload(c fiber.Ctx, websiteID string) TrackingPayload {
+func buildPixelPayload(r *http.Request, websiteID string) TrackingPayload {
 	payload := TrackingPayload{
 		Type: "event",
 		Payload: PayloadData{
@@ -64,29 +64,31 @@ func buildPixelPayload(c fiber.Ctx, websiteID string) TrackingPayload {
 	}
 
 	// Cache Referer header (used for both URL and Referrer fallbacks)
-	refererHeader := c.Get("Referer")
+	refererHeader := r.Header.Get("Referer")
 
 	// Extract URL (query param or Referer header)
-	if urlParam := c.Query("url"); urlParam != "" {
+	query := r.URL.Query()
+
+	if urlParam := query.Get("url"); urlParam != "" {
 		payload.Payload.URL = &urlParam
 	} else if refererHeader != "" {
 		payload.Payload.URL = &refererHeader
 	}
 
 	// Extract title
-	if title := c.Query("title"); title != "" {
+	if title := query.Get("title"); title != "" {
 		payload.Payload.Title = &title
 	}
 
 	// Extract referrer (query param or Referer header)
-	if referrer := c.Query("referrer"); referrer != "" {
+	if referrer := query.Get("referrer"); referrer != "" {
 		payload.Payload.Referrer = &referrer
 	} else if refererHeader != "" {
 		payload.Payload.Referrer = &refererHeader
 	}
 
 	// Extract or derive hostname
-	if hostname := c.Query("hostname"); hostname != "" {
+	if hostname := query.Get("hostname"); hostname != "" {
 		payload.Payload.Hostname = &hostname
 	} else if payload.Payload.URL != nil {
 		// Extract hostname from URL
@@ -101,34 +103,34 @@ func buildPixelPayload(c fiber.Ctx, websiteID string) TrackingPayload {
 	}
 
 	// Extract custom event name
-	if name := c.Query("name"); name != "" {
+	if name := query.Get("name"); name != "" {
 		payload.Payload.Name = &name
 	}
 
 	// Extract event tag
-	if tag := c.Query("tag"); tag != "" {
+	if tag := query.Get("tag"); tag != "" {
 		payload.Payload.Tag = &tag
 	}
 
 	// Extract UTM campaign parameters
-	if utmSource := c.Query("utm_source"); utmSource != "" {
+	if utmSource := query.Get("utm_source"); utmSource != "" {
 		payload.Payload.UTMSource = &utmSource
 	}
-	if utmMedium := c.Query("utm_medium"); utmMedium != "" {
+	if utmMedium := query.Get("utm_medium"); utmMedium != "" {
 		payload.Payload.UTMMedium = &utmMedium
 	}
-	if utmCampaign := c.Query("utm_campaign"); utmCampaign != "" {
+	if utmCampaign := query.Get("utm_campaign"); utmCampaign != "" {
 		payload.Payload.UTMCampaign = &utmCampaign
 	}
-	if utmTerm := c.Query("utm_term"); utmTerm != "" {
+	if utmTerm := query.Get("utm_term"); utmTerm != "" {
 		payload.Payload.UTMTerm = &utmTerm
 	}
-	if utmContent := c.Query("utm_content"); utmContent != "" {
+	if utmContent := query.Get("utm_content"); utmContent != "" {
 		payload.Payload.UTMContent = &utmContent
 	}
 
 	// Extract language from Accept-Language header
-	if lang := c.Get("Accept-Language"); lang != "" {
+	if lang := r.Header.Get("Accept-Language"); lang != "" {
 		payload.Payload.Language = &lang
 	}
 
@@ -136,18 +138,13 @@ func buildPixelPayload(c fiber.Ctx, websiteID string) TrackingPayload {
 }
 
 // servePixel returns a 1x1 transparent GIF with appropriate headers
-func servePixel(c fiber.Ctx) error {
-	// Prevent caching (every pixel request is unique)
-	c.Set("Content-Type", "image/gif")
-	c.Set("Content-Length", strconv.Itoa(len(pixelGIF)))
-	c.Set("Cache-Control", "no-store, no-cache, must-revalidate, private")
-	c.Set("Pragma", "no-cache")
-	c.Set("Expires", "0")
-
-	// CORS headers (allow embedding from anywhere)
-	c.Set("Access-Control-Allow-Origin", "*")
-	c.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-
-	// Return GIF
-	return c.Send(pixelGIF)
+func servePixel(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "image/gif")
+	w.Header().Set("Content-Length", strconv.Itoa(len(pixelGIF)))
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, private")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	_, _ = w.Write(pixelGIF)
 }

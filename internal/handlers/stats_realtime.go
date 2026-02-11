@@ -1,20 +1,23 @@
 package handlers
 
 import (
-	"github.com/gofiber/fiber/v3"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+
 	"github.com/seuros/kaunta/internal/database"
+	"github.com/seuros/kaunta/internal/httpx"
 )
 
 // HandleCurrentVisitors returns count of visitors in last 5 minutes
 // GET /api/stats/realtime/:website_id
-func HandleCurrentVisitors(c fiber.Ctx) error {
-	websiteIDStr := c.Params("website_id")
+func HandleCurrentVisitors(w http.ResponseWriter, r *http.Request) {
+	websiteIDStr := chi.URLParam(r, "website_id")
 	websiteID, err := uuid.Parse(websiteIDStr)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Invalid website ID",
-		})
+		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		return
 	}
 
 	// Count distinct sessions from last 5 minutes
@@ -28,14 +31,12 @@ func HandleCurrentVisitors(c fiber.Ctx) error {
 	`
 
 	var count int
-	err = database.DB.QueryRow(query, websiteID).Scan(&count)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to query current visitors",
-		})
+	if err := database.DB.QueryRow(query, websiteID).Scan(&count); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "Failed to query current visitors")
+		return
 	}
 
-	return c.JSON(fiber.Map{
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"value": count,
 	})
 }
