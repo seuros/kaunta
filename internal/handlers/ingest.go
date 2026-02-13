@@ -6,16 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/geoip"
+	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/logging"
 	"github.com/seuros/kaunta/internal/middleware"
 	"github.com/seuros/kaunta/internal/models"
@@ -84,115 +85,98 @@ type BatchError struct {
 
 // HandleIngest processes single event ingestion from server-side clients
 // POST /api/ingest
-func HandleIngest(c fiber.Ctx) error {
-	apiKey := middleware.GetAPIKey(c)
+func HandleIngest(w http.ResponseWriter, r *http.Request) {
+	apiKey := middleware.GetAPIKey(r)
 	if apiKey == nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Not authenticated",
-		})
+		httpx.Error(w, http.StatusUnauthorized, "Not authenticated")
+		return
 	}
 
 	var payload IngestPayload
-	if err := c.Bind().Body(&payload); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid JSON payload",
-		})
+	if err := httpx.ReadJSON(r, &payload); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON payload")
+		return
 	}
 
-	// Validate payload
 	if err := validateIngestPayload(&payload); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
-		})
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
-	// Check idempotency
 	if payload.EventID != nil {
 		eventUUID, err := uuid.Parse(*payload.EventID)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Invalid event_id format",
-			})
+			httpx.Error(w, http.StatusBadRequest, "Invalid event_id format")
+			return
 		}
 
 		exists, err := models.CheckEventIDExists(eventUUID, apiKey.WebsiteID)
 		if err != nil {
 			logging.L().Warn("idempotency check failed", zap.Error(err))
-			// Don't fail the request on check error, proceed with processing
 		} else if exists {
-			// Idempotent: return success without reprocessing
-			return c.Status(fiber.StatusAccepted).JSON(fiber.Map{
+			httpx.WriteJSON(w, http.StatusAccepted, map[string]any{
 				"status":     "accepted",
 				"idempotent": true,
 			})
+			return
 		}
 	}
 
-	// Process the event
-	ctx, cancel := context.WithTimeout(c.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	result, err := processIngestEvent(ctx, c, apiKey, &payload)
+	result, err := processIngestEvent(ctx, r, apiKey, &payload)
 	if err != nil {
 		logging.L().Error("failed to process ingest event",
 			zap.String("website_id", apiKey.WebsiteID.String()),
 			zap.Error(err))
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to process event",
-		})
+		httpx.Error(w, http.StatusInternalServerError, "Failed to process event")
+		return
 	}
 
-	return c.Status(fiber.StatusAccepted).JSON(result)
+	httpx.WriteJSON(w, http.StatusAccepted, result)
 }
 
 // HandleIngestBatch processes batch event ingestion
 // POST /api/ingest/batch
-func HandleIngestBatch(c fiber.Ctx) error {
-	apiKey := middleware.GetAPIKey(c)
+func HandleIngestBatch(w http.ResponseWriter, r *http.Request) {
+	apiKey := middleware.GetAPIKey(r)
 	if apiKey == nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Not authenticated",
-		})
+		httpx.Error(w, http.StatusUnauthorized, "Not authenticated")
+		return
 	}
 
 	var request BatchIngestRequest
-	if err := c.Bind().Body(&request); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid JSON payload",
-		})
+	if err := httpx.ReadJSON(r, &request); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON payload")
+		return
 	}
 
-	// Validate batch size
 	if len(request.Events) == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Events array is required",
-		})
+		httpx.Error(w, http.StatusBadRequest, "Events array is required")
+		return
 	}
 
 	if len(request.Events) > 100 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Maximum 100 events per batch",
-		})
+		httpx.Error(w, http.StatusBadRequest, "Maximum 100 events per batch")
+		return
 	}
 
-	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
 	response := BatchIngestResponse{
 		Errors: []BatchError{},
 	}
 
-	// Process each event
 	for i, payload := range request.Events {
-		// Check context cancellation
 		select {
 		case <-ctx.Done():
-			// Return partial results on timeout
-			return c.Status(fiber.StatusAccepted).JSON(response)
+			httpx.WriteJSON(w, http.StatusAccepted, response)
+			return
 		default:
 		}
 
-		// Validate individual payload
 		if err := validateIngestPayload(&payload); err != nil {
 			response.Failed++
 			response.Errors = append(response.Errors, BatchError{
@@ -202,21 +186,18 @@ func HandleIngestBatch(c fiber.Ctx) error {
 			continue
 		}
 
-		// Check idempotency for each event
 		if payload.EventID != nil {
 			eventUUID, err := uuid.Parse(*payload.EventID)
 			if err == nil {
 				exists, _ := models.CheckEventIDExists(eventUUID, apiKey.WebsiteID)
 				if exists {
-					response.Accepted++ // Count as accepted (idempotent success)
+					response.Accepted++
 					continue
 				}
 			}
 		}
 
-		// Process the event
-		_, err := processIngestEvent(ctx, c, apiKey, &payload)
-		if err != nil {
+		if _, err := processIngestEvent(ctx, r, apiKey, &payload); err != nil {
 			response.Failed++
 			response.Errors = append(response.Errors, BatchError{
 				Index: i,
@@ -228,11 +209,11 @@ func HandleIngestBatch(c fiber.Ctx) error {
 		response.Accepted++
 	}
 
-	return c.Status(fiber.StatusAccepted).JSON(response)
+	httpx.WriteJSON(w, http.StatusAccepted, response)
 }
 
 // processIngestEvent handles the core event processing logic
-func processIngestEvent(ctx context.Context, c fiber.Ctx, apiKey *models.APIKey, payload *IngestPayload) (fiber.Map, error) {
+func processIngestEvent(ctx context.Context, r *http.Request, apiKey *models.APIKey, payload *IngestPayload) (map[string]any, error) {
 	websiteID := apiKey.WebsiteID
 
 	// Get website proxy_mode for IP resolution
@@ -246,8 +227,8 @@ func processIngestEvent(ctx context.Context, c fiber.Ctx, apiKey *models.APIKey,
 	}
 
 	// Get client IP from headers (NEVER from payload for security)
-	ip := getClientIP(c, proxyMode)
-	userAgent := c.Get("User-Agent")
+	ip := clientIPFromRequest(r, proxyMode)
+	userAgent := r.Header.Get("User-Agent")
 
 	// Bot detection
 	var isBot *bool
@@ -262,7 +243,7 @@ func processIngestEvent(ctx context.Context, c fiber.Ctx, apiKey *models.APIKey,
 	}
 
 	if isBot != nil && *isBot {
-		return fiber.Map{"status": "accepted", "bot_detected": true}, nil
+		return map[string]any{"status": "accepted", "bot_detected": true}, nil
 	}
 
 	// Parse client info from User-Agent
@@ -366,7 +347,7 @@ func processIngestEvent(ctx context.Context, c fiber.Ctx, apiKey *models.APIKey,
 		)
 	}
 
-	return fiber.Map{
+	return map[string]any{
 		"status":     "accepted",
 		"session_id": sessionID.String(),
 		"visit_id":   visitID.String(),

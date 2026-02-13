@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+
 	"github.com/seuros/kaunta/internal/database"
+	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/middleware"
 )
 
@@ -21,14 +24,14 @@ type WebsiteInfo struct {
 	Domain string `json:"domain"`
 }
 
-func selectedWebsiteFromRequest(c fiber.Ctx) string {
-	if value := c.Query("website"); value != "" {
+func selectedWebsiteFromValues(get func(string) string) string {
+	if value := get("website"); value != "" {
 		return value
 	}
-	if value := c.Query("selectedWebsite"); value != "" {
+	if value := get("selectedWebsite"); value != "" {
 		return value
 	}
-	if ds := c.Query("datastar"); ds != "" {
+	if ds := get("datastar"); ds != "" {
 		var signals map[string]any
 		if err := json.Unmarshal([]byte(ds), &signals); err == nil {
 			if stored, ok := signals["selectedWebsite"].(string); ok && stored != "" {
@@ -37,6 +40,46 @@ func selectedWebsiteFromRequest(c fiber.Ctx) string {
 		}
 	}
 	return ""
+}
+
+func selectedWebsiteFromRequest(r *http.Request) string {
+	query := r.URL.Query()
+	return selectedWebsiteFromValues(query.Get)
+}
+
+func setSSEHeaders(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+}
+
+type sseResponseWriter struct {
+	http.ResponseWriter
+	flusher http.Flusher
+}
+
+func (w *sseResponseWriter) Write(p []byte) (int, error) {
+	n, err := w.ResponseWriter.Write(p)
+	if err == nil {
+		w.flusher.Flush()
+	}
+	return n, err
+}
+
+func streamDatastar(w http.ResponseWriter, fn func(*DatastarSSE)) {
+	setSSEHeaders(w)
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		httpx.Error(w, http.StatusInternalServerError, "Streaming not supported")
+		return
+	}
+
+	writer := bufio.NewWriter(&sseResponseWriter{ResponseWriter: w, flusher: flusher})
+	sse := NewDatastarSSE(writer)
+	fn(sse)
+	_ = writer.Flush()
+	flusher.Flush()
 }
 
 func buildWebsiteSelectorHTML(websites []WebsiteInfo, selectedWebsite, context string) string {
@@ -126,20 +169,34 @@ type GoalInfo struct {
 
 // HandleDashboardInit initializes the dashboard with websites list and initial data
 // GET /api/dashboard/init
-func HandleDashboardInit(c fiber.Ctx) error {
-	// Get user from context
-	user := middleware.GetUser(c)
+func HandleDashboardInit(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	writer := bufio.NewWriter(w)
+	sse := NewDatastarSSE(writer)
+
+	flush := func() {
+		_ = writer.Flush()
+		flusher.Flush()
+	}
+
 	if user == nil {
-		c.Set("Content-Type", "text/event-stream")
-		c.Set("Cache-Control", "no-cache")
-		c.Set("Connection", "keep-alive")
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
-			_ = sse.PatchSignals(map[string]any{
-				"websitesError":   "Not authenticated",
-				"websitesLoading": false,
-			})
+		_ = sse.PatchSignals(map[string]any{
+			"websitesError":   "Not authenticated",
+			"websitesLoading": false,
 		})
+		flush()
+		return
 	}
 
 	// Query websites for this user BEFORE streaming
@@ -166,7 +223,7 @@ func HandleDashboardInit(c fiber.Ctx) error {
 	}
 
 	// Determine selected website
-	selectedWebsite := selectedWebsiteFromRequest(c)
+	selectedWebsite := selectedWebsiteFromRequest(r)
 	if selectedWebsite == "" && len(websites) > 0 {
 		selectedWebsite = websites[0].ID
 	}
@@ -190,58 +247,51 @@ func HandleDashboardInit(c fiber.Ctx) error {
 		}
 	}
 
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
-		if queryErr != nil {
-			_ = sse.PatchSignals(map[string]any{
-				"websitesError":   "Failed to load websites",
-				"websites":        []WebsiteInfo{},
-				"websitesLoading": false,
-			})
-			return
-		}
-
-		if html := buildWebsiteSelectorHTML(websites, selectedWebsite, "dashboard"); html != "" {
-			_ = sse.PatchElements("#websites-container", html)
-		}
-
-		// Build stats object
-		bounceRate := "0%"
-		if statsErr == nil {
-			bounceRate = fmt.Sprintf("%.1f%%", bounceRateNumeric)
-		}
-
-		// Send small reactive state via signals (flags, selected, simple stats map)
+	if queryErr != nil {
 		_ = sse.PatchSignals(map[string]any{
-			"selectedWebsite": selectedWebsite,
+			"websitesError":   "Failed to load websites",
+			"websites":        []WebsiteInfo{},
 			"websitesLoading": false,
-			"websitesError":   false,
-			"stats": map[string]any{
-				"current_visitors":  currentVisitors,
-				"today_pageviews":   todayPageviews,
-				"today_visitors":    todayVisitors,
-				"today_bounce_rate": bounceRate,
-			},
 		})
+		flush()
+		return
+	}
+
+	if html := buildWebsiteSelectorHTML(websites, selectedWebsite, "dashboard"); html != "" {
+		_ = sse.PatchElements("#websites-container", html)
+	}
+
+	bounceRate := "0%"
+	if statsErr == nil {
+		bounceRate = fmt.Sprintf("%.1f%%", bounceRateNumeric)
+	}
+
+	_ = sse.PatchSignals(map[string]any{
+		"selectedWebsite": selectedWebsite,
+		"websitesLoading": false,
+		"websitesError":   false,
+		"stats": map[string]any{
+			"current_visitors":  currentVisitors,
+			"today_pageviews":   todayPageviews,
+			"today_visitors":    todayVisitors,
+			"today_bounce_rate": bounceRate,
+		},
 	})
+	flush()
 }
 
 // HandleDashboardStats returns dashboard stats via Datastar SSE
 // GET /api/dashboard/stats
-func HandleDashboardStats(c fiber.Ctx) error {
-	// Extract all context values BEFORE entering stream
-	websiteIDStr := c.Query("website_id")
+func HandleDashboardStats(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	websiteIDStr := query.Get("website_id")
 	if websiteIDStr == "" {
-		websiteIDStr = c.Query("website")
+		websiteIDStr = query.Get("website")
 	}
-	country := c.Query("country")
-	browser := c.Query("browser")
-	device := c.Query("device")
-	page := c.Query("page")
+	country := query.Get("country")
+	browser := query.Get("browser")
+	device := query.Get("device")
+	page := query.Get("page")
 
 	// Parse and validate website ID before streaming
 	var parseErr string
@@ -288,14 +338,7 @@ func HandleDashboardStats(c fiber.Ctx) error {
 		).Scan(&currentVisitors, &todayPageviews, &todayVisitors, &bounceRateNumeric)
 	}
 
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
-
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
-
+	streamDatastar(w, func(sse *DatastarSSE) {
 		if parseErr != "" {
 			_ = sse.PatchSignals(map[string]any{
 				"statsError":   parseErr,
@@ -305,7 +348,6 @@ func HandleDashboardStats(c fiber.Ctx) error {
 		}
 
 		if queryErr != nil {
-			// On error, return zero values
 			_ = sse.PatchSignals(map[string]any{
 				"stats": map[string]any{
 					"current_visitors":  0,
@@ -335,21 +377,20 @@ func HandleDashboardStats(c fiber.Ctx) error {
 // HandleTimeSeries returns time series data via Datastar SSE
 // GET /api/dashboard/timeseries-ds?website_id=...&days=7&country=...&browser=...&device=...&page=...
 // Also supports: website (alias for website_id)
-func HandleTimeSeries(c fiber.Ctx) error {
-	// Extract all context values BEFORE entering stream
-	// Support both website_id and website params
-	websiteIDStr := c.Query("website_id")
+func HandleTimeSeries(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	websiteIDStr := query.Get("website_id")
 	if websiteIDStr == "" {
-		websiteIDStr = c.Query("website")
+		websiteIDStr = query.Get("website")
 	}
-	days := fiber.Query[int](c, "days", 7)
+	days := httpx.QueryInt(r, "days", 7)
 	if days > 90 {
 		days = 90
 	}
-	country := c.Query("country")
-	browser := c.Query("browser")
-	device := c.Query("device")
-	page := c.Query("page")
+	country := query.Get("country")
+	browser := query.Get("browser")
+	device := query.Get("device")
+	page := query.Get("page")
 
 	// Parse and validate website ID before streaming
 	var parseErr string
@@ -413,14 +454,7 @@ func HandleTimeSeries(c fiber.Ctx) error {
 		}
 	}
 
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
-
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
-
+	streamDatastar(w, func(sse *DatastarSSE) {
 		if parseErr != "" {
 			_ = sse.PatchSignals(map[string]any{
 				"chartLoading": false,
@@ -466,8 +500,9 @@ func HandleTimeSeries(c fiber.Ctx) error {
 
 // HandleBreakdown returns breakdown data via Datastar SSE
 // GET /api/dashboard/breakdown
-func HandleBreakdown(c fiber.Ctx) error {
-	datastarParam := c.Query("datastar")
+func HandleBreakdown(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	datastarParam := query.Get("datastar")
 
 	var websiteIDStr, breakdownType string
 
@@ -486,36 +521,37 @@ func HandleBreakdown(c fiber.Ctx) error {
 	}
 
 	if websiteIDStr == "" {
-		websiteIDStr = c.Query("website_id")
+		websiteIDStr = query.Get("website_id")
 		if websiteIDStr == "" {
-			websiteIDStr = c.Query("website")
+			websiteIDStr = query.Get("website")
 		}
 	}
 
 	if breakdownType == "" {
-		breakdownType = c.Query("type")
+		breakdownType = query.Get("type")
 		if breakdownType == "" {
-			breakdownType = c.Query("tab", "pages")
+			breakdownType = query.Get("tab")
+			if breakdownType == "" {
+				breakdownType = "pages"
+			}
 		}
 	}
 
 	if websiteIDStr == "" {
-		c.Set("Content-Type", "text/event-stream")
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			patchBreakdownErrorState(sse, "Website ID is required")
 		})
+		return
 	}
 
 	var websiteID uuid.UUID
 	var parseErr error
 	websiteID, parseErr = uuid.Parse(websiteIDStr)
 	if parseErr != nil {
-		c.Set("Content-Type", "text/event-stream")
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			patchBreakdownErrorState(sse, "Invalid website ID")
 		})
+		return
 	}
 
 	dimensionMap := map[string]string{
@@ -540,19 +576,18 @@ func HandleBreakdown(c fiber.Ctx) error {
 
 	dimension, ok := dimensionMap[breakdownType]
 	if !ok {
-		c.Set("Content-Type", "text/event-stream")
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			patchBreakdownErrorState(sse, "Invalid breakdown type: "+breakdownType)
 		})
+		return
 	}
 
-	pagination := ParsePaginationParamsWithValidation(c, "breakdown")
+	pagination := ParsePaginationParamsWithValidation(r, "breakdown")
 
-	country := c.Query("country")
-	browser := c.Query("browser")
-	device := c.Query("device")
-	page := c.Query("page")
+	country := query.Get("country")
+	browser := query.Get("browser")
+	device := query.Get("device")
+	page := query.Get("page")
 
 	// Convert empty strings to NULL for SQL
 	var countryParam, browserParam, deviceParam, pageParam interface{}
@@ -680,20 +715,13 @@ func HandleBreakdown(c fiber.Ctx) error {
 		}
 	}
 
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
-
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
-
+	streamDatastar(w, func(sse *DatastarSSE) {
 		if queryErr != nil {
 			fmt.Printf("DEBUG: Database query error: %v\n", queryErr)
 			patchBreakdownErrorState(sse, "Database error: "+queryErr.Error())
 			return
 		}
 
-		// Build pagination meta
 		meta := BuildPaginationMeta(pagination, totalCount)
 
 		_ = sse.PatchElementsWithMode("#breakdown-content-body", buildBreakdownTableHTML(breakdownType, items), "inner")
@@ -708,21 +736,19 @@ func HandleBreakdown(c fiber.Ctx) error {
 				"has_more":    meta.HasMore,
 			},
 		})
-
-		// table is rendered on the client using patched HTML
 	})
 }
 
 // HandleMapData returns map data via Datastar SSE
 // GET /api/dashboard/map-ds?website_id=...&days=7&country=...&browser=...&device=...&page=...
-func HandleMapData(c fiber.Ctx) error {
-	// Extract all context values BEFORE entering stream
-	websiteIDStr := c.Query("website_id")
-	days := min(max(fiber.Query[int](c, "days", 7), 1), 90)
-	country := c.Query("country")
-	browser := c.Query("browser")
-	device := c.Query("device")
-	page := c.Query("page")
+func HandleMapData(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	websiteIDStr := query.Get("website_id")
+	days := min(max(httpx.QueryInt(r, "days", 7), 1), 90)
+	country := query.Get("country")
+	browser := query.Get("browser")
+	device := query.Get("device")
+	page := query.Get("page")
 
 	// Parse and validate website ID before streaming
 	var parseErr string
@@ -792,14 +818,7 @@ func HandleMapData(c fiber.Ctx) error {
 		}
 	}
 
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
-
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
-
+	streamDatastar(w, func(sse *DatastarSSE) {
 		if parseErr != "" {
 			_ = sse.PatchSignals(map[string]any{
 				"mapError":   parseErr,
@@ -829,9 +848,8 @@ func HandleMapData(c fiber.Ctx) error {
 
 // HandleRealtimeVisitors returns current visitors count via Datastar SSE
 // GET /api/dashboard/realtime-ds?website_id=...
-func HandleRealtimeVisitors(c fiber.Ctx) error {
-	// Extract all context values BEFORE entering stream
-	websiteIDStr := c.Query("website_id")
+func HandleRealtimeVisitors(w http.ResponseWriter, r *http.Request) {
+	websiteIDStr := r.URL.Query().Get("website_id")
 
 	// Parse and validate website ID before streaming
 	var parseErr string
@@ -861,14 +879,7 @@ func HandleRealtimeVisitors(c fiber.Ctx) error {
 		queryErr = database.DB.QueryRow(query, websiteID).Scan(&count)
 	}
 
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
-
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
-
+	streamDatastar(w, func(sse *DatastarSSE) {
 		if parseErr != "" {
 			_ = sse.PatchSignals(map[string]any{
 				"realtimeError":   parseErr,
@@ -894,20 +905,16 @@ func HandleRealtimeVisitors(c fiber.Ctx) error {
 
 // HandleCampaignsInit initializes the campaigns page with websites list
 // GET /api/dashboard/campaigns-init
-func HandleCampaignsInit(c fiber.Ctx) error {
-	// Get user from context
-	user := middleware.GetUser(c)
+func HandleCampaignsInit(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
 	if user == nil {
-		c.Set("Content-Type", "text/event-stream")
-		c.Set("Cache-Control", "no-cache")
-		c.Set("Connection", "keep-alive")
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"websitesError":   "Not authenticated",
 				"websitesLoading": false,
 			})
 		})
+		return
 	}
 
 	// Query websites for this user BEFORE streaming
@@ -935,19 +942,12 @@ func HandleCampaignsInit(c fiber.Ctx) error {
 	}
 
 	// Determine selected website
-	selectedWebsite := selectedWebsiteFromRequest(c)
+	selectedWebsite := selectedWebsiteFromRequest(r)
 	if selectedWebsite == "" && len(websites) > 0 {
 		selectedWebsite = websites[0].ID
 	}
 
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
-
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
-
+	streamDatastar(w, func(sse *DatastarSSE) {
 		if queryErr != nil {
 			log.Printf("HandleCampaignsInit: query error: %v", queryErr)
 			msg := fmt.Sprintf("Failed to load websites: %v", queryErr)
@@ -974,23 +974,23 @@ func HandleCampaignsInit(c fiber.Ctx) error {
 
 // HandleCampaigns handles campaign data requests via Datastar SSE
 // GET /api/dashboard/campaigns-ds?website_id=...&dimension=...&sort_by=...&sort_order=...
-func HandleCampaigns(c fiber.Ctx) error {
-	websiteID := selectedWebsiteFromRequest(c)
+func HandleCampaigns(w http.ResponseWriter, r *http.Request) {
+	websiteID := selectedWebsiteFromRequest(r)
 	if websiteID == "" {
-		websiteID = c.Query("website_id")
+		websiteID = r.URL.Query().Get("website_id")
 	}
-	dimension := c.Query("dimension")
-	sortBy := c.Query("sort_by", "count")
-	sortOrder := c.Query("sort_order", "desc")
+	query := r.URL.Query()
+	dimension := query.Get("dimension")
+	sortBy := query.Get("sort_by")
+	if sortBy == "" {
+		sortBy = "count"
+	}
+	sortOrder := query.Get("sort_order")
+	if sortOrder == "" {
+		sortOrder = "desc"
+	}
 
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
-
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
-
+	streamDatastar(w, func(sse *DatastarSSE) {
 		if websiteID == "" {
 			_ = sse.PatchSignals(map[string]any{
 				"websitesError": "Website ID is required",
@@ -1368,20 +1368,16 @@ func formatNumber(n int) string {
 
 // HandleWebsitesInit initializes the websites management page
 // GET /api/dashboard/websites-init-ds
-func HandleWebsitesInit(c fiber.Ctx) error {
-	// Get user from context
-	user := middleware.GetUser(c)
+func HandleWebsitesInit(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
 	if user == nil {
-		c.Set("Content-Type", "text/event-stream")
-		c.Set("Cache-Control", "no-cache")
-		c.Set("Connection", "keep-alive")
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"websitesError":   "Not authenticated",
 				"websitesLoading": false,
 			})
 		})
+		return
 	}
 
 	// Query websites for this user BEFORE streaming
@@ -1420,14 +1416,7 @@ func HandleWebsitesInit(c fiber.Ctx) error {
 		}
 	}
 
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
-
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
-
+	streamDatastar(w, func(sse *DatastarSSE) {
 		if queryErr != nil {
 			log.Printf("HandleWebsitesInit: query error: %v", queryErr)
 			msg := fmt.Sprintf("Failed to load websites: %v", queryErr)
@@ -1438,7 +1427,6 @@ func HandleWebsitesInit(c fiber.Ctx) error {
 			return
 		}
 
-		// Build website cards HTML
 		gridSelector := "[data-element='websites-grid-content']"
 
 		if len(websites) == 0 {
@@ -1488,41 +1476,34 @@ func HandleWebsitesInit(c fiber.Ctx) error {
 
 // HandleWebsitesCreate creates a new website via Datastar SSE
 // POST /api/dashboard/websites-create-ds
-func HandleWebsitesCreate(c fiber.Ctx) error {
-	// Extract form data BEFORE streaming
-	domain := c.FormValue("domain")
-	name := c.FormValue("name")
+func HandleWebsitesCreate(w http.ResponseWriter, r *http.Request) {
+	domain := r.FormValue("domain")
+	name := r.FormValue("name")
 
 	var createErr string
 	if domain == "" {
 		createErr = "Domain is required"
 	}
 
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
-
 	if createErr != "" {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"createError": createErr,
 				"creating":    false,
 			})
 		})
+		return
 	}
 
-	// Get user
-	user := middleware.GetUser(c)
+	user := middleware.GetUser(r)
 	if user == nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"createError": "Not authenticated",
 				"creating":    false,
 			})
 		})
+		return
 	}
 
 	// Create website
@@ -1540,17 +1521,16 @@ func HandleWebsitesCreate(c fiber.Ctx) error {
 	`, websiteID, user.UserID, domain, name, string(allowedDomainsJSON))
 
 	if err != nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"createError": "Failed to create website. Domain may already exist.",
 				"creating":    false,
 			})
 		})
+		return
 	}
 
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
+	streamDatastar(w, func(sse *DatastarSSE) {
 		_ = sse.PatchSignals(map[string]any{
 			"showCreateModal": false,
 			"creating":        false,
@@ -1579,20 +1559,16 @@ func HandleWebsitesCreate(c fiber.Ctx) error {
 
 // HandleMapInit initializes the map page with website selection
 // GET /api/dashboard/map-init-ds
-func HandleMapInit(c fiber.Ctx) error {
-	// Get user from context
-	user := middleware.GetUser(c)
+func HandleMapInit(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
 	if user == nil {
-		c.Set("Content-Type", "text/event-stream")
-		c.Set("Cache-Control", "no-cache")
-		c.Set("Connection", "keep-alive")
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"mapError":   "Not authenticated",
 				"mapLoading": false,
 			})
 		})
+		return
 	}
 
 	// Query websites for this user BEFORE streaming
@@ -1620,7 +1596,7 @@ func HandleMapInit(c fiber.Ctx) error {
 	}
 
 	// Determine selected website
-	selectedWebsite := c.Query("website")
+	selectedWebsite := r.URL.Query().Get("website")
 	if selectedWebsite == "" && len(websites) > 0 {
 		selectedWebsite = websites[0].ID
 	}
@@ -1657,14 +1633,7 @@ func HandleMapInit(c fiber.Ctx) error {
 		}
 	}
 
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
-
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
-
+	streamDatastar(w, func(sse *DatastarSSE) {
 		if queryErr != nil {
 			log.Printf("HandleMapInit: query error: %v", queryErr)
 			msg := fmt.Sprintf("Failed to load websites: %v", queryErr)
@@ -1694,32 +1663,27 @@ func HandleMapInit(c fiber.Ctx) error {
 
 // HandleGoals returns goals list for a website via Datastar SSE
 // GET /api/dashboard/goals-ds?website=...
-func HandleGoals(c fiber.Ctx) error {
-	websiteID := c.Query("website")
-
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
+func HandleGoals(w http.ResponseWriter, r *http.Request) {
+	websiteID := r.URL.Query().Get("website")
 
 	if websiteID == "" {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"goalsError":   "Website ID is required",
 				"goalsLoading": false,
 			})
 		})
+		return
 	}
 
 	if _, err := uuid.Parse(websiteID); err != nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"goalsError":   "Invalid website ID",
 				"goalsLoading": false,
 			})
 		})
+		return
 	}
 
 	// Query goals
@@ -1731,13 +1695,13 @@ func HandleGoals(c fiber.Ctx) error {
 	`, websiteID)
 
 	if err != nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"goalsError":   "Failed to load goals",
 				"goalsLoading": false,
 			})
 		})
+		return
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -1760,8 +1724,7 @@ func HandleGoals(c fiber.Ctx) error {
 		goals = append(goals, g)
 	}
 
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
+	streamDatastar(w, func(sse *DatastarSSE) {
 		tableHTML := buildGoalsTableHTML(goals)
 		_ = sse.PatchElementsWithMode("[data-element='goals-table-container']", tableHTML, "inner")
 		_ = sse.PatchSignals(map[string]any{
@@ -1775,28 +1738,21 @@ func HandleGoals(c fiber.Ctx) error {
 
 // HandleGoalsCreate creates a new goal via Datastar SSE
 // POST /api/dashboard/goals-ds
-func HandleGoalsCreate(c fiber.Ctx) error {
-	// Extract form data
-	websiteID := c.FormValue("website_id")
-	name := c.FormValue("name")
-	goalType := c.FormValue("type")
-	value := c.FormValue("value")
+func HandleGoalsCreate(w http.ResponseWriter, r *http.Request) {
+	websiteID := r.FormValue("website_id")
+	name := r.FormValue("name")
+	goalType := r.FormValue("type")
+	value := r.FormValue("value")
 
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
-
-	// Validate
 	if websiteID == "" || name == "" || goalType == "" || value == "" {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"goalError":   "All fields are required",
 				"goalLoading": false,
 				"submitting":  false,
 			})
 		})
+		return
 	}
 
 	var targetURL, targetEvent *string
@@ -1806,14 +1762,14 @@ func HandleGoalsCreate(c fiber.Ctx) error {
 	case "custom_event":
 		targetEvent = &value
 	default:
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"goalError":   "Invalid goal type",
 				"goalLoading": false,
 				"submitting":  false,
 			})
 		})
+		return
 	}
 
 	id := uuid.New().String()
@@ -1823,22 +1779,21 @@ func HandleGoalsCreate(c fiber.Ctx) error {
 	`, id, websiteID, name, targetURL, targetEvent)
 
 	if err != nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"goalError":   "Failed to create goal",
 				"goalLoading": false,
 				"submitting":  false,
 			})
 		})
+		return
 	}
 
 	// Invalidate cache
 	websiteUUID, _ := uuid.Parse(websiteID)
 	InvalidateGoalCache(websiteUUID)
 
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
+	streamDatastar(w, func(sse *DatastarSSE) {
 		_ = sse.PatchSignals(map[string]any{
 			"showCreateModal": false,
 			"goalLoading":     false,
@@ -1859,27 +1814,21 @@ func HandleGoalsCreate(c fiber.Ctx) error {
 
 // HandleGoalsUpdate updates a goal via Datastar SSE
 // PUT /api/dashboard/goals-ds/:id
-func HandleGoalsUpdate(c fiber.Ctx) error {
-	goalID := c.Params("id")
+func HandleGoalsUpdate(w http.ResponseWriter, r *http.Request) {
+	goalID := chi.URLParam(r, "id")
 
-	// Extract form data
-	name := c.FormValue("name")
-	goalType := c.FormValue("type")
-	value := c.FormValue("value")
-
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
+	name := r.FormValue("name")
+	goalType := r.FormValue("type")
+	value := r.FormValue("value")
 
 	if _, err := uuid.Parse(goalID); err != nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"goalError":   "Invalid goal ID",
 				"goalLoading": false,
 			})
 		})
+		return
 	}
 
 	var targetURL, targetEvent *string
@@ -1889,13 +1838,13 @@ func HandleGoalsUpdate(c fiber.Ctx) error {
 	case "custom_event":
 		targetEvent = &value
 	default:
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"goalError":   "Invalid goal type",
 				"goalLoading": false,
 			})
 		})
+		return
 	}
 
 	_, err := database.DB.Exec(`
@@ -1904,13 +1853,13 @@ func HandleGoalsUpdate(c fiber.Ctx) error {
 	`, name, targetURL, targetEvent, goalID)
 
 	if err != nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"goalError":   "Failed to update goal",
 				"goalLoading": false,
 			})
 		})
+		return
 	}
 
 	// Invalidate cache
@@ -1918,8 +1867,7 @@ func HandleGoalsUpdate(c fiber.Ctx) error {
 	_ = database.DB.QueryRow("SELECT website_id FROM goals WHERE id = $1", goalID).Scan(&websiteID)
 	InvalidateGoalCache(websiteID)
 
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
+	streamDatastar(w, func(sse *DatastarSSE) {
 		_ = sse.PatchSignals(map[string]any{
 			"showEditModal": false,
 			"goalLoading":   false,
@@ -1941,22 +1889,17 @@ func HandleGoalsUpdate(c fiber.Ctx) error {
 
 // HandleGoalsDelete deletes a goal via Datastar SSE
 // DELETE /api/dashboard/goals-ds/:id
-func HandleGoalsDelete(c fiber.Ctx) error {
-	goalID := c.Params("id")
-
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
+func HandleGoalsDelete(w http.ResponseWriter, r *http.Request) {
+	goalID := chi.URLParam(r, "id")
 
 	if _, err := uuid.Parse(goalID); err != nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"goalError":   "Invalid goal ID",
 				"goalLoading": false,
 			})
 		})
+		return
 	}
 
 	// Get website ID for cache invalidation
@@ -1965,19 +1908,18 @@ func HandleGoalsDelete(c fiber.Ctx) error {
 
 	_, err := database.DB.Exec(`DELETE FROM goals WHERE id = $1`, goalID)
 	if err != nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"goalError":   "Failed to delete goal",
 				"goalLoading": false,
 			})
 		})
+		return
 	}
 
 	InvalidateGoalCache(websiteID)
 
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
+	streamDatastar(w, func(sse *DatastarSSE) {
 		_ = sse.PatchSignals(map[string]any{
 			"goalLoading":  false,
 			"goalError":    false,
@@ -1991,23 +1933,18 @@ func HandleGoalsDelete(c fiber.Ctx) error {
 
 // HandleGoalsAnalytics returns analytics for a specific goal via Datastar SSE
 // GET /api/dashboard/goals-ds/:id/analytics?days=7
-func HandleGoalsAnalytics(c fiber.Ctx) error {
-	goalID := c.Params("id")
-	days := fiber.Query[int](c, "days", 7)
-
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
+func HandleGoalsAnalytics(w http.ResponseWriter, r *http.Request) {
+	goalID := chi.URLParam(r, "id")
+	days := httpx.QueryInt(r, "days", 7)
 
 	if _, err := uuid.Parse(goalID); err != nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"analyticsError":   "Invalid goal ID",
 				"analyticsLoading": false,
 			})
 		})
+		return
 	}
 
 	// Query goal analytics
@@ -2037,8 +1974,7 @@ func HandleGoalsAnalytics(c fiber.Ctx) error {
 	`, goalID, days).Scan(&completions, &uniqueSessions, &totalSessions, &conversionRate)
 
 	if err != nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"analytics": map[string]any{
 					"completions":     0,
@@ -2049,6 +1985,7 @@ func HandleGoalsAnalytics(c fiber.Ctx) error {
 				"analyticsLoading": false,
 			})
 		})
+		return
 	}
 
 	chartLabels := make([]string, 0, 32)
@@ -2081,8 +2018,7 @@ func HandleGoalsAnalytics(c fiber.Ctx) error {
 	valueJSON, _ := json.Marshal(chartValues)
 	daysStr := fmt.Sprintf("%d", days)
 
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
+	streamDatastar(w, func(sse *DatastarSSE) {
 		_ = sse.PatchElementsWithMode("[data-element='analytics-stats-container']", statsHTML, "inner")
 		if goalName != "" {
 			_ = sse.ExecuteScript(fmt.Sprintf(`(function(){const el=document.getElementById('analytics-goal-name');if(el){el.textContent=%q;}})();`, goalName))
@@ -2102,24 +2038,19 @@ func HandleGoalsAnalytics(c fiber.Ctx) error {
 
 // HandleGoalsBreakdown returns breakdown data for a goal via Datastar SSE
 // GET /api/dashboard/goals-ds/:id/breakdown/:type?days=7
-func HandleGoalsBreakdown(c fiber.Ctx) error {
-	goalID := c.Params("id")
-	breakdownType := c.Params("type")
-	days := fiber.Query[int](c, "days", 7)
-
-	// Set SSE headers
-	c.Set("Content-Type", "text/event-stream")
-	c.Set("Cache-Control", "no-cache")
-	c.Set("Connection", "keep-alive")
+func HandleGoalsBreakdown(w http.ResponseWriter, r *http.Request) {
+	goalID := chi.URLParam(r, "id")
+	breakdownType := chi.URLParam(r, "type")
+	days := httpx.QueryInt(r, "days", 7)
 
 	if _, err := uuid.Parse(goalID); err != nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"breakdownError":   "Invalid goal ID",
 				"breakdownLoading": false,
 			})
 		})
+		return
 	}
 
 	// Map breakdown type to column
@@ -2133,13 +2064,13 @@ func HandleGoalsBreakdown(c fiber.Ctx) error {
 
 	column, ok := columnMap[breakdownType]
 	if !ok {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			_ = sse.PatchSignals(map[string]any{
 				"breakdownError":   "Invalid breakdown type",
 				"breakdownLoading": false,
 			})
 		})
+		return
 	}
 
 	// Query breakdown
@@ -2156,8 +2087,7 @@ func HandleGoalsBreakdown(c fiber.Ctx) error {
 
 	rows, err := database.DB.Query(query, goalID, days)
 	if err != nil {
-		return c.SendStreamWriter(func(w *bufio.Writer) {
-			sse := NewDatastarSSE(w)
+		streamDatastar(w, func(sse *DatastarSSE) {
 			html := buildBreakdownErrorHTML("Failed to load breakdown data")
 			_ = sse.PatchElementsWithMode("[data-element='analytics-breakdown-container']", html, "inner")
 			_ = sse.PatchSignals(map[string]any{
@@ -2165,6 +2095,7 @@ func HandleGoalsBreakdown(c fiber.Ctx) error {
 				"breakdownLoading": false,
 			})
 		})
+		return
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -2179,8 +2110,7 @@ func HandleGoalsBreakdown(c fiber.Ctx) error {
 
 	breakdownHTML := buildBreakdownTableHTML(breakdownType, items)
 
-	return c.SendStreamWriter(func(w *bufio.Writer) {
-		sse := NewDatastarSSE(w)
+	streamDatastar(w, func(sse *DatastarSSE) {
 		_ = sse.PatchElementsWithMode("[data-element='analytics-breakdown-container']", breakdownHTML, "inner")
 		_ = sse.PatchSignals(map[string]any{
 			"breakdown":        items,

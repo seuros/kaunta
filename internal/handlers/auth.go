@@ -6,14 +6,16 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/seuros/kaunta/internal/database"
+	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/middleware"
 )
 
@@ -59,47 +61,41 @@ func secureCookiesEnabled() bool {
 }
 
 // HandleLogin authenticates user and creates session
-func HandleLogin(c fiber.Ctx) error {
+func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
-	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
-		})
+	if err := httpx.ReadJSON(r, &req); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	// Validate input
 	if req.Username == "" || req.Password == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Username and password are required",
-		})
+		httpx.Error(w, http.StatusBadRequest, "Username and password are required")
+		return
 	}
 
 	user, err := fetchUserByUsername(req.Username)
 	if errors.Is(err, sql.ErrNoRows) {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Invalid username or password",
-		})
+		httpx.Error(w, http.StatusUnauthorized, "Invalid username or password")
+		return
 	}
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Authentication error",
-		})
+		httpx.Error(w, http.StatusInternalServerError, "Authentication error")
+		return
 	}
 
 	// Verify password using PostgreSQL function
 	passwordValid, err := verifyPasswordHashFunc(req.Password, user.PasswordHash)
 	if err != nil || !passwordValid {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Invalid username or password",
-		})
+		httpx.Error(w, http.StatusUnauthorized, "Invalid username or password")
+		return
 	}
 
 	// Generate session token
 	token, tokenHash, err := sessionTokenGenerator()
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to create session",
-		})
+		httpx.Error(w, http.StatusInternalServerError, "Failed to create session")
+		return
 	}
 
 	// Create session in database
@@ -107,16 +103,15 @@ func HandleLogin(c fiber.Ctx) error {
 	expiresAt := time.Now().Add(7 * 24 * time.Hour) // 7 days
 
 	// Get user agent and IP
-	userAgent := c.Get("User-Agent")
+	userAgent := r.Header.Get("User-Agent")
 	if len(userAgent) > 500 {
 		userAgent = userAgent[:500]
 	}
-	ipAddress := c.IP()
+	ipAddress := httpx.ClientIP(r)
 
 	if err := insertSessionFunc(sessionID, user.UserID, tokenHash, expiresAt, userAgent, ipAddress); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to create session",
-		})
+		httpx.Error(w, http.StatusInternalServerError, "Failed to create session")
+		return
 	}
 
 	// Set session cookie
@@ -126,13 +121,13 @@ func HandleLogin(c fiber.Ctx) error {
 		sameSite = "None" // Required for cross-domain CNAME setups
 	}
 
-	c.Cookie(&fiber.Cookie{
+	http.SetCookie(w, &http.Cookie{
 		Name:     "kaunta_session",
 		Value:    token,
 		Expires:  expiresAt,
-		HTTPOnly: true,
+		HttpOnly: true,
 		Secure:   secure,
-		SameSite: sameSite,
+		SameSite: parseSameSite(sameSite),
 		Path:     "/",
 	})
 
@@ -155,27 +150,25 @@ func HandleLogin(c fiber.Ctx) error {
 		response.User.Name = &nameStr
 	}
 
-	return c.JSON(response)
+	httpx.WriteJSON(w, http.StatusOK, response)
 }
 
 // HandleMe returns current user info
-func HandleMe(c fiber.Ctx) error {
-	user := middleware.GetUser(c)
+func HandleMe(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
 	if user == nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Not authenticated",
-		})
+		httpx.Error(w, http.StatusUnauthorized, "Not authenticated")
+		return
 	}
 
 	// Get full user details
 	name, createdAt, err := fetchUserDetailsFunc(user.UserID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to get user info",
-		})
+		httpx.Error(w, http.StatusInternalServerError, "Failed to get user info")
+		return
 	}
 
-	result := fiber.Map{
+	result := map[string]any{
 		"user_id":    user.UserID,
 		"username":   user.Username,
 		"created_at": createdAt,
@@ -185,7 +178,18 @@ func HandleMe(c fiber.Ctx) error {
 		result["name"] = name.String
 	}
 
-	return c.JSON(result)
+	httpx.WriteJSON(w, http.StatusOK, result)
+}
+
+func parseSameSite(mode string) http.SameSite {
+	switch strings.ToLower(mode) {
+	case "none":
+		return http.SameSiteNoneMode
+	case "strict":
+		return http.SameSiteStrictMode
+	default:
+		return http.SameSiteLaxMode
+	}
 }
 
 func fetchUserFromDB(username string) (*userRecord, error) {

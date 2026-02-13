@@ -1,10 +1,9 @@
 package middleware
 
 import (
+	"net/http"
 	"sync"
 	"time"
-
-	"github.com/gofiber/fiber/v3"
 
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/logging"
@@ -98,13 +97,13 @@ func (c *TrustedOriginsCache) ForceRefresh() error {
 
 // RefreshTrustedOrigins is a middleware that can be used to force cache refresh
 // Useful for admin endpoints that modify trusted origins
-func RefreshTrustedOrigins() fiber.Handler {
-	return func(c fiber.Ctx) error {
+func RefreshTrustedOrigins(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := originsCache.ForceRefresh(); err != nil {
 			logging.L().Warn("failed to refresh trusted origins cache", zap.Error(err))
 		}
-		return c.Next()
-	}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // InitTrustedOriginsCache initializes the cache at startup

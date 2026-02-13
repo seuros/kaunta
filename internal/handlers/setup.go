@@ -8,15 +8,17 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"regexp"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 
 	"github.com/seuros/kaunta/internal/config"
 	"github.com/seuros/kaunta/internal/database"
+	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/logging"
 	"github.com/seuros/kaunta/internal/models"
 	"go.uber.org/zap"
@@ -49,22 +51,24 @@ type DatastarRequest struct {
 }
 
 // ShowSetup displays the setup page
-func ShowSetup(setupTemplate []byte) fiber.Handler {
-	return func(c fiber.Ctx) error {
+func ShowSetup(setupTemplate []byte) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if setup is actually needed
 		status, err := config.CheckSetupStatus()
 		if err != nil {
 			logging.L().Error("failed to check setup status", zap.Error(err))
-			return c.Status(fiber.StatusInternalServerError).SendString("Setup check failed")
+			http.Error(w, "Setup check failed", http.StatusInternalServerError)
+			return
 		}
 
 		if !status.NeedsSetup {
 			// Setup not needed, redirect to dashboard
-			return c.Redirect().To("/")
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
 		}
 
 		// Prepare template data
-		data := fiber.Map{
+		data := map[string]any{
 			"Title":             "Setup",
 			"NeedsSetup":        status.NeedsSetup,
 			"HasDatabaseConfig": status.HasDatabaseConfig,
@@ -99,34 +103,36 @@ func ShowSetup(setupTemplate []byte) fiber.Handler {
 			data["DataDir"] = "./data"
 		}
 
-		// Render setup page
-		return c.Type("html").Send(setupTemplate)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(setupTemplate)
 	}
 }
 
 // SubmitSetup processes the setup form submission
 // onComplete is called after successful setup to signal server restart
-func SubmitSetup(onComplete func()) fiber.Handler {
-	return func(c fiber.Ctx) error {
+func SubmitSetup(onComplete func()) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		var reqBody DatastarRequest
-		if err := c.Bind().Body(&reqBody); err != nil {
+		if err := httpx.ReadJSON(r, &reqBody); err != nil {
 			logging.L().Error("Bind failed for setup", zap.Error(err))
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
 				"submitting":  false,
 				"message":     "Invalid request: " + err.Error(),
 				"messageType": "error",
 			})
+			return
 		}
 		form := reqBody.Form
 		logging.L().Info("Parsed form for setup")
 
 		// Validate form fields
 		if err := validateSetupForm(&form); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
 				"submitting":  false,
 				"message":     err.Error(),
 				"messageType": "error",
 			})
+			return
 		}
 
 		// Build database URL
@@ -135,25 +141,28 @@ func SubmitSetup(onComplete func()) fiber.Handler {
 		// Test database connection
 		db, err := sql.Open("postgres", dbURL)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
 				"error": fmt.Sprintf("Invalid database configuration: %v", err),
 			})
+			return
 		}
 		defer func() { _ = db.Close() }()
 
 		if err := db.Ping(); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
 				"error": fmt.Sprintf("Cannot connect to database: %v", err),
 			})
+			return
 		}
 
 		// Check if users already exist
 		hasUsers, err := models.HasAnyUsers(context.Background(), db)
 		if err == nil && hasUsers {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
 				"error": "Setup already completed. Users already exist in the database.",
 			})
-			}
+			return
+		}
 
 		// Run migrations
 		logging.L().Info("running database migrations during setup")
@@ -171,9 +180,10 @@ func SubmitSetup(onComplete func()) fiber.Handler {
 			form.AdminName,
 		)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			httpx.WriteJSON(w, http.StatusInternalServerError, map[string]any{
 				"error": fmt.Sprintf("Failed to create admin user: %v", err),
 			})
+			return
 		}
 
 		// Create "self" website for dogfooding (tracking Kaunta dashboard itself)
@@ -238,90 +248,91 @@ func SubmitSetup(onComplete func()) fiber.Handler {
 				// Don't fail, user can login manually
 			} else {
 				// Set session cookie (won't survive server restart, but code is correct)
-				c.Cookie(&fiber.Cookie{
+				http.SetCookie(w, &http.Cookie{
 					Name:     "kaunta_session",
 					Value:    token,
 					Path:     "/",
-					HTTPOnly: true,
+					HttpOnly: true,
 					Secure:   cfg.SecureCookies,
-					SameSite: "Lax",
+					SameSite: http.SameSiteLaxMode,
 					Expires:  expiresAt,
 				})
 			}
 		}
 
-		response := fiber.Map{
+		response := map[string]any{
 			"success":    true,
 			"submitting": false,
 			"message":    "Setup completed successfully. Server is restarting...",
-			"user": fiber.Map{
+			"user": map[string]any{
 				"id":       user.UserID.String(),
 				"username": user.Username,
 			},
 			"redirect": "/dashboard",
 		}
 
-		if err := c.JSON(response); err != nil {
-			return err
-		}
+		httpx.WriteJSON(w, http.StatusOK, response)
 
 		// Signal setup completion (triggers server restart) after response is flushed
 		if onComplete != nil {
-			onComplete()
+			go onComplete()
 		}
-
-		return nil
 	}
 }
 
 // TestDatabase tests the database connection with provided credentials
-func TestDatabase() fiber.Handler {
-	return func(c fiber.Ctx) error {
-		raw := string(c.Body())
+func TestDatabase() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		bodyBytes, _ := io.ReadAll(r.Body)
+		raw := string(bodyBytes)
 		logging.L().Info("Raw body for test-db", zap.String("raw", raw))
 
 		var reqBody DatastarRequest
-		if err := c.Bind().Body(&reqBody); err != nil {
+		if err := json.Unmarshal(bodyBytes, &reqBody); err != nil {
 			logging.L().Error("Bind failed for test-db", zap.Error(err))
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
 				"testing":     false,
 				"submitting":  false,
 				"message":     "Invalid request: " + err.Error(),
 				"messageType": "error",
 			})
+			return
 		}
 
 		form := reqBody.Form
 		logging.L().Info("Parsed form for test-db", zap.Any("form", form))
 
 		if form.DBHost == "" || form.DBPort == "" || form.DBName == "" || form.DBUser == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
 				"testing":     false,
 				"submitting":  false,
 				"message":     "Missing required database fields",
 				"messageType": "error",
 			})
+			return
 		}
 
 		dbURL := buildDatabaseURL(&form)
 		db, err := sql.Open("postgres", dbURL)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
 				"testing":     false,
 				"submitting":  false,
 				"message":     fmt.Sprintf("Invalid config: %v", err),
 				"messageType": "error",
 			})
+			return
 		}
 		defer func() { _ = db.Close() }()
 
 		if err := db.Ping(); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
 				"testing":     false,
 				"submitting":  false,
 				"message":     fmt.Sprintf("Connection failed: %v", err),
 				"messageType": "error",
 			})
+			return
 		}
 
 		var version string
@@ -329,7 +340,7 @@ func TestDatabase() fiber.Handler {
 			version = "Unknown"
 		}
 
-		return c.JSON(fiber.Map{
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{
 			"testing":     false,
 			"submitting":  false,
 			"message":     "Database connection successful! Version: " + version,

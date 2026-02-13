@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"net/http"
 	"slices"
 	"strings"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/seuros/kaunta/internal/httpx"
 )
 
 // SortDirection represents sort order
@@ -47,14 +48,14 @@ var ValidSortColumns = map[string][]string{
 }
 
 // ParsePaginationParams extracts and validates pagination from request
-func ParsePaginationParams(c fiber.Ctx) PaginationParams {
-	page := max(fiber.Query[int](c, "page", 1), 1)
-	per := min(max(fiber.Query[int](c, "per", 10), 1), 100)
+func ParsePaginationParams(r *http.Request) PaginationParams {
+	page := max(httpx.QueryInt(r, "page", 1), 1)
+	per := min(max(httpx.QueryInt(r, "per", 10), 1), 100)
 	offset := (page - 1) * per
 
 	// Parse sort parameters
-	sortBy := strings.ToLower(c.Query("sort_by", "count"))
-	sortOrder := SortDirection(strings.ToLower(c.Query("sort_order", "desc")))
+	sortBy := strings.ToLower(httpx.QueryString(r, "sort_by", "count"))
+	sortOrder := SortDirection(strings.ToLower(httpx.QueryString(r, "sort_order", "desc")))
 
 	// Validate sort order
 	if sortOrder != SortAsc && sortOrder != SortDesc {
@@ -71,8 +72,8 @@ func ParsePaginationParams(c fiber.Ctx) PaginationParams {
 }
 
 // ParsePaginationParamsWithValidation extracts pagination with column validation
-func ParsePaginationParamsWithValidation(c fiber.Ctx, endpointType string) PaginationParams {
-	params := ParsePaginationParams(c)
+func ParsePaginationParamsWithValidation(r *http.Request, endpointType string) PaginationParams {
+	params := ParsePaginationParams(r)
 
 	// Validate sort column against allowed list
 	validColumns, ok := ValidSortColumns[endpointType]

@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,12 +66,6 @@ func stubFetchUserDetails(t *testing.T, fn func(userID uuid.UUID) (sql.NullStrin
 	})
 }
 
-func newAuthApp() *fiber.App {
-	app := fiber.New()
-	app.Post("/api/auth/login", HandleLogin)
-	return app
-}
-
 func TestHandleLoginSuccess(t *testing.T) {
 	userID := uuid.New()
 	stubFetchUser(t, func(username string) (*userRecord, error) {
@@ -107,19 +100,23 @@ func TestHandleLoginSuccess(t *testing.T) {
 		return "plain-token", "hashed-token", nil
 	})
 
-	app := newAuthApp()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"demo","password":"secret"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "TestAgent")
 	req.RemoteAddr = "1.2.3.4:1234"
 	req.Header.Set("X-Forwarded-For", "1.2.3.4")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	resp := httptest.NewRecorder()
+	HandleLogin(resp, req)
+	result := resp.Result()
+	defer func() {
+		_ = result.Body.Close()
+	}()
+
+	assert.Equal(t, http.StatusOK, result.StatusCode)
 	assert.True(t, insertCalled)
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(result.Body)
 	require.NoError(t, err)
 	var data LoginResponse
 	require.NoError(t, json.Unmarshal(body, &data))
@@ -128,7 +125,7 @@ func TestHandleLoginSuccess(t *testing.T) {
 	assert.Equal(t, userID, data.User.UserID)
 	assert.Equal(t, "Demo", *data.User.Name)
 
-	cookie := resp.Cookies()
+	cookie := result.Cookies()
 	require.NotEmpty(t, cookie)
 	found := false
 	for _, c := range cookie {
@@ -144,49 +141,45 @@ func TestHandleLoginSuccess(t *testing.T) {
 }
 
 func TestHandleLoginInvalidJSON(t *testing.T) {
-	app := newAuthApp()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{`))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	resp := httptest.NewRecorder()
+	HandleLogin(resp, req)
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
 }
 
 func TestHandleLoginMissingCredentials(t *testing.T) {
-	app := newAuthApp()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"demo"}`))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	resp := httptest.NewRecorder()
+	HandleLogin(resp, req)
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
 }
 
 func TestHandleLoginUnknownUser(t *testing.T) {
 	stubFetchUser(t, func(username string) (*userRecord, error) {
 		return nil, sql.ErrNoRows
 	})
-	app := newAuthApp()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"demo","password":"secret"}`))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	resp := httptest.NewRecorder()
+	HandleLogin(resp, req)
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 }
 
 func TestHandleLoginDatabaseError(t *testing.T) {
 	stubFetchUser(t, func(username string) (*userRecord, error) {
 		return nil, errors.New("db error")
 	})
-	app := newAuthApp()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"demo","password":"secret"}`))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	resp := httptest.NewRecorder()
+	HandleLogin(resp, req)
+	assert.Equal(t, http.StatusInternalServerError, resp.Code)
 }
 
 func TestHandleLoginInvalidPassword(t *testing.T) {
@@ -201,13 +194,12 @@ func TestHandleLoginInvalidPassword(t *testing.T) {
 		return false, nil
 	})
 
-	app := newAuthApp()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"demo","password":"secret"}`))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	resp := httptest.NewRecorder()
+	HandleLogin(resp, req)
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 }
 
 func TestHandleLoginVerifyPasswordError(t *testing.T) {
@@ -222,13 +214,12 @@ func TestHandleLoginVerifyPasswordError(t *testing.T) {
 		return false, errors.New("boom")
 	})
 
-	app := newAuthApp()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"demo","password":"secret"}`))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	resp := httptest.NewRecorder()
+	HandleLogin(resp, req)
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 }
 
 func TestHandleLoginTokenGenerationFailure(t *testing.T) {
@@ -246,13 +237,12 @@ func TestHandleLoginTokenGenerationFailure(t *testing.T) {
 		return "", "", errors.New("token error")
 	})
 
-	app := newAuthApp()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"demo","password":"secret"}`))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	resp := httptest.NewRecorder()
+	HandleLogin(resp, req)
+	assert.Equal(t, http.StatusInternalServerError, resp.Code)
 }
 
 func TestHandleLoginInsertSessionFailure(t *testing.T) {
@@ -275,13 +265,12 @@ func TestHandleLoginInsertSessionFailure(t *testing.T) {
 		return errors.New("insert error")
 	})
 
-	app := newAuthApp()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"demo","password":"secret"}`))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	resp := httptest.NewRecorder()
+	HandleLogin(resp, req)
+	assert.Equal(t, http.StatusInternalServerError, resp.Code)
 }
 
 func TestHandleMeSuccess(t *testing.T) {
@@ -291,20 +280,16 @@ func TestHandleMeSuccess(t *testing.T) {
 		return sql.NullString{String: "Demo", Valid: true}, time.Unix(0, 0), nil
 	})
 
-	app := fiber.New()
-	app.Use(func(c fiber.Ctx) error {
-		c.Locals("user", &middleware.UserContext{
-			UserID:   userID,
-			Username: "demo",
-		})
-		return c.Next()
-	})
-	app.Get("/api/auth/me", HandleMe)
-
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	req = req.WithContext(middleware.ContextWithUser(req.Context(), &middleware.UserContext{
+		UserID:   userID,
+		Username: "demo",
+	}))
+
+	resp := httptest.NewRecorder()
+	HandleMe(resp, req)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -313,12 +298,10 @@ func TestHandleMeSuccess(t *testing.T) {
 }
 
 func TestHandleMeUnauthenticated(t *testing.T) {
-	app := fiber.New()
-	app.Get("/api/auth/me", HandleMe)
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	resp := httptest.NewRecorder()
+	HandleMe(resp, req)
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 }
 
 func TestHandleMeDatabaseError(t *testing.T) {
@@ -326,18 +309,14 @@ func TestHandleMeDatabaseError(t *testing.T) {
 		return sql.NullString{}, time.Time{}, errors.New("db error")
 	})
 
-	app := fiber.New()
-	app.Use(func(c fiber.Ctx) error {
-		c.Locals("user", &middleware.UserContext{
-			UserID:   uuid.New(),
-			Username: "demo",
-		})
-		return c.Next()
-	})
-	app.Get("/api/auth/me", HandleMe)
-
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	req = req.WithContext(middleware.ContextWithUser(req.Context(), &middleware.UserContext{
+		UserID:   uuid.New(),
+		Username: "demo",
+	}))
+
+	resp := httptest.NewRecorder()
+	HandleMe(resp, req)
+
+	assert.Equal(t, http.StatusInternalServerError, resp.Code)
 }

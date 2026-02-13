@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,15 +25,14 @@ func TestHandleCurrentVisitors_Success(t *testing.T) {
 		},
 	}
 
-	app, queue, cleanup := setupFiberTest(t, "/api/stats/realtime/:website_id", HandleCurrentVisitors, responses)
+	handler, queue, cleanup := setupHTTPTest(t, "/api/stats/realtime/{website_id}", HandleCurrentVisitors, responses)
 	defer cleanup()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/stats/realtime/"+websiteID.String(), nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	defer func() { _ = resp.Body.Close() }()
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
 
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.Code)
 
 	var payload map[string]int
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
@@ -43,15 +42,14 @@ func TestHandleCurrentVisitors_Success(t *testing.T) {
 }
 
 func TestHandleCurrentVisitors_InvalidWebsiteID(t *testing.T) {
-	app := fiber.New()
-	app.Get("/api/stats/realtime/:website_id", HandleCurrentVisitors)
+	router := chi.NewRouter()
+	router.Get("/api/stats/realtime/{website_id}", HandleCurrentVisitors)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/stats/realtime/not-a-uuid", nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	defer func() { _ = resp.Body.Close() }()
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
 }
 
 func TestHandleCurrentVisitors_QueryError(t *testing.T) {
@@ -64,14 +62,13 @@ func TestHandleCurrentVisitors_QueryError(t *testing.T) {
 		},
 	}
 
-	app, queue, cleanup := setupFiberTest(t, "/api/stats/realtime/:website_id", HandleCurrentVisitors, responses)
+	handler, queue, cleanup := setupHTTPTest(t, "/api/stats/realtime/{website_id}", HandleCurrentVisitors, responses)
 	defer cleanup()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/stats/realtime/"+websiteID.String(), nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	defer func() { _ = resp.Body.Close() }()
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
 
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, http.StatusInternalServerError, resp.Code)
 	require.NoError(t, queue.expectationsMet())
 }

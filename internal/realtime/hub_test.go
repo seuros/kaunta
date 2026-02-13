@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/contrib/v3/websocket"
+	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 )
 

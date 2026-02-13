@@ -11,36 +11,21 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/healthcheck"
 	"github.com/seuros/kaunta/internal/config"
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func newFiberApp(path string, handler fiber.Handler) *fiber.App {
-	app := fiber.New()
-	app.Get(path, handler)
-	return app
-}
-
-func performRequest(t *testing.T, app *fiber.App, target string) *http.Response {
-	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, target, nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	return resp
-}
-
 func TestHandleHealthPayload(t *testing.T) {
-	app := newFiberApp("/health", handleHealth)
-	resp := performRequest(t, app, "/health")
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	resp := httptest.NewRecorder()
+	handleHealth(resp, req)
 
 	var payload map[string]any
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
 
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "healthy", payload["status"])
 	assert.Equal(t, "kaunta", payload["service"])
 }
@@ -59,14 +44,10 @@ func TestHandleUpReturnsOKWhenDatabaseHealthy(t *testing.T) {
 		return nil
 	})
 
-	app := fiber.New()
-	app.Get("/up", healthcheck.New(healthcheck.Config{
-		Probe: func(c fiber.Ctx) bool {
-			return pingDatabase() == nil
-		},
-	}))
-	resp := performRequest(t, app, "/up")
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	req := httptest.NewRequest(http.MethodGet, "/up", nil)
+	resp := httptest.NewRecorder()
+	upHandler(resp, req)
+	assert.Equal(t, http.StatusOK, resp.Code)
 }
 
 func TestHandleUpReturnsServiceUnavailableWhenPingFails(t *testing.T) {
@@ -74,15 +55,11 @@ func TestHandleUpReturnsServiceUnavailableWhenPingFails(t *testing.T) {
 		return errors.New("boom")
 	})
 
-	app := fiber.New()
-	app.Get("/up", healthcheck.New(healthcheck.Config{
-		Probe: func(c fiber.Ctx) bool {
-			return pingDatabase() == nil
-		},
-	}))
-	resp := performRequest(t, app, "/up")
+	req := httptest.NewRequest(http.MethodGet, "/up", nil)
+	resp := httptest.NewRecorder()
+	upHandler(resp, req)
 
-	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+	assert.Equal(t, http.StatusServiceUnavailable, resp.Code)
 }
 
 func TestHandleVersionReturnsCurrentVersion(t *testing.T) {
@@ -92,8 +69,9 @@ func TestHandleVersionReturnsCurrentVersion(t *testing.T) {
 		Version = originalVersion
 	})
 
-	app := newFiberApp("/api/version", handleVersion)
-	resp := performRequest(t, app, "/api/version")
+	req := httptest.NewRequest(http.MethodGet, "/api/version", nil)
+	resp := httptest.NewRecorder()
+	handleVersion(resp, req)
 
 	var payload map[string]string
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
@@ -102,8 +80,9 @@ func TestHandleVersionReturnsCurrentVersion(t *testing.T) {
 
 func TestHandleTrackerScriptSetsCachingAndSecurityHeaders(t *testing.T) {
 	script := []byte("console.log('hello');")
-	app := newFiberApp("/k.js", handleTrackerScript(script))
-	resp := performRequest(t, app, "/k.js")
+	req := httptest.NewRequest(http.MethodGet, "/k.js", nil)
+	resp := httptest.NewRecorder()
+	handleTrackerScript(script).ServeHTTP(resp, req)
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -112,11 +91,11 @@ func TestHandleTrackerScriptSetsCachingAndSecurityHeaders(t *testing.T) {
 	expectedETag := `"` + hex.EncodeToString(hash[:8]) + `"`
 
 	assert.Equal(t, string(script), string(body))
-	assert.Equal(t, "application/javascript; charset=utf-8", resp.Header.Get("Content-Type"))
-	assert.Equal(t, expectedETag, resp.Header.Get("ETag"))
-	assert.Equal(t, "public, max-age=3600, immutable", resp.Header.Get("Cache-Control"))
-	assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-	assert.Equal(t, "*", resp.Header.Get("Timing-Allow-Origin"))
+	assert.Equal(t, "application/javascript; charset=utf-8", resp.Header().Get("Content-Type"))
+	assert.Equal(t, expectedETag, resp.Header().Get("ETag"))
+	assert.Equal(t, "public, max-age=3600, immutable", resp.Header().Get("Cache-Control"))
+	assert.Equal(t, "*", resp.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "*", resp.Header().Get("Timing-Allow-Origin"))
 }
 
 func TestGetEnvReturnsOverrides(t *testing.T) {

@@ -8,11 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/valyala/fasthttp"
 
 	"github.com/seuros/kaunta/internal/models"
 )
@@ -26,22 +24,24 @@ func stubAPIKeyValidator(t *testing.T, stub func(keyHash string) (*models.APIKey
 	})
 }
 
-func newAPIKeyTestApp(handler fiber.Handler) *fiber.App {
-	app := fiber.New()
-	app.Use(APIKeyAuth)
-	app.Post("/", handler)
-	return app
+func executeAPIKeyMiddleware(t *testing.T, handler http.HandlerFunc, req *http.Request) *httptest.ResponseRecorder {
+	t.Helper()
+	if handler == nil {
+		handler = func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}
+	}
+
+	recorder := httptest.NewRecorder()
+	APIKeyAuth(http.HandlerFunc(handler)).ServeHTTP(recorder, req)
+	return recorder
 }
 
 func TestAPIKeyAuthMissingKey(t *testing.T) {
-	app := newAPIKeyTestApp(func(c fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusOK)
-	})
-
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, fiber.StatusUnauthorized, resp.StatusCode)
+	resp := executeAPIKeyMiddleware(t, nil, req)
+
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 
 	body, readErr := io.ReadAll(resp.Body)
 	require.NoError(t, readErr)
@@ -49,16 +49,12 @@ func TestAPIKeyAuthMissingKey(t *testing.T) {
 }
 
 func TestAPIKeyAuthInvalidFormat(t *testing.T) {
-	app := newAPIKeyTestApp(func(c fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusOK)
-	})
-
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req.Header.Set("Authorization", "Bearer invalid_key_format")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, fiber.StatusUnauthorized, resp.StatusCode)
+	resp := executeAPIKeyMiddleware(t, nil, req)
+
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 
 	body, readErr := io.ReadAll(resp.Body)
 	require.NoError(t, readErr)
@@ -70,16 +66,12 @@ func TestAPIKeyAuthNotFound(t *testing.T) {
 		return nil, sql.ErrNoRows
 	})
 
-	app := newAPIKeyTestApp(func(c fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusOK)
-	})
-
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req.Header.Set("Authorization", "Bearer kaunta_live_abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, fiber.StatusUnauthorized, resp.StatusCode)
+	resp := executeAPIKeyMiddleware(t, nil, req)
+
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 
 	body, readErr := io.ReadAll(resp.Body)
 	require.NoError(t, readErr)
@@ -98,16 +90,12 @@ func TestAPIKeyAuthRevoked(t *testing.T) {
 		}, nil
 	})
 
-	app := newAPIKeyTestApp(func(c fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusOK)
-	})
-
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req.Header.Set("Authorization", "Bearer kaunta_live_abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, fiber.StatusUnauthorized, resp.StatusCode)
+	resp := executeAPIKeyMiddleware(t, nil, req)
+
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 
 	body, readErr := io.ReadAll(resp.Body)
 	require.NoError(t, readErr)
@@ -126,16 +114,12 @@ func TestAPIKeyAuthExpired(t *testing.T) {
 		}, nil
 	})
 
-	app := newAPIKeyTestApp(func(c fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusOK)
-	})
-
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req.Header.Set("Authorization", "Bearer kaunta_live_abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, fiber.StatusUnauthorized, resp.StatusCode)
+	resp := executeAPIKeyMiddleware(t, nil, req)
+
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 }
 
 func TestAPIKeyAuthNoIngestScope(t *testing.T) {
@@ -148,16 +132,12 @@ func TestAPIKeyAuthNoIngestScope(t *testing.T) {
 		}, nil
 	})
 
-	app := newAPIKeyTestApp(func(c fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusOK)
-	})
-
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req.Header.Set("Authorization", "Bearer kaunta_live_abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, fiber.StatusForbidden, resp.StatusCode)
+	resp := executeAPIKeyMiddleware(t, nil, req)
+
+	assert.Equal(t, http.StatusForbidden, resp.Code)
 
 	body, readErr := io.ReadAll(resp.Body)
 	require.NoError(t, readErr)
@@ -178,17 +158,17 @@ func TestAPIKeyAuthSuccess(t *testing.T) {
 
 	var capturedKey *models.APIKey
 
-	app := newAPIKeyTestApp(func(c fiber.Ctx) error {
-		capturedKey = GetAPIKey(c)
-		return c.SendStatus(fiber.StatusOK)
-	})
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		capturedKey = GetAPIKey(r)
+		w.WriteHeader(http.StatusOK)
+	}
 
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req.Header.Set("Authorization", "Bearer kaunta_live_abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+	resp := executeAPIKeyMiddleware(t, handler, req)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
 	require.NotNil(t, capturedKey)
 	assert.Equal(t, expectedKey.KeyID, capturedKey.KeyID)
 	assert.Equal(t, expectedKey.WebsiteID, capturedKey.WebsiteID)
@@ -206,23 +186,17 @@ func TestAPIKeyAuthXAPIKeyHeader(t *testing.T) {
 		return expectedKey, nil
 	})
 
-	app := newAPIKeyTestApp(func(c fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusOK)
-	})
-
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req.Header.Set("X-API-Key", "kaunta_live_abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
 
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+	resp := executeAPIKeyMiddleware(t, nil, req)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
 }
 
 func TestGetAPIKeyWithoutContext(t *testing.T) {
-	app := fiber.New()
-	ctx := app.AcquireCtx(&fasthttp.RequestCtx{})
-	defer app.ReleaseCtx(ctx)
-	assert.Nil(t, GetAPIKey(ctx))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	assert.Nil(t, GetAPIKey(req))
 }
 
 func TestAPIKeyIsValid(t *testing.T) {

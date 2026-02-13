@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -200,9 +199,7 @@ func TestBuildDatabaseURL(t *testing.T) {
 }
 
 func TestTestDatabase(t *testing.T) {
-	app := fiber.New()
-	app.Post("/test", TestDatabase())
-
+	handler := TestDatabase()
 	tests := []struct {
 		name         string
 		form         SetupForm
@@ -242,9 +239,10 @@ func TestTestDatabase(t *testing.T) {
 			req := httptest.NewRequest("POST", "/test", bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
 
-			resp, err := app.Test(req)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expectedCode, resp.StatusCode)
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, req)
+
+			assert.Equal(t, tt.expectedCode, resp.Code)
 
 			var result map[string]interface{}
 			_ = json.NewDecoder(resp.Body).Decode(&result)

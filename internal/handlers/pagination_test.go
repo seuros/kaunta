@@ -1,10 +1,9 @@
 package handlers
 
 import (
+	"net/http/httptest"
+	"net/url"
 	"testing"
-
-	"github.com/gofiber/fiber/v3"
-	"github.com/valyala/fasthttp"
 )
 
 func TestParsePaginationParams(t *testing.T) {
@@ -68,23 +67,13 @@ func TestParsePaginationParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			app := fiber.New()
-			c := app.AcquireCtx(&fasthttp.RequestCtx{})
-			defer app.ReleaseCtx(c)
-
-			// Build query string
-			if len(tt.queryParams) > 0 {
-				var query string
-				for k, v := range tt.queryParams {
-					if query != "" {
-						query += "&"
-					}
-					query += k + "=" + v
-				}
-				c.Request().SetRequestURI("http://example.com/test?" + query)
+			query := url.Values{}
+			for k, v := range tt.queryParams {
+				query.Set(k, v)
 			}
 
-			params := ParsePaginationParams(c)
+			req := httptest.NewRequest("GET", "/test?"+query.Encode(), nil)
+			params := ParsePaginationParams(req)
 
 			if params.Page != tt.expectedPage {
 				t.Errorf("Page = %d, want %d", params.Page, tt.expectedPage)
