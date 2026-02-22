@@ -62,7 +62,7 @@ func secureCookiesEnabled() bool {
 
 // HandleLogin authenticates user and creates session
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	var req LoginRequest
 	if err := render.DecodeJSON(r.Body, &req); err != nil {
 		render.Status(r, http.StatusBadRequest)

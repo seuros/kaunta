@@ -1187,33 +1187,6 @@ func normalizeOriginForCSRF(domain string) (string, bool) {
 	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host), true
 }
 
-// clientIP returns the client IP for display/logging purposes, respecting common proxy headers.
-// Do NOT use for security decisions (rate limiting, etc.) since X-Forwarded-For can be spoofed.
-func clientIP(r *http.Request) string {
-	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		parts := strings.Split(forwarded, ",")
-		return strings.TrimSpace(parts[0])
-	}
-	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
-		return realIP
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
-}
-
-// remoteIP returns the direct peer IP from r.RemoteAddr, ignoring proxy headers.
-// Use this for rate limiting and security decisions to prevent IP spoofing.
-func remoteIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
-}
-
 func rateLimitKeyFromRemoteAddr(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err == nil && host != "" {

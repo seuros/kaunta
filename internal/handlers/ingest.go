@@ -94,7 +94,7 @@ func HandleIngest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	var payload IngestPayload
 	if err := render.DecodeJSON(r.Body, &payload); err != nil {
 		render.Status(r, http.StatusBadRequest)
@@ -156,7 +156,7 @@ func HandleIngestBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	var request BatchIngestRequest
 	if err := render.DecodeJSON(r.Body, &request); err != nil {
 		render.Status(r, http.StatusBadRequest)

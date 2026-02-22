@@ -255,8 +255,3 @@ func TestAPIKeyHasScope(t *testing.T) {
 	assert.False(t, key.HasScope("admin"))
 	assert.False(t, key.HasScope("write"))
 }
-
-//go:fix inline
-func ptrTime(t time.Time) *time.Time {
-	return new(t)
-}

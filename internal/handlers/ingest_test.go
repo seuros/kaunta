@@ -357,16 +357,6 @@ func TestIngestPayloadUnmarshal(t *testing.T) {
 
 // Helper functions
 
-//go:fix inline
-func ptrInt64(i int64) *int64 {
-	return new(i)
-}
-
-//go:fix inline
-func ptrString(s string) *string {
-	return new(s)
-}
-
 func generateManyProperties(count int) map[string]any {
 	props := make(map[string]any)
 	for i := range count {
