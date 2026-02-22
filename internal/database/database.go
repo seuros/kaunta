@@ -7,7 +7,8 @@ import (
 	"runtime"
 
 	_ "github.com/lib/pq"
-	"go.uber.org/zap"
+
+	"log/slog"
 
 	"github.com/seuros/kaunta/internal/logging"
 )
@@ -42,7 +43,7 @@ func ConnectWithURL(databaseURL string) error {
 
 	// Configure PostgreSQL 18 async I/O for better performance
 	if err = configureAsyncIO(DB); err != nil {
-		logging.L().Warn("async I/O configuration skipped", zap.Error(err))
+		logging.L().Warn("async I/O configuration skipped", slog.Any("error", err))
 	}
 
 	logging.L().Info("database connected")

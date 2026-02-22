@@ -8,9 +8,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 
+	"log/slog"
+
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/logging"
-	"go.uber.org/zap"
 )
 
 const ChannelName = "kaunta_realtime_events"
@@ -28,19 +29,19 @@ type EventPayload struct {
 func NotifyEvent(ctx context.Context, payload EventPayload) {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		logging.L().Warn("failed to marshal realtime payload", zap.Error(err))
+		logging.L().Warn("failed to marshal realtime payload", slog.Any("error", err))
 		return
 	}
 
 	if _, err := database.DB.ExecContext(ctx, "SELECT pg_notify($1, $2)", ChannelName, string(data)); err != nil {
-		logging.L().Warn("failed to send realtime notification", zap.Error(err))
+		logging.L().Warn("failed to send realtime notification", slog.Any("error", err))
 	}
 }
 
 func StartListener(ctx context.Context, databaseURL string, hub *Hub) error {
 	listener := pq.NewListener(databaseURL, 5*time.Second, time.Minute, func(event pq.ListenerEventType, err error) {
 		if err != nil {
-			logging.L().Warn("realtime listener event", zap.Int("event", int(event)), zap.Error(err))
+			logging.L().Warn("realtime listener event", slog.Int("event", int(event)), slog.Any("error", err))
 		}
 	})
 
@@ -64,7 +65,7 @@ func StartListener(ctx context.Context, databaseURL string, hub *Hub) error {
 				hub.Broadcast([]byte(n.Extra))
 			case <-time.After(time.Minute):
 				if err := listener.Ping(); err != nil {
-					logging.L().Warn("realtime listener ping failed", zap.Error(err))
+					logging.L().Warn("realtime listener ping failed", slog.Any("error", err))
 				}
 			}
 		}

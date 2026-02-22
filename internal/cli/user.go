@@ -13,9 +13,10 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	"log/slog"
+
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/logging"
-	"go.uber.org/zap"
 )
 
 var userCmd = &cobra.Command{
@@ -324,7 +325,7 @@ Examples:
 		// Invalidate all sessions
 		_, err = database.DB.Exec("DELETE FROM user_sessions WHERE user_id = (SELECT user_id FROM users WHERE username = $1)", username)
 		if err != nil {
-			logging.L().Warn("failed to invalidate sessions after password reset", zap.Error(err), zap.String("username", username))
+			logging.L().Warn("failed to invalidate sessions after password reset", slog.Any("error", err), slog.String("username", username))
 		}
 
 		fmt.Printf("✓ Password reset successfully for '%s'\n", username)

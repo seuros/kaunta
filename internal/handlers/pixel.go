@@ -8,9 +8,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/seuros/kaunta/internal/httpx"
+	"log/slog"
+
 	"github.com/seuros/kaunta/internal/logging"
-	"go.uber.org/zap"
 )
 
 // pixelGIF is a minimal 1x1 transparent GIF (42 bytes) - GIF89a format
@@ -30,8 +30,8 @@ func HandlePixelTracking(w http.ResponseWriter, r *http.Request) {
 	websiteID := chi.URLParam(r, "id")
 	if _, err := uuid.Parse(websiteID); err != nil {
 		logging.L().Warn("pixel tracking: invalid website ID",
-			zap.String("id", websiteID),
-			zap.String("ip", httpx.ClientIP(r)),
+			slog.String("id", websiteID),
+			slog.String("ip", clientIP(r)),
 		)
 		servePixel(w)
 		return
@@ -45,8 +45,8 @@ func HandlePixelTracking(w http.ResponseWriter, r *http.Request) {
 
 	if recorder.status >= 400 {
 		logging.L().Debug("pixel tracking failed",
-			zap.String("website_id", websiteID),
-			zap.Int("status", recorder.status),
+			slog.String("website_id", websiteID),
+			slog.Int("status", recorder.status),
 		)
 	}
 
@@ -96,7 +96,7 @@ func buildPixelPayload(r *http.Request, websiteID string) TrackingPayload {
 			payload.Payload.Hostname = &h
 		} else {
 			logging.L().Debug("pixel tracking: failed to parse URL for hostname",
-				zap.String("url", *payload.Payload.URL),
+				slog.String("url", *payload.Payload.URL),
 			)
 		}
 	}

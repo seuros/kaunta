@@ -1,14 +1,13 @@
 package logging
 
 import (
+	"log/slog"
 	"os"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 func resetLoggerForTest() {
@@ -18,11 +17,11 @@ func resetLoggerForTest() {
 }
 
 func TestParseLevelMappings(t *testing.T) {
-	assert.Equal(t, zapcore.DebugLevel, parseLevel("debug"))
-	assert.Equal(t, zapcore.WarnLevel, parseLevel("warn"))
-	assert.Equal(t, zapcore.WarnLevel, parseLevel("warning"))
-	assert.Equal(t, zapcore.ErrorLevel, parseLevel("error"))
-	assert.Equal(t, zapcore.InfoLevel, parseLevel("unknown"))
+	assert.Equal(t, slog.LevelDebug, parseLevel("debug"))
+	assert.Equal(t, slog.LevelWarn, parseLevel("warn"))
+	assert.Equal(t, slog.LevelWarn, parseLevel("warning"))
+	assert.Equal(t, slog.LevelError, parseLevel("error"))
+	assert.Equal(t, slog.LevelInfo, parseLevel("unknown"))
 }
 
 func TestLoggerSingleton(t *testing.T) {
@@ -41,11 +40,12 @@ func TestFatalInvokesExitFunction(t *testing.T) {
 	}
 
 	// Replace logger with one writing to /dev/null to avoid noisy output
-	logger = zap.NewNop()
+	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})
+	logger = slog.New(handler)
 	initOnce = sync.Once{} // prevent L() from reinitializing
 	initOnce.Do(func() {}) // mark as done so L() uses existing logger
 
-	Fatal("boom", zap.String("key", "value"))
+	Fatal("boom", slog.String("key", "value"))
 
 	require.Equal(t, 1, exitCode)
 }
@@ -53,11 +53,9 @@ func TestFatalInvokesExitFunction(t *testing.T) {
 func TestSync(t *testing.T) {
 	resetLoggerForTest()
 
-	// Test sync with nil logger
+	// Sync is always nil for slog
 	assert.Nil(t, Sync())
 
-	// Test sync with initialized logger
-	// Note: Sync() may return error on stderr/stdout which is expected
 	L()
-	_ = Sync() // Error is acceptable for stderr
+	assert.Nil(t, Sync())
 }

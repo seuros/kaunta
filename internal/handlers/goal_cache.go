@@ -5,10 +5,11 @@ import (
 	"sync"
 	"time"
 
+	"log/slog"
+
 	"github.com/google/uuid"
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/logging"
-	"go.uber.org/zap"
 )
 
 // goalCacheEntry represents cached goals for a website
@@ -109,8 +110,8 @@ func (gc *GoalCache) refreshGoalsForWebsite(websiteID uuid.UUID) ([]cachedGoal, 
 	gc.mu.Unlock()
 
 	logging.L().Debug("goal cache refreshed",
-		zap.String("website_id", websiteID.String()),
-		zap.Int("count", len(goals)))
+		slog.String("website_id", websiteID.String()),
+		slog.Int("count", len(goals)))
 
 	return goals, nil
 }
@@ -120,7 +121,7 @@ func (gc *GoalCache) InvalidateWebsite(websiteID uuid.UUID) {
 	gc.mu.Lock()
 	defer gc.mu.Unlock()
 	delete(gc.cache, websiteID)
-	logging.L().Debug("goal cache invalidated", zap.String("website_id", websiteID.String()))
+	logging.L().Debug("goal cache invalidated", slog.String("website_id", websiteID.String()))
 }
 
 // GetGoalsForWebsite is a package-level function for easy access

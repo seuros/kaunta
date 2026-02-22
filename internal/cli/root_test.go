@@ -162,3 +162,42 @@ func TestSyncTrustedOriginsUpsertsDomains(t *testing.T) {
 
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestOptionsOKSetsPreflightHeadersWithOrigin(t *testing.T) {
+	req := httptest.NewRequest(http.MethodOptions, "/api/send", nil)
+	req.Header.Set("Origin", "https://app.example.com")
+	req.Header.Set("Access-Control-Request-Headers", "content-type,x-api-key")
+
+	resp := httptest.NewRecorder()
+	optionsOK(resp, req)
+
+	assert.Equal(t, http.StatusNoContent, resp.Code)
+	assert.Equal(t, "https://app.example.com", resp.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "content-type,x-api-key", resp.Header().Get("Access-Control-Allow-Headers"))
+	assert.Equal(t, "GET, POST, PUT, PATCH, DELETE, OPTIONS", resp.Header().Get("Access-Control-Allow-Methods"))
+	assert.Equal(t, "300", resp.Header().Get("Access-Control-Max-Age"))
+	assert.Contains(t, resp.Header().Values("Vary"), "Origin")
+	assert.Contains(t, resp.Header().Values("Vary"), "Access-Control-Request-Headers")
+}
+
+func TestOptionsOKSetsDefaultHeadersWithoutOrigin(t *testing.T) {
+	req := httptest.NewRequest(http.MethodOptions, "/api/ingest", nil)
+	resp := httptest.NewRecorder()
+	optionsOK(resp, req)
+
+	assert.Equal(t, http.StatusNoContent, resp.Code)
+	assert.Equal(t, "*", resp.Header().Get("Access-Control-Allow-Origin"))
+	assert.Contains(t, resp.Header().Get("Access-Control-Allow-Headers"), "X-API-Key")
+}
+
+func TestRateLimitKeyFromRemoteAddr(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.RemoteAddr = "203.0.113.10:4242"
+	assert.Equal(t, "203.0.113.10", rateLimitKeyFromRemoteAddr(req))
+
+	req.RemoteAddr = "not-a-host-port"
+	assert.Equal(t, "not-a-host-port", rateLimitKeyFromRemoteAddr(req))
+
+	req.RemoteAddr = "   "
+	assert.Equal(t, "unknown", rateLimitKeyFromRemoteAddr(req))
+}

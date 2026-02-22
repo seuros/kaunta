@@ -10,28 +10,30 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httplog/v2"
+	"github.com/go-chi/httprate"
+	chirender "github.com/go-chi/render"
 	"github.com/spf13/cobra"
 
 	"github.com/seuros/kaunta/internal/config"
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/geoip"
 	"github.com/seuros/kaunta/internal/handlers"
-	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/logging"
 	appmiddleware "github.com/seuros/kaunta/internal/middleware"
 	"github.com/seuros/kaunta/internal/realtime"
-	"go.uber.org/zap"
 )
 
 var Version string
@@ -52,7 +54,7 @@ It provides real-time analytics and a clean dashboard interface.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.LoadWithOverrides(databaseURL, port, dataDir)
 		if err != nil {
-			logging.L().Warn("failed to load config overrides", zap.Error(err))
+			logging.L().Warn("failed to load config overrides", slog.Any("error", err))
 			return nil
 		}
 
@@ -89,12 +91,12 @@ It provides real-time analytics and a clean dashboard interface.`,
 // Execute is called by main
 func Execute(
 	version string,
-	assetsFS interface{},
+	assetsFS any,
 	trackerScript,
 	vendorJS,
 	vendorCSS,
 	countriesGeoJSON []byte,
-	viewsFS interface{},
+	viewsFS any,
 	setupTemplate,
 	setupCompleteTemplate []byte,
 ) error {
@@ -121,12 +123,12 @@ var ErrSetupComplete = fmt.Errorf("setup complete")
 
 // Embedded assets passed from main
 var (
-	AssetsFS              interface{} // embed.FS
+	AssetsFS              any // embed.FS
 	TrackerScript         []byte
 	VendorJS              []byte
 	VendorCSS             []byte
 	CountriesGeoJSON      []byte
-	ViewsFS               interface{} // embed.FS for template views
+	ViewsFS               any // embed.FS for template views
 	SetupTemplate         []byte
 	SetupCompleteTemplate []byte
 )
@@ -170,9 +172,9 @@ func render(w http.ResponseWriter, pagePath, layoutPath string, data map[string]
 
 // serveAnalytics runs the Kaunta server
 func serveAnalytics(
-	assetsFS interface{},
+	assetsFS any,
 	trackerScript, vendorJS, vendorCSS, countriesGeoJSON []byte,
-	viewsFS interface{},
+	viewsFS any,
 ) error {
 	// Ensure logger is flushed on exit
 	defer func() {
@@ -183,12 +185,12 @@ func serveAnalytics(
 	for {
 		setupStatus, err := config.CheckSetupStatus()
 		if err != nil {
-			logging.L().Error("failed to check setup status", zap.Error(err))
+			logging.L().Error("failed to check setup status", slog.Any("error", err))
 		}
 
 		if setupStatus != nil && setupStatus.NeedsSetup {
 			// Run setup wizard
-			logging.L().Info("setup required", zap.String("reason", setupStatus.Reason))
+			logging.L().Info("setup required", slog.String("reason", setupStatus.Reason))
 			if err := runSetupServer(); err != nil && err != ErrSetupComplete {
 				return err
 			}
@@ -197,7 +199,7 @@ func serveAnalytics(
 			logging.L().Info("setup completed, reloading configuration")
 			cfg, err := config.Load()
 			if err != nil {
-				logging.L().Error("failed to reload config after setup", zap.Error(err))
+				logging.L().Error("failed to reload config after setup", slog.Any("error", err))
 				return fmt.Errorf("failed to reload config after setup: %w", err)
 			}
 
@@ -231,18 +233,18 @@ func serveAnalytics(
 	// Run migrations
 	logging.L().Info("running database migrations")
 	if err := database.RunMigrations(databaseURL); err != nil {
-		logging.L().Warn("migration warning", zap.Error(err))
+		logging.L().Warn("migration warning", slog.Any("error", err))
 	} else {
 		logging.L().Info("migrations completed")
 	}
 
 	// Connect to database
 	if err := database.Connect(); err != nil {
-		logging.Fatal("database connection failed", zap.Error(err))
+		logging.Fatal("database connection failed", slog.Any("error", err))
 	}
 	defer func() {
 		if err := database.Close(); err != nil {
-			logging.L().Warn("error closing database", zap.Error(err))
+			logging.L().Warn("error closing database", slog.Any("error", err))
 		}
 	}()
 
@@ -252,7 +254,7 @@ func serveAnalytics(
 	realtimeHub := realtime.NewHub()
 	logging.L().Info("starting realtime websocket listener")
 	if err := realtime.StartListener(ctx, databaseURL, realtimeHub); err != nil {
-		logging.L().Error("failed to start realtime listener", zap.Error(err))
+		logging.L().Error("failed to start realtime listener", slog.Any("error", err))
 	} else {
 		logging.L().Info("realtime websocket listener started successfully")
 	}
@@ -260,7 +262,7 @@ func serveAnalytics(
 	// Sync trusted origins from config to database
 	cfg, err := config.Load()
 	if err != nil {
-		logging.L().Warn("failed to load config for trusted origins", zap.Error(err))
+		logging.L().Warn("failed to load config for trusted origins", slog.Any("error", err))
 	} else if len(cfg.TrustedOrigins) > 0 {
 		syncTrustedOrigins(cfg.TrustedOrigins)
 	}
@@ -271,7 +273,7 @@ func serveAnalytics(
 	// Initialize trusted origins cache from database
 	logging.L().Info("initializing trusted origins cache")
 	if err := appmiddleware.InitTrustedOriginsCache(); err != nil {
-		logging.L().Warn("failed to initialize trusted origins cache", zap.Error(err))
+		logging.L().Warn("failed to initialize trusted origins cache", slog.Any("error", err))
 	}
 
 	// Initialize GeoIP database (downloads if missing)
@@ -280,25 +282,33 @@ func serveAnalytics(
 		dataDir = "./data"
 	}
 	if err := geoip.Init(dataDir); err != nil {
-		logging.Fatal("geoip initialization failed", zap.Error(err))
+		logging.Fatal("geoip initialization failed", slog.Any("error", err))
 	}
 	defer func() {
 		if err := geoip.Close(); err != nil {
-			logging.L().Warn("error closing geoip", zap.Error(err))
+			logging.L().Warn("error closing geoip", slog.Any("error", err))
 		}
 	}()
 
 	r := chi.NewRouter()
 	r.Use(chimiddleware.Recoverer)
-	r.Use(requestLoggerMiddleware())
-	r.Use(corsMiddleware())
+
+	// Request logger (go-chi/httplog)
+	requestLogger := httplog.NewLogger("kaunta", httplog.Options{
+		JSON:            os.Getenv("KAUNTA_LOG_FORMAT") == "json" || os.Getenv("KAUNTA_LOG_FORMAT") == "structured",
+		LogLevel:        httplog.LevelByName(os.Getenv("KAUNTA_LOG_LEVEL")),
+		Concise:         true,
+		QuietDownRoutes: []string{"/up", "/health"},
+	})
+	r.Use(httplog.RequestLogger(requestLogger, []string{"/up", "/health"}))
+
 	r.Use(addVersionHeader())
 
 	// CSRF protection middleware - use database-backed trusted origins
 	// Get initial trusted origins from cache
 	trustedOrigins, err := appmiddleware.GetTrustedOrigins()
 	if err != nil {
-		logging.L().Warn("failed to get trusted origins", zap.Error(err))
+		logging.L().Warn("failed to get trusted origins", slog.Any("error", err))
 		trustedOrigins = []string{} // Empty list if error
 	}
 
@@ -308,7 +318,7 @@ func serveAnalytics(
 		if normalized, ok := normalizeOriginForCSRF(domain); ok {
 			trustedOriginURLs = append(trustedOriginURLs, normalized)
 		} else {
-			logging.L().Warn("skipping invalid trusted origin", zap.String("origin", domain))
+			logging.L().Warn("skipping invalid trusted origin", slog.String("origin", domain))
 		}
 	}
 
@@ -341,9 +351,9 @@ func serveAnalytics(
 
 	// Tracker script
 	trackerHandler := handleTrackerScript(trackerScript)
-	r.Handle("/k.js", trackerHandler)
-	r.Handle("/kaunta.js", trackerHandler)
-	r.Handle("/script.js", trackerHandler)
+	r.Get("/k.js", trackerHandler.ServeHTTP)
+	r.Get("/kaunta.js", trackerHandler.ServeHTTP)
+	r.Get("/script.js", trackerHandler.ServeHTTP)
 
 	// Static assets (favicon, etc.) from embedded FS
 	assetsSubFS, err := fs.Sub(assetsFS.(embed.FS), "assets")
@@ -384,22 +394,21 @@ func serveAnalytics(
 	r.With(appmiddleware.Auth).Get("/api/stats/realtime/{website_id}", handlers.HandleCurrentVisitors)
 
 	// Auth API endpoints (public)
-	// Rate limiter for login endpoint (5 requests per minute per IP)
-	loginLimiter := rateLimitMiddleware(rateLimitConfig{
-		Limit:  5,
-		Window: time.Minute,
-		KeyFunc: func(r *http.Request) string {
-			return httpx.ClientIP(r)
-		},
-		OnLimit: func(w http.ResponseWriter, r *http.Request) {
-			httpx.WriteJSON(w, http.StatusTooManyRequests, map[string]any{
+	// Rate limiter for login endpoint (5 requests per minute per direct peer IP)
+	loginLimiter := httprate.NewRateLimiter(5, time.Minute,
+		httprate.WithKeyFuncs(func(r *http.Request) (string, error) {
+			return rateLimitKeyFromRemoteAddr(r), nil
+		}),
+		httprate.WithLimitHandler(func(w http.ResponseWriter, r *http.Request) {
+			chirender.Status(r, http.StatusTooManyRequests)
+			chirender.JSON(w, r, map[string]any{
 				"success": false,
 				"error":   "Too many login attempts. Please try again later.",
 			})
-		},
-	})
-	r.With(loginLimiter).Post("/api/auth/login", handlers.HandleLogin)
-	r.With(loginLimiter).Get("/api/auth/login", handlers.HandleLoginSSE)
+		}),
+	)
+	r.With(loginLimiter.Handler).Post("/api/auth/login", handlers.HandleLogin)
+	r.With(loginLimiter.Handler).Get("/api/auth/login", handlers.HandleLoginSSE)
 
 	// Login page (public)
 	r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
@@ -510,9 +519,9 @@ func serveAnalytics(
 		Addr:    ":" + port,
 		Handler: r,
 	}
-	logging.L().Info("starting kaunta server", zap.String("port", port))
+	logging.L().Info("starting kaunta server", slog.String("port", port))
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		logging.Fatal("http server exited", zap.Error(err))
+		logging.Fatal("http server exited", slog.Any("error", err))
 	}
 	return nil
 }
@@ -520,7 +529,7 @@ func serveAnalytics(
 // Handler functions
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+	chirender.JSON(w, r, map[string]any{
 		"status":  "healthy",
 		"service": "kaunta",
 	})
@@ -534,7 +543,7 @@ var pingDatabase = func() error {
 }
 
 func handleVersion(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+	chirender.JSON(w, r, map[string]any{
 		"version": Version,
 	})
 }
@@ -593,174 +602,28 @@ func upHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func optionsOK(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
+	origin := r.Header.Get("Origin")
+	if origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Add("Vary", "Origin")
+	} else {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+	}
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+	if requestedHeaders := r.Header.Get("Access-Control-Request-Headers"); requestedHeaders != "" {
+		w.Header().Set("Access-Control-Allow-Headers", requestedHeaders)
+		w.Header().Add("Vary", "Access-Control-Request-Headers")
+	} else {
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-CSRF-Token, X-API-Key")
+	}
+	w.Header().Set("Access-Control-Max-Age", "300")
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func addVersionHeader() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-Kaunta-Version", Version)
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-type responseLogger struct {
-	http.ResponseWriter
-	status int
-	size   int64
-}
-
-func (l *responseLogger) WriteHeader(statusCode int) {
-	l.status = statusCode
-	l.ResponseWriter.WriteHeader(statusCode)
-}
-
-func (l *responseLogger) Write(b []byte) (int, error) {
-	if l.status == 0 {
-		l.status = http.StatusOK
-	}
-	n, err := l.ResponseWriter.Write(b)
-	l.size += int64(n)
-	return n, err
-}
-
-func (l *responseLogger) Flush() {
-	if flusher, ok := l.ResponseWriter.(http.Flusher); ok {
-		flusher.Flush()
-	}
-}
-
-func requestLoggerMiddleware() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/up" || r.URL.Path == "/health" {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			start := time.Now()
-			lrw := &responseLogger{ResponseWriter: w}
-			next.ServeHTTP(lrw, r)
-
-			logging.L().Info("http request",
-				zap.String("method", r.Method),
-				zap.String("path", r.URL.Path),
-				zap.Int("status", lrw.status),
-				zap.Int64("bytes", lrw.size),
-				zap.String("ip", httpx.ClientIP(r)),
-				zap.Duration("duration", time.Since(start)),
-			)
-		})
-	}
-}
-
-func corsMiddleware() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			origin := r.Header.Get("Origin")
-			if origin != "" {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-				w.Header().Add("Vary", "Origin")
-			} else {
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-			}
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-CSRF-Token")
-
-			if r.Method == http.MethodOptions {
-				w.WriteHeader(http.StatusNoContent)
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-type rateLimitConfig struct {
-	Limit   int
-	Window  time.Duration
-	KeyFunc func(*http.Request) string
-	OnLimit func(http.ResponseWriter, *http.Request)
-}
-
-func rateLimitMiddleware(cfg rateLimitConfig) func(http.Handler) http.Handler {
-	type bucket struct {
-		count int
-		reset time.Time
-	}
-
-	var (
-		mu      sync.Mutex
-		buckets = make(map[string]*bucket)
-		once    sync.Once
-	)
-
-	if cfg.Window <= 0 {
-		cfg.Window = time.Minute
-	}
-
-	if cfg.KeyFunc == nil {
-		cfg.KeyFunc = func(*http.Request) string { return "default" }
-	}
-
-	return func(next http.Handler) http.Handler {
-		once.Do(func() {
-			go func() {
-				ticker := time.NewTicker(cfg.Window)
-				defer ticker.Stop()
-				for range ticker.C {
-					now := time.Now()
-					mu.Lock()
-					for key, bucket := range buckets {
-						if now.After(bucket.reset) {
-							delete(buckets, key)
-						}
-					}
-					mu.Unlock()
-				}
-			}()
-		})
-
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			key := cfg.KeyFunc(r)
-			if key == "" {
-				key = "default"
-			}
-
-			now := time.Now()
-
-			mu.Lock()
-			b := buckets[key]
-			if b == nil || now.After(b.reset) {
-				b = &bucket{reset: now.Add(cfg.Window)}
-				buckets[key] = b
-			}
-			b.count++
-			count := b.count
-			reset := b.reset
-			mu.Unlock()
-
-			if cfg.Limit > 0 {
-				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(cfg.Limit))
-				remaining := cfg.Limit - count
-				if remaining < 0 {
-					remaining = 0
-				}
-				w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))
-			}
-			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(reset.Unix(), 10))
-
-			if cfg.Limit > 0 && count > cfg.Limit {
-				if cfg.OnLimit != nil {
-					cfg.OnLimit(w, r)
-				} else {
-					http.Error(w, "Too many requests", http.StatusTooManyRequests)
-				}
-				return
-			}
-
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -781,7 +644,7 @@ func csrfMiddleware(opts csrfOptions) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, err := ensureCSRFToken(w, r, opts.Secure)
 			if err != nil {
-				logging.L().Error("failed to ensure CSRF token", zap.Error(err))
+				logging.L().Error("failed to ensure CSRF token", slog.Any("error", err))
 				http.Error(w, "failed to issue CSRF token", http.StatusInternalServerError)
 				return
 			}
@@ -796,8 +659,10 @@ func csrfMiddleware(opts csrfOptions) func(http.Handler) http.Handler {
 				return
 			}
 
-			if origin := r.Header.Get("Origin"); origin != "" && len(trusted) > 0 {
-				if !originAllowed(trusted, origin) {
+			// Always validate Origin when present — even with an empty trusted list.
+			// Skipping this check on fresh installs leaves CSRF protection incomplete.
+			if origin := r.Header.Get("Origin"); origin != "" {
+				if len(trusted) == 0 || !originAllowed(trusted, origin) {
 					http.Error(w, "origin not allowed", http.StatusForbidden)
 					return
 				}
@@ -1265,7 +1130,7 @@ func loginPageHTML() string {
 
 // syncTrustedOrigins syncs trusted origins from config to database
 func syncTrustedOrigins(origins []string) {
-	logging.L().Info("syncing trusted origins from config", zap.Int("count", len(origins)))
+	logging.L().Info("syncing trusted origins from config", slog.Int("count", len(origins)))
 	for _, origin := range origins {
 		// Insert or update trusted origin (upsert)
 		query := `
@@ -1277,9 +1142,9 @@ func syncTrustedOrigins(origins []string) {
 		`
 		_, err := database.DB.Exec(query, origin)
 		if err != nil {
-			logging.L().Warn("failed to sync trusted origin", zap.String("origin", origin), zap.Error(err))
+			logging.L().Warn("failed to sync trusted origin", slog.String("origin", origin), slog.Any("error", err))
 		} else {
-			logging.L().Info("synced trusted origin", zap.String("origin", origin))
+			logging.L().Info("synced trusted origin", slog.String("origin", origin))
 		}
 	}
 	logging.L().Info("finished syncing trusted origins")
@@ -1320,6 +1185,44 @@ func normalizeOriginForCSRF(domain string) (string, bool) {
 	}
 
 	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host), true
+}
+
+// clientIP returns the client IP for display/logging purposes, respecting common proxy headers.
+// Do NOT use for security decisions (rate limiting, etc.) since X-Forwarded-For can be spoofed.
+func clientIP(r *http.Request) string {
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		parts := strings.Split(forwarded, ",")
+		return strings.TrimSpace(parts[0])
+	}
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		return realIP
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+// remoteIP returns the direct peer IP from r.RemoteAddr, ignoring proxy headers.
+// Use this for rate limiting and security decisions to prevent IP spoofing.
+func remoteIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+func rateLimitKeyFromRemoteAddr(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil && host != "" {
+		return host
+	}
+	if trimmed := strings.TrimSpace(r.RemoteAddr); trimmed != "" {
+		return trimmed
+	}
+	return "unknown"
 }
 
 func originAllowed(trusted map[string]struct{}, origin string) bool {
@@ -1363,7 +1266,7 @@ func ensureSelfWebsite() {
 	var existsWithCorrectID bool
 	err := database.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM website WHERE website_id = $1)`, config.SelfWebsiteID).Scan(&existsWithCorrectID)
 	if err != nil {
-		logging.L().Warn("failed to check for self website", zap.Error(err))
+		logging.L().Warn("failed to check for self website", slog.Any("error", err))
 		return
 	}
 
@@ -1380,7 +1283,7 @@ func ensureSelfWebsite() {
 		// Must update related tables first due to foreign key constraints
 		tx, err := database.DB.Begin()
 		if err != nil {
-			logging.L().Warn("failed to start transaction for self website migration", zap.Error(err))
+			logging.L().Warn("failed to start transaction for self website migration", slog.Any("error", err))
 			return
 		}
 		defer func() { _ = tx.Rollback() }()
@@ -1392,14 +1295,14 @@ func ensureSelfWebsite() {
 		// Update the website itself
 		_, err = tx.Exec(`UPDATE website SET website_id = $1, updated_at = NOW() WHERE domain = 'self'`, config.SelfWebsiteID)
 		if err != nil {
-			logging.L().Warn("failed to migrate self website to nil UUID", zap.Error(err))
+			logging.L().Warn("failed to migrate self website to nil UUID", slog.Any("error", err))
 			return
 		}
 
 		if err = tx.Commit(); err != nil {
-			logging.L().Warn("failed to commit self website migration", zap.Error(err))
+			logging.L().Warn("failed to commit self website migration", slog.Any("error", err))
 		} else {
-			logging.L().Info("migrated self website to standard UUID", zap.String("old_id", oldID), zap.String("new_id", config.SelfWebsiteID))
+			logging.L().Info("migrated self website to standard UUID", slog.String("old_id", oldID), slog.String("new_id", config.SelfWebsiteID))
 		}
 		return
 	}
@@ -1412,9 +1315,9 @@ func ensureSelfWebsite() {
 		ON CONFLICT (website_id) DO NOTHING
 	`, config.SelfWebsiteID, allowedDomains)
 	if err != nil {
-		logging.L().Warn("failed to create self website", zap.Error(err))
+		logging.L().Warn("failed to create self website", slog.Any("error", err))
 	} else {
-		logging.L().Info("created self website for dogfooding", zap.String("website_id", config.SelfWebsiteID))
+		logging.L().Info("created self website for dogfooding", slog.String("website_id", config.SelfWebsiteID))
 	}
 }
 
@@ -1445,29 +1348,34 @@ func runSetupServer() error {
 
 	r := chi.NewRouter()
 	r.Use(chimiddleware.Recoverer)
-	r.Use(requestLoggerMiddleware())
 
-	setupLimiter := rateLimitMiddleware(rateLimitConfig{
-		Limit:  5,
-		Window: time.Minute,
-		KeyFunc: func(r *http.Request) string {
-			return httpx.ClientIP(r)
-		},
-		OnLimit: func(w http.ResponseWriter, r *http.Request) {
-			httpx.WriteJSON(w, http.StatusTooManyRequests, map[string]any{
+	setupLogger := httplog.NewLogger("kaunta-setup", httplog.Options{
+		JSON:     os.Getenv("KAUNTA_LOG_FORMAT") == "json" || os.Getenv("KAUNTA_LOG_FORMAT") == "structured",
+		LogLevel: httplog.LevelByName(os.Getenv("KAUNTA_LOG_LEVEL")),
+		Concise:  true,
+	})
+	r.Use(httplog.RequestLogger(setupLogger))
+
+	setupLimiter := httprate.NewRateLimiter(5, time.Minute,
+		httprate.WithKeyFuncs(func(r *http.Request) (string, error) {
+			return rateLimitKeyFromRemoteAddr(r), nil
+		}),
+		httprate.WithLimitHandler(func(w http.ResponseWriter, r *http.Request) {
+			chirender.Status(r, http.StatusTooManyRequests)
+			chirender.JSON(w, r, map[string]any{
 				"error": "Too many requests, slow down.",
 			})
-		},
-	})
+		}),
+	)
 
 	r.Get("/setup", handlers.ShowSetup(SetupTemplate))
-	r.With(setupLimiter).Post("/setup", handlers.SubmitSetup(func() {
+	r.With(setupLimiter.Handler).Post("/setup", handlers.SubmitSetup(func() {
 		go func() {
 			time.Sleep(500 * time.Millisecond)
 			close(setupDone)
 		}()
 	}))
-	r.With(setupLimiter).Post("/setup/test-db", handlers.TestDatabase())
+	r.With(setupLimiter.Handler).Post("/setup/test-db", handlers.TestDatabase())
 	r.Get("/setup/complete", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(SetupCompleteTemplate)
@@ -1521,7 +1429,7 @@ func runSetupServer() error {
 	}
 
 	addr := fmt.Sprintf(":%s", port)
-	logging.L().Info("setup wizard available", zap.String("url", fmt.Sprintf("http://localhost:%s/setup", port)))
+	logging.L().Info("setup wizard available", slog.String("url", fmt.Sprintf("http://localhost:%s/setup", port)))
 
 	server := &http.Server{
 		Addr:    addr,
@@ -1530,7 +1438,7 @@ func runSetupServer() error {
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logging.L().Debug("setup server stopped", zap.Error(err))
+			logging.L().Debug("setup server stopped", slog.Any("error", err))
 		}
 	}()
 
@@ -1540,7 +1448,7 @@ func runSetupServer() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
-		logging.L().Warn("error shutting down setup server", zap.Error(err))
+		logging.L().Warn("error shutting down setup server", slog.Any("error", err))
 	}
 
 	return ErrSetupComplete
