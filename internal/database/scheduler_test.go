@@ -37,7 +37,7 @@ func TestGetMaterializedViewStatsReturnsViews(t *testing.T) {
 	stats, err := GetMaterializedViewStats()
 	require.NoError(t, err)
 
-	views, ok := stats["views"].([]map[string]interface{})
+	views, ok := stats["views"].([]map[string]any)
 	require.True(t, ok)
 	require.Len(t, views, 2)
 	assert.Equal(t, "public.realtime_website_stats", views[0]["name"])

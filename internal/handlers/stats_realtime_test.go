@@ -17,9 +17,9 @@ func TestHandleCurrentVisitors_Success(t *testing.T) {
 	responses := []mockResponse{
 		{
 			match:   "SELECT COUNT(DISTINCT session_id)",
-			args:    []interface{}{websiteID},
+			args:    []any{websiteID},
 			columns: []string{"value"},
-			rows: [][]interface{}{
+			rows: [][]any{
 				{7},
 			},
 		},
@@ -57,7 +57,7 @@ func TestHandleCurrentVisitors_QueryError(t *testing.T) {
 	responses := []mockResponse{
 		{
 			match: "SELECT COUNT(DISTINCT session_id)",
-			args:  []interface{}{websiteID},
+			args:  []any{websiteID},
 			err:   assert.AnError,
 		},
 	}

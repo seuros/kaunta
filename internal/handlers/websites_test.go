@@ -15,7 +15,7 @@ func TestHandleWebsites_Success(t *testing.T) {
 		{
 			match:   "SELECT w.website_id, w.domain, w.name, t.count as total_count",
 			columns: []string{"website_id", "domain", "name", "total_count"},
-			rows: [][]interface{}{
+			rows: [][]any{
 				{"id-1", "example.com", "Example", int64(2)},
 				{"id-2", "demo.com", nil, int64(2)},
 			},

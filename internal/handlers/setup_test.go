@@ -244,7 +244,7 @@ func TestTestDatabase(t *testing.T) {
 
 			assert.Equal(t, tt.expectedCode, resp.Code)
 
-			var result map[string]interface{}
+			var result map[string]any
 			_ = json.NewDecoder(resp.Body).Decode(&result)
 
 			if tt.checkError {

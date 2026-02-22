@@ -105,7 +105,7 @@ func TestRunStatsBreakdownJSON(t *testing.T) {
 		assert.Equal(t, "country", dimension)
 		return &BreakdownStat{
 			Dimension: "country",
-			Items: []map[string]interface{}{
+			Items: []map[string]any{
 				{"name": "US", "visitors": 10, "pageviews": 20, "bounce_rate": 40.0},
 			},
 		}, nil
@@ -144,9 +144,11 @@ func TestRunStatsLiveTextHandlesTickerAndSignal(t *testing.T) {
 		return tickCh, func() { stopped = true }
 	})
 
-	var capturedSignal chan<- os.Signal
-	stubSignalNotify(t, func(c chan<- os.Signal, sig ...os.Signal) {
-		capturedSignal = c
+	var cancelSignals context.CancelFunc
+	stubSignalContext(t, func(parent context.Context, sig ...os.Signal) (context.Context, context.CancelFunc) {
+		ctx, cancel := context.WithCancel(parent)
+		cancelSignals = cancel
+		return ctx, cancel
 	})
 
 	callCh := make(chan int, 4)
@@ -180,10 +182,10 @@ func TestRunStatsLiveTextHandlesTickerAndSignal(t *testing.T) {
 	<-callCh // update fetch
 
 	require.Eventually(t, func() bool {
-		return capturedSignal != nil
+		return cancelSignals != nil
 	}, time.Second, 10*time.Millisecond)
 
-	capturedSignal <- os.Interrupt
+	cancelSignals()
 
 	err := <-errCh
 	output := <-outputCh

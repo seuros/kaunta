@@ -110,17 +110,17 @@ func (tdb *TestDB) Close() error {
 }
 
 // Exec executes a raw SQL query for test setup/teardown
-func (tdb *TestDB) Exec(ctx context.Context, query string, args ...interface{}) error {
+func (tdb *TestDB) Exec(ctx context.Context, query string, args ...any) error {
 	_, err := tdb.DB.ExecContext(ctx, query, args...)
 	return err
 }
 
 // QueryRow executes a query returning a single row
-func (tdb *TestDB) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
+func (tdb *TestDB) QueryRow(ctx context.Context, query string, args ...any) *sql.Row {
 	return tdb.DB.QueryRowContext(ctx, query, args...)
 }
 
 // Query executes a query returning multiple rows
-func (tdb *TestDB) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+func (tdb *TestDB) Query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	return tdb.DB.QueryContext(ctx, query, args...)
 }

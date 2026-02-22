@@ -196,9 +196,9 @@ func ParseDatabaseURL(url string) DatabaseConfig {
 		if len(parts) == 2 {
 			// Parse user:pass
 			userPass := parts[0]
-			if idx := strings.Index(userPass, ":"); idx > -1 {
-				cfg.User = userPass[:idx]
-				cfg.Password = userPass[idx+1:]
+			if before, after, ok := strings.Cut(userPass, ":"); ok {
+				cfg.User = before
+				cfg.Password = after
 			} else {
 				cfg.User = userPass
 			}
@@ -212,7 +212,7 @@ func ParseDatabaseURL(url string) DatabaseConfig {
 				remainder = remainder[:idx]
 
 				// Parse params
-				for _, param := range strings.Split(params, "&") {
+				for param := range strings.SplitSeq(params, "&") {
 					kv := strings.Split(param, "=")
 					if len(kv) == 2 && kv[0] == "sslmode" {
 						cfg.SSLMode = kv[1]
@@ -221,9 +221,9 @@ func ParseDatabaseURL(url string) DatabaseConfig {
 			}
 
 			// Parse host:port/dbname
-			if idx := strings.Index(remainder, "/"); idx > -1 {
-				hostPort := remainder[:idx]
-				cfg.Name = remainder[idx+1:]
+			if before, after, ok := strings.Cut(remainder, "/"); ok {
+				hostPort := before
+				cfg.Name = after
 
 				// Parse host:port
 				if idx := strings.LastIndex(hostPort, ":"); idx > -1 {

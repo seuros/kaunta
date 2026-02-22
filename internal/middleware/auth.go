@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/render"
 	"github.com/google/uuid"
 
 	"github.com/seuros/kaunta/internal/database"
-	"github.com/seuros/kaunta/internal/httpx"
 )
 
 // UserContext holds the authenticated user information
@@ -32,17 +32,20 @@ func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := extractSessionToken(r)
 		if token == "" {
-			httpx.Error(w, http.StatusUnauthorized, "Unauthorized - no session token provided")
+			render.Status(r, http.StatusUnauthorized)
+			render.JSON(w, r, map[string]any{"error": "Unauthorized - no session token provided"})
 			return
 		}
 
 		userCtx, err := sessionValidator(HashToken(token))
 		if err == sql.ErrNoRows {
-			httpx.Error(w, http.StatusUnauthorized, "Unauthorized - invalid or expired session")
+			render.Status(r, http.StatusUnauthorized)
+			render.JSON(w, r, map[string]any{"error": "Unauthorized - invalid or expired session"})
 			return
 		}
 		if err != nil {
-			httpx.Error(w, http.StatusInternalServerError, "Authentication error")
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]any{"error": "Authentication error"})
 			return
 		}
 
@@ -89,8 +92,8 @@ func extractSessionToken(r *http.Request) string {
 		return cookie.Value
 	}
 	authHeader := r.Header.Get("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		return strings.TrimPrefix(authHeader, "Bearer ")
+	if after, ok := strings.CutPrefix(authHeader, "Bearer "); ok {
+		return after
 	}
 	return ""
 }

@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/seuros/kaunta/internal/database"
-	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/middleware"
 )
 
@@ -62,39 +62,46 @@ func secureCookiesEnabled() bool {
 
 // HandleLogin authenticates user and creates session
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 	var req LoginRequest
-	if err := httpx.ReadJSON(r, &req); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid request body")
+	if err := render.DecodeJSON(r.Body, &req); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid request body"})
 		return
 	}
 
 	// Validate input
 	if req.Username == "" || req.Password == "" {
-		httpx.Error(w, http.StatusBadRequest, "Username and password are required")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Username and password are required"})
 		return
 	}
 
 	user, err := fetchUserByUsername(req.Username)
 	if errors.Is(err, sql.ErrNoRows) {
-		httpx.Error(w, http.StatusUnauthorized, "Invalid username or password")
+		render.Status(r, http.StatusUnauthorized)
+		render.JSON(w, r, map[string]any{"error": "Invalid username or password"})
 		return
 	}
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "Authentication error")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Authentication error"})
 		return
 	}
 
 	// Verify password using PostgreSQL function
 	passwordValid, err := verifyPasswordHashFunc(req.Password, user.PasswordHash)
 	if err != nil || !passwordValid {
-		httpx.Error(w, http.StatusUnauthorized, "Invalid username or password")
+		render.Status(r, http.StatusUnauthorized)
+		render.JSON(w, r, map[string]any{"error": "Invalid username or password"})
 		return
 	}
 
 	// Generate session token
 	token, tokenHash, err := sessionTokenGenerator()
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "Failed to create session")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Failed to create session"})
 		return
 	}
 
@@ -107,10 +114,11 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	if len(userAgent) > 500 {
 		userAgent = userAgent[:500]
 	}
-	ipAddress := httpx.ClientIP(r)
+	ipAddress := clientIP(r)
 
 	if err := insertSessionFunc(sessionID, user.UserID, tokenHash, expiresAt, userAgent, ipAddress); err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "Failed to create session")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Failed to create session"})
 		return
 	}
 
@@ -150,21 +158,23 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		response.User.Name = &nameStr
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, response)
+	render.JSON(w, r, response)
 }
 
 // HandleMe returns current user info
 func HandleMe(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 	if user == nil {
-		httpx.Error(w, http.StatusUnauthorized, "Not authenticated")
+		render.Status(r, http.StatusUnauthorized)
+		render.JSON(w, r, map[string]any{"error": "Not authenticated"})
 		return
 	}
 
 	// Get full user details
 	name, createdAt, err := fetchUserDetailsFunc(user.UserID)
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "Failed to get user info")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Failed to get user info"})
 		return
 	}
 
@@ -178,7 +188,7 @@ func HandleMe(w http.ResponseWriter, r *http.Request) {
 		result["name"] = name.String
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, result)
+	render.JSON(w, r, result)
 }
 
 func parseSameSite(mode string) http.SameSite {
@@ -230,7 +240,7 @@ func insertSessionInDB(sessionID uuid.UUID, userID uuid.UUID, tokenHash string, 
 	`
 
 	// Handle empty IP address (e.g., from Docker networking)
-	var ipParam interface{} = ipAddress
+	var ipParam any = ipAddress
 	if ipAddress == "" {
 		ipParam = nil
 	}

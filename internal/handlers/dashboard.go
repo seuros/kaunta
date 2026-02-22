@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/seuros/kaunta/internal/database"
-	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/middleware"
 )
 
@@ -72,7 +71,7 @@ func streamDatastar(w http.ResponseWriter, fn func(*DatastarSSE)) {
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		httpx.Error(w, http.StatusInternalServerError, "Streaming not supported")
+		http.Error(w, `{"error":"Streaming not supported"}`, http.StatusInternalServerError)
 		return
 	}
 
@@ -308,7 +307,7 @@ func HandleDashboardStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Convert empty strings to NULL for SQL
-	var countryParam, browserParam, deviceParam, pageParam interface{}
+	var countryParam, browserParam, deviceParam, pageParam any
 	if country != "" {
 		countryParam = country
 	}
@@ -384,10 +383,7 @@ func HandleTimeSeries(w http.ResponseWriter, r *http.Request) {
 	if websiteIDStr == "" {
 		websiteIDStr = query.Get("website")
 	}
-	days := httpx.QueryInt(r, "days", 7)
-	if days > 90 {
-		days = 90
-	}
+	days := min(queryInt(r, "days", 7), 90)
 	country := query.Get("country")
 	browser := query.Get("browser")
 	device := query.Get("device")
@@ -407,7 +403,7 @@ func HandleTimeSeries(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Convert empty strings to NULL for SQL
-	var countryParam, browserParam, deviceParam, pageParam interface{}
+	var countryParam, browserParam, deviceParam, pageParam any
 	if country != "" {
 		countryParam = country
 	}
@@ -508,7 +504,7 @@ func HandleBreakdown(w http.ResponseWriter, r *http.Request) {
 	var websiteIDStr, breakdownType string
 
 	if datastarParam != "" {
-		var signals map[string]interface{}
+		var signals map[string]any
 		if err := json.Unmarshal([]byte(datastarParam), &signals); err == nil {
 			// Get website ID
 			if ws, ok := signals["selectedWebsite"].(string); ok && ws != "" {
@@ -591,7 +587,7 @@ func HandleBreakdown(w http.ResponseWriter, r *http.Request) {
 	page := query.Get("page")
 
 	// Convert empty strings to NULL for SQL
-	var countryParam, browserParam, deviceParam, pageParam interface{}
+	var countryParam, browserParam, deviceParam, pageParam any
 	if country != "" {
 		countryParam = country
 	}
@@ -745,7 +741,7 @@ func HandleBreakdown(w http.ResponseWriter, r *http.Request) {
 func HandleMapData(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	websiteIDStr := query.Get("website_id")
-	days := min(max(httpx.QueryInt(r, "days", 7), 1), 90)
+	days := min(max(queryInt(r, "days", 7), 1), 90)
 	country := query.Get("country")
 	browser := query.Get("browser")
 	device := query.Get("device")
@@ -765,7 +761,7 @@ func HandleMapData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Convert empty strings to NULL for SQL
-	var countryParam, browserParam, deviceParam, pageParam interface{}
+	var countryParam, browserParam, deviceParam, pageParam any
 	if country != "" {
 		countryParam = country
 	}
@@ -1973,7 +1969,7 @@ func patchGoalsList(sse *DatastarSSE, goals []GoalInfo) {
 // GET /api/dashboard/goals-ds/:id/analytics?days=7
 func HandleGoalsAnalytics(w http.ResponseWriter, r *http.Request) {
 	goalID := chi.URLParam(r, "id")
-	days := httpx.QueryInt(r, "days", 7)
+	days := queryInt(r, "days", 7)
 
 	if _, err := uuid.Parse(goalID); err != nil {
 		streamDatastar(w, func(sse *DatastarSSE) {
@@ -2079,7 +2075,7 @@ func HandleGoalsAnalytics(w http.ResponseWriter, r *http.Request) {
 func HandleGoalsBreakdown(w http.ResponseWriter, r *http.Request) {
 	goalID := chi.URLParam(r, "id")
 	breakdownType := chi.URLParam(r, "type")
-	days := httpx.QueryInt(r, "days", 7)
+	days := queryInt(r, "days", 7)
 
 	if _, err := uuid.Parse(goalID); err != nil {
 		streamDatastar(w, func(sse *DatastarSSE) {

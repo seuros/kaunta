@@ -6,7 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/seuros/kaunta/internal/httpx"
+	"github.com/go-chi/render"
+
 	"github.com/seuros/kaunta/internal/models"
 )
 
@@ -42,12 +43,14 @@ func apiKeyAuthWithScope(next http.Handler, requiredScope string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := extractAPIKey(r)
 		if key == "" {
-			httpx.Error(w, http.StatusUnauthorized, "Missing API key")
+			render.Status(r, http.StatusUnauthorized)
+			render.JSON(w, r, map[string]any{"error": "Missing API key"})
 			return
 		}
 
 		if !strings.HasPrefix(key, "kaunta_live_") {
-			httpx.Error(w, http.StatusUnauthorized, "Invalid API key format")
+			render.Status(r, http.StatusUnauthorized)
+			render.JSON(w, r, map[string]any{"error": "Invalid API key format"})
 			return
 		}
 
@@ -55,22 +58,26 @@ func apiKeyAuthWithScope(next http.Handler, requiredScope string) http.Handler {
 		apiKey, err := apiKeyValidator(keyHash)
 
 		if err == sql.ErrNoRows {
-			httpx.Error(w, http.StatusUnauthorized, "Invalid API key")
+			render.Status(r, http.StatusUnauthorized)
+			render.JSON(w, r, map[string]any{"error": "Invalid API key"})
 			return
 		}
 
 		if err != nil {
-			httpx.Error(w, http.StatusInternalServerError, "Authentication error")
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]any{"error": "Authentication error"})
 			return
 		}
 
 		if !apiKey.IsValid() {
-			httpx.Error(w, http.StatusUnauthorized, "API key revoked or expired")
+			render.Status(r, http.StatusUnauthorized)
+			render.JSON(w, r, map[string]any{"error": "API key revoked or expired"})
 			return
 		}
 
 		if requiredScope != "" && !apiKey.HasScope(requiredScope) {
-			httpx.Error(w, http.StatusForbidden, "API key does not have "+requiredScope+" permission")
+			render.Status(r, http.StatusForbidden)
+			render.JSON(w, r, map[string]any{"error": "API key does not have " + requiredScope + " permission"})
 			return
 		}
 
@@ -85,8 +92,8 @@ func apiKeyAuthWithScope(next http.Handler, requiredScope string) http.Handler {
 // Supports: Authorization: Bearer <key> or X-API-Key: <key>
 func extractAPIKey(r *http.Request) string {
 	authHeader := r.Header.Get("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		return strings.TrimPrefix(authHeader, "Bearer ")
+	if after, ok := strings.CutPrefix(authHeader, "Bearer "); ok {
+		return after
 	}
 
 	if apiKey := r.Header.Get("X-API-Key"); apiKey != "" {

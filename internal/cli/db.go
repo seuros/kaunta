@@ -254,7 +254,7 @@ func UpdateWebsite(ctx context.Context, domain string, name *string, allowedDoma
 
 	// Prepare update query
 	updates := []string{"updated_at = NOW()"}
-	args := []interface{}{website.WebsiteID}
+	args := []any{website.WebsiteID}
 	argIndex := 2
 
 	if name != nil {

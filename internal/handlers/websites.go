@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 	"github.com/google/uuid"
 
 	"github.com/seuros/kaunta/internal/database"
-	"github.com/seuros/kaunta/internal/httpx"
 )
 
 // WebsiteDetail holds complete website information for API operations
@@ -193,7 +193,7 @@ func updateWebsite(ctx context.Context, domain string, name *string) (*WebsiteDe
 	}
 
 	updates := []string{"updated_at = NOW()"}
-	args := []interface{}{website.WebsiteID}
+	args := []any{website.WebsiteID}
 	argIndex := 2
 
 	if name != nil {
@@ -421,7 +421,8 @@ func HandleWebsites(w http.ResponseWriter, r *http.Request) {
 	`, pagination.Per, pagination.Offset)
 
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "Failed to query websites")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Failed to query websites"})
 		return
 	}
 	defer func() { _ = rows.Close() }()
@@ -444,14 +445,15 @@ func HandleWebsites(w http.ResponseWriter, r *http.Request) {
 		websites = append(websites, website)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, NewPaginatedResponse(websites, pagination, totalCount))
+	render.JSON(w, r, NewPaginatedResponse(websites, pagination, totalCount))
 }
 
 // HandleWebsiteShow returns a single website with its allowed domains
 func HandleWebsiteShow(w http.ResponseWriter, r *http.Request) {
 	websiteIDStr := chi.URLParam(r, "website_id")
 	if _, err := uuid.Parse(websiteIDStr); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid website ID"})
 		return
 	}
 
@@ -460,11 +462,12 @@ func HandleWebsiteShow(w http.ResponseWriter, r *http.Request) {
 
 	website, err := getWebsiteByID(ctx, websiteIDStr)
 	if err != nil {
-		httpx.Error(w, http.StatusNotFound, err.Error())
+		render.Status(r, http.StatusNotFound)
+		render.JSON(w, r, map[string]any{"error": err.Error()})
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, WebsiteDetailResponse{
+	render.JSON(w, r, WebsiteDetailResponse{
 		ID:                 website.WebsiteID,
 		Domain:             website.Domain,
 		Name:               website.Name,
@@ -481,7 +484,8 @@ func HandleWebsiteList(w http.ResponseWriter, r *http.Request) {
 
 	websites, err := listWebsites(ctx)
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, err.Error())
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": err.Error()})
 		return
 	}
 
@@ -497,19 +501,22 @@ func HandleWebsiteList(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, result)
+	render.JSON(w, r, result)
 }
 
 // HandleWebsiteCreate creates a new website
 func HandleWebsiteCreate(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 	var req CreateWebsiteRequest
-	if err := httpx.ReadJSON(r, &req); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid request body")
+	if err := render.DecodeJSON(r.Body, &req); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid request body"})
 		return
 	}
 
 	if req.Domain == "" {
-		httpx.Error(w, http.StatusBadRequest, "Domain is required")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Domain is required"})
 		return
 	}
 
@@ -528,11 +535,13 @@ func HandleWebsiteCreate(w http.ResponseWriter, r *http.Request) {
 
 	website, err := createWebsite(ctx, req.Domain, req.Name, allowedDomains)
 	if err != nil {
-		httpx.Error(w, http.StatusBadRequest, err.Error())
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": err.Error()})
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusCreated, WebsiteDetailResponse{
+	render.Status(r, http.StatusCreated)
+	render.JSON(w, r, WebsiteDetailResponse{
 		ID:                 website.WebsiteID,
 		Domain:             website.Domain,
 		Name:               website.Name,
@@ -546,13 +555,16 @@ func HandleWebsiteCreate(w http.ResponseWriter, r *http.Request) {
 func HandleWebsiteUpdate(w http.ResponseWriter, r *http.Request) {
 	websiteIDStr := chi.URLParam(r, "website_id")
 	if _, err := uuid.Parse(websiteIDStr); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid website ID"})
 		return
 	}
 
+	defer r.Body.Close()
 	var req UpdateWebsiteRequest
-	if err := httpx.ReadJSON(r, &req); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid request body")
+	if err := render.DecodeJSON(r.Body, &req); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid request body"})
 		return
 	}
 
@@ -561,17 +573,19 @@ func HandleWebsiteUpdate(w http.ResponseWriter, r *http.Request) {
 
 	existingWebsite, err := getWebsiteByID(ctx, websiteIDStr)
 	if err != nil {
-		httpx.Error(w, http.StatusNotFound, err.Error())
+		render.Status(r, http.StatusNotFound)
+		render.JSON(w, r, map[string]any{"error": err.Error()})
 		return
 	}
 
 	website, err := updateWebsite(ctx, existingWebsite.Domain, &req.Name)
 	if err != nil {
-		httpx.Error(w, http.StatusBadRequest, err.Error())
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": err.Error()})
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, WebsiteDetailResponse{
+	render.JSON(w, r, WebsiteDetailResponse{
 		ID:                 website.WebsiteID,
 		Domain:             website.Domain,
 		Name:               website.Name,
@@ -585,18 +599,22 @@ func HandleWebsiteUpdate(w http.ResponseWriter, r *http.Request) {
 func HandleAddDomain(w http.ResponseWriter, r *http.Request) {
 	websiteIDStr := chi.URLParam(r, "website_id")
 	if _, err := uuid.Parse(websiteIDStr); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid website ID"})
 		return
 	}
 
+	defer r.Body.Close()
 	var req DomainRequest
-	if err := httpx.ReadJSON(r, &req); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid request body")
+	if err := render.DecodeJSON(r.Body, &req); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid request body"})
 		return
 	}
 
 	if req.Domain == "" {
-		httpx.Error(w, http.StatusBadRequest, "Domain is required")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Domain is required"})
 		return
 	}
 
@@ -605,17 +623,19 @@ func HandleAddDomain(w http.ResponseWriter, r *http.Request) {
 
 	existingWebsite, err := getWebsiteByID(ctx, websiteIDStr)
 	if err != nil {
-		httpx.Error(w, http.StatusNotFound, err.Error())
+		render.Status(r, http.StatusNotFound)
+		render.JSON(w, r, map[string]any{"error": err.Error()})
 		return
 	}
 
 	website, err := addAllowedDomains(ctx, existingWebsite.Domain, []string{req.Domain})
 	if err != nil {
-		httpx.Error(w, http.StatusBadRequest, err.Error())
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": err.Error()})
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, WebsiteDetailResponse{
+	render.JSON(w, r, WebsiteDetailResponse{
 		ID:                 website.WebsiteID,
 		Domain:             website.Domain,
 		Name:               website.Name,
@@ -629,18 +649,22 @@ func HandleAddDomain(w http.ResponseWriter, r *http.Request) {
 func HandleRemoveDomain(w http.ResponseWriter, r *http.Request) {
 	websiteIDStr := chi.URLParam(r, "website_id")
 	if _, err := uuid.Parse(websiteIDStr); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid website ID"})
 		return
 	}
 
+	defer r.Body.Close()
 	var req DomainRequest
-	if err := httpx.ReadJSON(r, &req); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid request body")
+	if err := render.DecodeJSON(r.Body, &req); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid request body"})
 		return
 	}
 
 	if req.Domain == "" {
-		httpx.Error(w, http.StatusBadRequest, "Domain is required")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Domain is required"})
 		return
 	}
 
@@ -649,17 +673,19 @@ func HandleRemoveDomain(w http.ResponseWriter, r *http.Request) {
 
 	existingWebsite, err := getWebsiteByID(ctx, websiteIDStr)
 	if err != nil {
-		httpx.Error(w, http.StatusNotFound, err.Error())
+		render.Status(r, http.StatusNotFound)
+		render.JSON(w, r, map[string]any{"error": err.Error()})
 		return
 	}
 
 	website, err := removeAllowedDomain(ctx, existingWebsite.Domain, req.Domain)
 	if err != nil {
-		httpx.Error(w, http.StatusBadRequest, err.Error())
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": err.Error()})
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, WebsiteDetailResponse{
+	render.JSON(w, r, WebsiteDetailResponse{
 		ID:                 website.WebsiteID,
 		Domain:             website.Domain,
 		Name:               website.Name,
@@ -674,15 +700,18 @@ func HandleRemoveDomain(w http.ResponseWriter, r *http.Request) {
 func HandleSetPublicStats(w http.ResponseWriter, r *http.Request) {
 	websiteIDStr := chi.URLParam(r, "website_id")
 	if _, err := uuid.Parse(websiteIDStr); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid website ID"})
 		return
 	}
 
+	defer r.Body.Close()
 	var req struct {
 		Enabled bool `json:"enabled"`
 	}
-	if err := httpx.ReadJSON(r, &req); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid request body")
+	if err := render.DecodeJSON(r.Body, &req); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid request body"})
 		return
 	}
 
@@ -691,7 +720,8 @@ func HandleSetPublicStats(w http.ResponseWriter, r *http.Request) {
 
 	existingWebsite, err := getWebsiteByID(ctx, websiteIDStr)
 	if err != nil {
-		httpx.Error(w, http.StatusNotFound, err.Error())
+		render.Status(r, http.StatusNotFound)
+		render.JSON(w, r, map[string]any{"error": err.Error()})
 		return
 	}
 
@@ -718,7 +748,8 @@ func HandleSetPublicStats(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "Failed to update website")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Failed to update website"})
 		return
 	}
 
@@ -728,7 +759,7 @@ func HandleSetPublicStats(w http.ResponseWriter, r *http.Request) {
 		_ = json.Unmarshal(allowedDomainsResult, &website.AllowedDomains)
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, WebsiteDetailResponse{
+	render.JSON(w, r, WebsiteDetailResponse{
 		ID:                 website.WebsiteID,
 		Domain:             website.Domain,
 		Name:               website.Name,
