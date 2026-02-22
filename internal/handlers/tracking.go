@@ -89,7 +89,7 @@ func getTrackingPayload(r *http.Request) (*TrackingPayload, error) {
 		return &payload, nil
 	}
 
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	var payload TrackingPayload
 	if err := render.DecodeJSON(r.Body, &payload); err != nil {
 		return nil, err

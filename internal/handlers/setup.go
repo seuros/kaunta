@@ -113,7 +113,7 @@ func ShowSetup(setupTemplate []byte) http.HandlerFunc {
 // onComplete is called after successful setup to signal server restart
 func SubmitSetup(onComplete func()) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
+		defer func() { _ = r.Body.Close() }()
 		var reqBody DatastarRequest
 		if err := render.DecodeJSON(r.Body, &reqBody); err != nil {
 			logging.L().Error("Bind failed for setup", slog.Any("error", err))
