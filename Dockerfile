@@ -8,7 +8,7 @@ COPY tracker/ ./tracker/
 COPY frontend/ ./frontend/
 RUN bun run build
 
-FROM golang:1.25-alpine AS backend-builder
+FROM golang:1.26-alpine AS backend-builder
 WORKDIR /app
 
 ARG VERSION=dev

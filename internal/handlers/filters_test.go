@@ -11,52 +11,52 @@ func TestBuildFilterClause(t *testing.T) {
 	tests := []struct {
 		name          string
 		queryParams   map[string]string
-		baseArgs      []interface{}
+		baseArgs      []any
 		expectedWhere string
-		expectedArgs  []interface{}
+		expectedArgs  []any
 	}{
 		{
 			name:          "No filters",
 			queryParams:   map[string]string{},
-			baseArgs:      []interface{}{"website-id"},
+			baseArgs:      []any{"website-id"},
 			expectedWhere: "",
-			expectedArgs:  []interface{}{"website-id"},
+			expectedArgs:  []any{"website-id"},
 		},
 		{
 			name: "Country filter only",
 			queryParams: map[string]string{
 				"country": "US",
 			},
-			baseArgs:      []interface{}{"website-id"},
+			baseArgs:      []any{"website-id"},
 			expectedWhere: " AND s.country = $2",
-			expectedArgs:  []interface{}{"website-id", "US"},
+			expectedArgs:  []any{"website-id", "US"},
 		},
 		{
 			name: "Browser filter only",
 			queryParams: map[string]string{
 				"browser": "Chrome",
 			},
-			baseArgs:      []interface{}{"website-id"},
+			baseArgs:      []any{"website-id"},
 			expectedWhere: " AND s.browser = $2",
-			expectedArgs:  []interface{}{"website-id", "Chrome"},
+			expectedArgs:  []any{"website-id", "Chrome"},
 		},
 		{
 			name: "Device filter only",
 			queryParams: map[string]string{
 				"device": "mobile",
 			},
-			baseArgs:      []interface{}{"website-id"},
+			baseArgs:      []any{"website-id"},
 			expectedWhere: " AND s.device = $2",
-			expectedArgs:  []interface{}{"website-id", "mobile"},
+			expectedArgs:  []any{"website-id", "mobile"},
 		},
 		{
 			name: "Page filter only",
 			queryParams: map[string]string{
 				"page": "/home",
 			},
-			baseArgs:      []interface{}{"website-id"},
+			baseArgs:      []any{"website-id"},
 			expectedWhere: " AND e.url_path = $2",
-			expectedArgs:  []interface{}{"website-id", "/home"},
+			expectedArgs:  []any{"website-id", "/home"},
 		},
 		{
 			name: "Multiple filters",
@@ -66,27 +66,27 @@ func TestBuildFilterClause(t *testing.T) {
 				"device":  "desktop",
 				"page":    "/home",
 			},
-			baseArgs:      []interface{}{"website-id"},
+			baseArgs:      []any{"website-id"},
 			expectedWhere: " AND s.country = $2 AND s.browser = $3 AND s.device = $4 AND e.url_path = $5",
-			expectedArgs:  []interface{}{"website-id", "US", "Chrome", "desktop", "/home"},
+			expectedArgs:  []any{"website-id", "US", "Chrome", "desktop", "/home"},
 		},
 		{
 			name: "SQL injection attempt in country",
 			queryParams: map[string]string{
 				"country": "US' OR '1'='1",
 			},
-			baseArgs:      []interface{}{"website-id"},
+			baseArgs:      []any{"website-id"},
 			expectedWhere: " AND s.country = $2",
-			expectedArgs:  []interface{}{"website-id", "US' OR '1'='1"}, // Should be parameterized safely
+			expectedArgs:  []any{"website-id", "US' OR '1'='1"}, // Should be parameterized safely
 		},
 		{
 			name: "Special characters in page",
 			queryParams: map[string]string{
 				"page": "/api/users?id=1&name=test",
 			},
-			baseArgs:      []interface{}{"website-id"},
+			baseArgs:      []any{"website-id"},
 			expectedWhere: " AND e.url_path = $2",
-			expectedArgs:  []interface{}{"website-id", "/api/users?id=1&name=test"},
+			expectedArgs:  []any{"website-id", "/api/users?id=1&name=test"},
 		},
 		{
 			name: "Empty string filters should be ignored",
@@ -94,9 +94,9 @@ func TestBuildFilterClause(t *testing.T) {
 				"country": "",
 				"browser": "Firefox",
 			},
-			baseArgs:      []interface{}{"website-id"},
+			baseArgs:      []any{"website-id"},
 			expectedWhere: " AND s.browser = $2",
-			expectedArgs:  []interface{}{"website-id", "Firefox"},
+			expectedArgs:  []any{"website-id", "Firefox"},
 		},
 	}
 
@@ -149,7 +149,7 @@ func TestBuildFilterClause_ArgumentNumbering(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create base args
-			baseArgs := make([]interface{}, tt.baseArgsLen)
+			baseArgs := make([]any, tt.baseArgsLen)
 			for i := 0; i < tt.baseArgsLen; i++ {
 				baseArgs[i] = i
 			}

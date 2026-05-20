@@ -46,17 +46,17 @@ type ReferrerStat struct {
 }
 
 type BreakdownStat struct {
-	Dimension string                   `json:"dimension"`
-	Items     []map[string]interface{} `json:"items"`
+	Dimension string           `json:"dimension"`
+	Items     []map[string]any `json:"items"`
 }
 
 type LiveStatsData struct {
-	Timestamp           time.Time                `json:"timestamp"`
-	ActiveVisitorsNow   int64                    `json:"active_visitors_now"`
-	PageviewsLastMinute int64                    `json:"pageviews_last_minute"`
-	TopPageNow          *PageStat                `json:"top_page_now,omitempty"`
-	RecentReferrers     []map[string]interface{} `json:"recent_referrers,omitempty"`
-	RecentEvents        int64                    `json:"recent_events"`
+	Timestamp           time.Time        `json:"timestamp"`
+	ActiveVisitorsNow   int64            `json:"active_visitors_now"`
+	PageviewsLastMinute int64            `json:"pageviews_last_minute"`
+	TopPageNow          *PageStat        `json:"top_page_now,omitempty"`
+	RecentReferrers     []map[string]any `json:"recent_referrers,omitempty"`
+	RecentEvents        int64            `json:"recent_events"`
 }
 
 // Stats command structure
@@ -81,8 +81,8 @@ var (
 		ticker := time.NewTicker(d)
 		return ticker.C, ticker.Stop
 	}
-	signalNotifyFunc = func(c chan<- os.Signal, sig ...os.Signal) {
-		signal.Notify(c, sig...)
+	signalContextFactory = func(ctx context.Context, sig ...os.Signal) (context.Context, context.CancelFunc) {
+		return signal.NotifyContext(ctx, sig...)
 	}
 )
 
@@ -379,8 +379,8 @@ func runStatsLive(domain string, interval int, format string) error {
 	}
 
 	// Setup signal handler for graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signalNotifyFunc(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	signalCtx, stopSignals := signalContextFactory(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stopSignals()
 
 	tickCh, stopTicker := tickerFactory(time.Duration(interval) * time.Second)
 	defer stopTicker()
@@ -397,7 +397,7 @@ func runStatsLive(domain string, interval int, format string) error {
 
 	for {
 		select {
-		case <-sigChan:
+		case <-signalCtx.Done():
 			fmt.Println("\n\nExiting live stats...")
 			return nil
 		case <-tickCh:
@@ -616,7 +616,7 @@ func GetBreakdownStats(ctx context.Context, db *sql.DB, websiteID string, dimens
 
 	stats := &BreakdownStat{
 		Dimension: dimension,
-		Items:     []map[string]interface{}{},
+		Items:     []map[string]any{},
 	}
 
 	for rows.Next() {
@@ -630,7 +630,7 @@ func GetBreakdownStats(ctx context.Context, db *sql.DB, websiteID string, dimens
 		// Calculate bounce rate for this dimension value
 		bounceRate := calculateDimensionBounceRate(ctx, db, parsedID, dimension, name, days)
 
-		item := map[string]interface{}{
+		item := map[string]any{
 			"name":        name,
 			"visitors":    visitors,
 			"pageviews":   pageviews,
@@ -1012,7 +1012,7 @@ func calculateDimensionBounceRate(ctx context.Context, db *sql.DB, websiteID uui
 	return 0
 }
 
-func getRecentReferrers(ctx context.Context, db *sql.DB, websiteID uuid.UUID) ([]map[string]interface{}, error) {
+func getRecentReferrers(ctx context.Context, db *sql.DB, websiteID uuid.UUID) ([]map[string]any, error) {
 	query := `
 		SELECT
 			COALESCE(e.referrer_domain, 'Direct / None') as referrer,
@@ -1031,7 +1031,7 @@ func getRecentReferrers(ctx context.Context, db *sql.DB, websiteID uuid.UUID) ([
 	}
 	defer func() { _ = rows.Close() }()
 
-	var referrers []map[string]interface{}
+	var referrers []map[string]any
 	for rows.Next() {
 		var referrer string
 		var count int64
@@ -1040,7 +1040,7 @@ func getRecentReferrers(ctx context.Context, db *sql.DB, websiteID uuid.UUID) ([
 			continue
 		}
 
-		referrers = append(referrers, map[string]interface{}{
+		referrers = append(referrers, map[string]any{
 			"referrer": referrer,
 			"count":    count,
 		})

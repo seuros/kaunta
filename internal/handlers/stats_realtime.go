@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 	"github.com/google/uuid"
 
 	"github.com/seuros/kaunta/internal/database"
-	"github.com/seuros/kaunta/internal/httpx"
 )
 
 // HandleCurrentVisitors returns count of visitors in last 5 minutes
@@ -16,7 +16,8 @@ func HandleCurrentVisitors(w http.ResponseWriter, r *http.Request) {
 	websiteIDStr := chi.URLParam(r, "website_id")
 	websiteID, err := uuid.Parse(websiteIDStr)
 	if err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid website ID"})
 		return
 	}
 
@@ -32,11 +33,12 @@ func HandleCurrentVisitors(w http.ResponseWriter, r *http.Request) {
 
 	var count int
 	if err := database.DB.QueryRow(query, websiteID).Scan(&count); err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "Failed to query current visitors")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Failed to query current visitors"})
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+	render.JSON(w, r, map[string]any{
 		"value": count,
 	})
 }

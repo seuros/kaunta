@@ -5,21 +5,23 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/go-chi/render"
 	"github.com/google/uuid"
+
+	"log/slog"
 
 	"github.com/seuros/kaunta/internal/config"
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/geoip"
-	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/logging"
 	"github.com/seuros/kaunta/internal/middleware"
 	"github.com/seuros/kaunta/internal/realtime"
-	"go.uber.org/zap"
 )
 
 const MaxURLSize = 2000 // Max URL length (Plausible standard)
@@ -53,25 +55,25 @@ const (
 )
 
 type PayloadData struct {
-	Website   string                 `json:"website"` // website UUID
-	Hostname  *string                `json:"hostname,omitempty"`
-	Language  *string                `json:"language,omitempty"`
-	Referrer  *string                `json:"referrer,omitempty"`
-	Screen    *string                `json:"screen,omitempty"`
-	Title     *string                `json:"title,omitempty"`
-	URL       *string                `json:"url,omitempty"`
-	Name      *string                `json:"name,omitempty"` // event name
-	Tag       *string                `json:"tag,omitempty"`
-	Data      map[string]interface{} `json:"data,omitempty"`
-	IP        *string                `json:"ip,omitempty"`
-	UserAgent *string                `json:"userAgent,omitempty"`
-	Timestamp *int64                 `json:"timestamp,omitempty"`
-	ID        *string                `json:"id,omitempty"` // distinct_id
+	Website   string         `json:"website"` // website UUID
+	Hostname  *string        `json:"hostname,omitempty"`
+	Language  *string        `json:"language,omitempty"`
+	Referrer  *string        `json:"referrer,omitempty"`
+	Screen    *string        `json:"screen,omitempty"`
+	Title     *string        `json:"title,omitempty"`
+	URL       *string        `json:"url,omitempty"`
+	Name      *string        `json:"name,omitempty"` // event name
+	Tag       *string        `json:"tag,omitempty"`
+	Data      map[string]any `json:"data,omitempty"`
+	IP        *string        `json:"ip,omitempty"`
+	UserAgent *string        `json:"userAgent,omitempty"`
+	Timestamp *int64         `json:"timestamp,omitempty"`
+	ID        *string        `json:"id,omitempty"` // distinct_id
 
 	// Enhanced tracking (Phase 2)
-	ScrollDepth    *int                   `json:"scroll_depth,omitempty"`    // 0-100 percentage
-	EngagementTime *int                   `json:"engagement_time,omitempty"` // milliseconds
-	Props          map[string]interface{} `json:"props,omitempty"`           // custom properties
+	ScrollDepth    *int           `json:"scroll_depth,omitempty"`    // 0-100 percentage
+	EngagementTime *int           `json:"engagement_time,omitempty"` // milliseconds
+	Props          map[string]any `json:"props,omitempty"`           // custom properties
 
 	// UTM Campaign Parameters
 	UTMSource   *string `json:"utm_source,omitempty"`   // e.g., google, newsletter
@@ -87,8 +89,9 @@ func getTrackingPayload(r *http.Request) (*TrackingPayload, error) {
 		return &payload, nil
 	}
 
+	defer func() { _ = r.Body.Close() }()
 	var payload TrackingPayload
-	if err := httpx.ReadJSON(r, &payload); err != nil {
+	if err := render.DecodeJSON(r.Body, &payload); err != nil {
 		return nil, err
 	}
 	return &payload, nil
@@ -102,13 +105,15 @@ func withPixelPayload(r *http.Request, payload TrackingPayload) *http.Request {
 func HandleTracking(w http.ResponseWriter, r *http.Request) {
 	payload, err := getTrackingPayload(r)
 	if err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid JSON payload")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid JSON payload"})
 		return
 	}
 
 	websiteID, err := uuid.Parse(payload.Payload.Website)
 	if err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid website ID"})
 		return
 	}
 
@@ -117,7 +122,8 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 		"SELECT COALESCE(proxy_mode, 'none') FROM website WHERE website_id = $1",
 		websiteID,
 	).Scan(&proxyMode); err != nil {
-		httpx.Error(w, http.StatusNotFound, "Website not found")
+		render.Status(r, http.StatusNotFound)
+		render.JSON(w, r, map[string]any{"error": "Website not found"})
 		return
 	}
 
@@ -127,7 +133,8 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 			sessionToken = cookie.Value
 		}
 		if sessionToken == "" {
-			httpx.Error(w, http.StatusForbidden, "Self-tracking requires authentication")
+			render.Status(r, http.StatusForbidden)
+			render.JSON(w, r, map[string]any{"error": "Self-tracking requires authentication"})
 			return
 		}
 		tokenHash := middleware.HashToken(sessionToken)
@@ -136,7 +143,8 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 			"SELECT EXISTS(SELECT 1 FROM user_sessions WHERE token_hash = $1 AND expires_at > NOW())",
 			tokenHash,
 		).Scan(&sessionValid); err != nil || !sessionValid {
-			httpx.Error(w, http.StatusForbidden, "Invalid session for self-tracking")
+			render.Status(r, http.StatusForbidden)
+			render.JSON(w, r, map[string]any{"error": "Invalid session for self-tracking"})
 			return
 		}
 	}
@@ -151,14 +159,16 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 		"SELECT validate_origin($1, $2)",
 		websiteID, origin,
 	).Scan(&originAllowed); err != nil {
-		logging.L().Warn("origin validation error", zap.String("website_id", websiteID.String()), zap.Error(err))
-		httpx.Error(w, http.StatusInternalServerError, "Origin validation failed")
+		logging.L().Warn("origin validation error", slog.String("website_id", websiteID.String()), slog.Any("error", err))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Origin validation failed"})
 		return
 	}
 
 	if !originAllowed {
-		logging.L().Warn("origin blocked", zap.String("origin", origin), zap.String("website_id", websiteID.String()))
-		httpx.WriteJSON(w, http.StatusForbidden, map[string]any{
+		logging.L().Warn("origin blocked", slog.String("origin", origin), slog.String("website_id", websiteID.String()))
+		render.Status(r, http.StatusForbidden)
+		render.JSON(w, r, map[string]any{
 			"error":  "Origin not allowed",
 			"origin": origin,
 			"hint":   "Add this domain to the allowed list using: kaunta website add-domain",
@@ -185,23 +195,26 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 	if err := database.DB.QueryRow(`
 		SELECT update_ip_metadata($1::inet, $2, NULL)
 	`, ip, userAgent).Scan(&isBot); err != nil {
-		logging.L().Warn("bot detection error", zap.String("ip", ip), zap.Error(err))
+		logging.L().Warn("bot detection error", slog.String("ip", ip), slog.Any("error", err))
 		isBotVal := false
 		isBot = &isBotVal
 	}
 
 	if isBot != nil && *isBot {
-		httpx.WriteJSON(w, http.StatusAccepted, map[string]any{"beep": "boop", "bot_detected": true})
+		render.Status(r, http.StatusAccepted)
+		render.JSON(w, r, map[string]any{"beep": "boop", "bot_detected": true})
 		return
 	}
 
 	if payload.Payload.URL != nil && len(*payload.Payload.URL) > MaxURLSize {
-		httpx.Error(w, http.StatusBadRequest, "URL too long (max 2000 characters)")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "URL too long (max 2000 characters)"})
 		return
 	}
 
 	if payload.Payload.Referrer != nil && isSpamReferrer(*payload.Payload.Referrer) {
-		httpx.WriteJSON(w, http.StatusAccepted, map[string]any{"dropped": "spam_referrer"})
+		render.Status(r, http.StatusAccepted)
+		render.JSON(w, r, map[string]any{"dropped": "spam_referrer"})
 		return
 	}
 
@@ -231,10 +244,11 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 	if err := upsertSession(sessionID, websiteID, browser, osName, device,
 		payload.Payload.Screen, payload.Payload.Language, country, region, city, distinctID, entryPath); err != nil {
 		logging.L().Error("session creation error",
-			zap.String("website_id", websiteID.String()),
-			zap.String("session_id", sessionID.String()),
-			zap.Error(err))
-		httpx.Error(w, http.StatusInternalServerError, "Failed to create session: "+err.Error())
+			slog.String("website_id", websiteID.String()),
+			slog.String("session_id", sessionID.String()),
+			slog.Any("error", err))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Failed to create session: " + err.Error()})
 		return
 	}
 
@@ -245,7 +259,8 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 		eventID, err := saveEvent(websiteID, sessionID, visitID, createdAt, payload.Payload,
 			browser, osName, device, country, region, city)
 		if err != nil {
-			httpx.Error(w, http.StatusInternalServerError, "Failed to save event: "+err.Error())
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]any{"error": "Failed to save event: " + err.Error()})
 			return
 		}
 
@@ -304,7 +319,8 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 			),
 		)
 
-		httpx.WriteJSON(w, http.StatusAccepted, map[string]any{
+		render.Status(r, http.StatusAccepted)
+		render.JSON(w, r, map[string]any{
 			"sessionId": sessionID.String(),
 			"visitId":   visitID.String(),
 		})
@@ -312,13 +328,15 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if payload.Type == "identify" && payload.Payload.Data != nil {
-		httpx.WriteJSON(w, http.StatusAccepted, map[string]any{
+		render.Status(r, http.StatusAccepted)
+		render.JSON(w, r, map[string]any{
 			"sessionId": sessionID.String(),
 		})
 		return
 	}
 
-	httpx.Error(w, http.StatusBadRequest, "Invalid type")
+	render.Status(r, http.StatusBadRequest)
+	render.JSON(w, r, map[string]any{"error": "Invalid type"})
 }
 
 // upsertSession creates or updates a session
@@ -386,18 +404,14 @@ func saveEvent(websiteID, sessionID, visitID uuid.UUID, createdAt time.Time,
 	}
 
 	// Convert props/data to JSON (Phase 2)
-	var propsJSON interface{}
+	var propsJSON any
 	if payload.Props != nil || payload.Data != nil {
-		combined := make(map[string]interface{})
+		combined := make(map[string]any)
 		if payload.Props != nil {
-			for key, value := range payload.Props {
-				combined[key] = value
-			}
+			maps.Copy(combined, payload.Props)
 		}
 		if payload.Data != nil {
-			for key, value := range payload.Data {
-				combined[key] = value
-			}
+			maps.Copy(combined, payload.Data)
 		}
 		if len(combined) > 0 {
 			jsonBytes, _ := json.Marshal(combined)
@@ -443,11 +457,11 @@ func saveEvent(websiteID, sessionID, visitID uuid.UUID, createdAt time.Time,
 	`
 
 	logging.L().Debug("inserting event",
-		zap.Int("event_type", eventType),
-		zap.String("event_id", eventID.String()),
-		zap.String("website_id", websiteID.String()),
-		zap.String("session_id", sessionID.String()),
-		zap.String("visit_id", visitID.String()),
+		slog.Int("event_type", eventType),
+		slog.String("event_id", eventID.String()),
+		slog.String("website_id", websiteID.String()),
+		slog.String("session_id", sessionID.String()),
+		slog.String("visit_id", visitID.String()),
 	)
 
 	_, err := database.DB.Exec(query,
@@ -460,7 +474,7 @@ func saveEvent(websiteID, sessionID, visitID uuid.UUID, createdAt time.Time,
 	)
 
 	if err != nil {
-		logging.L().Error("failed to insert event", zap.Error(err))
+		logging.L().Error("failed to insert event", slog.Any("error", err))
 		return uuid.Nil, err
 	}
 
@@ -484,8 +498,8 @@ func checkAndRecordGoalCompletion(
 	if err != nil {
 		// Log warning but don't fail tracking request
 		logging.L().Warn("failed to fetch goals for matching",
-			zap.String("website_id", websiteID.String()),
-			zap.Error(err))
+			slog.String("website_id", websiteID.String()),
+			slog.Any("error", err))
 		return nil
 	}
 
@@ -537,16 +551,16 @@ func checkAndRecordGoalCompletion(
 
 	if err != nil {
 		logging.L().Warn("failed to check goal completion existence",
-			zap.String("goal_id", matchedGoalID.String()),
-			zap.Error(err))
+			slog.String("goal_id", matchedGoalID.String()),
+			slog.Any("error", err))
 		return nil // Fail safe - don't record if check fails
 	}
 
 	// Already completed in this session - return goal_id for event tagging only
 	if exists {
 		logging.L().Debug("goal already completed in session",
-			zap.String("goal_id", matchedGoalID.String()),
-			zap.String("session_id", sessionID.String()))
+			slog.String("goal_id", matchedGoalID.String()),
+			slog.String("session_id", sessionID.String()))
 		return matchedGoalID
 	}
 
@@ -563,13 +577,13 @@ func checkAndRecordGoalCompletion(
 	if err != nil {
 		// Log error but still return goal_id for event tagging
 		logging.L().Error("failed to insert goal completion",
-			zap.String("goal_id", matchedGoalID.String()),
-			zap.Error(err))
+			slog.String("goal_id", matchedGoalID.String()),
+			slog.Any("error", err))
 	} else {
 		logging.L().Info("goal completed",
-			zap.String("goal_id", matchedGoalID.String()),
-			zap.String("session_id", sessionID.String()),
-			zap.String("completion_id", completionID.String()))
+			slog.String("goal_id", matchedGoalID.String()),
+			slog.String("session_id", sessionID.String()),
+			slog.String("completion_id", completionID.String()))
 	}
 
 	return matchedGoalID

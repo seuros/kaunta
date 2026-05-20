@@ -20,16 +20,15 @@ func buildAssets() error {
 	return sh.Run("bun", "run", "build")
 }
 
-// Build builds Kaunta for Linux with Green Tea GC
+// Build builds Kaunta for Linux
 func Build() error {
-	fmt.Println("Building Kaunta for Linux with Go 1.25 + Green Tea GC...")
+	fmt.Println("Building Kaunta for Linux with Go 1.26...")
 	if err := buildAssets(); err != nil {
 		return err
 	}
 	env := map[string]string{
-		"GOOS":         "linux",
-		"GOARCH":       "amd64",
-		"GOEXPERIMENT": "greenteagc",
+		"GOOS":   "linux",
+		"GOARCH": "amd64",
 	}
 	return sh.RunWith(env, "go", "build", "-o", "kaunta-linux-amd64", "./cmd/kaunta")
 }

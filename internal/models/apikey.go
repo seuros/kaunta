@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -384,12 +385,7 @@ func InsertEventID(eventID uuid.UUID, websiteID uuid.UUID) error {
 
 // HasScope checks if the API key has a specific scope
 func (k *APIKey) HasScope(scope string) bool {
-	for _, s := range k.Scopes {
-		if s == scope {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(k.Scopes, scope)
 }
 
 // IsValid checks if the key is valid (not revoked, not expired)

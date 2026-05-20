@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 	"github.com/google/uuid"
 
 	"github.com/seuros/kaunta/internal/database"
-	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/middleware"
 )
 
@@ -68,7 +68,8 @@ func HandlePublicStats(w http.ResponseWriter, r *http.Request) {
 	websiteIDStr := chi.URLParam(r, "website_id")
 	websiteID, err := uuid.Parse(websiteIDStr)
 	if err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid website ID"})
 		return
 	}
 
@@ -82,26 +83,30 @@ func HandlePublicStats(w http.ResponseWriter, r *http.Request) {
 	`
 	err = database.DB.QueryRow(query, websiteID).Scan(&publicStatsEnabled)
 	if err == sql.ErrNoRows {
-		httpx.Error(w, http.StatusNotFound, "Website not found")
+		render.Status(r, http.StatusNotFound)
+		render.JSON(w, r, map[string]any{"error": "Website not found"})
 		return
 	}
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "Database error")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Database error"})
 		return
 	}
 
 	if !publicStatsEnabled {
-		httpx.Error(w, http.StatusNotFound, "Public stats not enabled for this website")
+		render.Status(r, http.StatusNotFound)
+		render.JSON(w, r, map[string]any{"error": "Public stats not enabled for this website"})
 		return
 	}
 
 	stats, err := getPublicStatsData(websiteID)
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "Failed to fetch stats")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Failed to fetch stats"})
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, stats)
+	render.JSON(w, r, stats)
 }
 
 // HandleAPIStats returns stats for a website via API key (always available)
@@ -111,25 +116,29 @@ func HandleAPIStats(w http.ResponseWriter, r *http.Request) {
 	websiteIDStr := chi.URLParam(r, "website_id")
 	websiteID, err := uuid.Parse(websiteIDStr)
 	if err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid website ID")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid website ID"})
 		return
 	}
 
 	apiKey := middleware.GetAPIKey(r)
 	if apiKey == nil {
-		httpx.Error(w, http.StatusUnauthorized, "Unauthorized")
+		render.Status(r, http.StatusUnauthorized)
+		render.JSON(w, r, map[string]any{"error": "Unauthorized"})
 		return
 	}
 
 	// Check if API key has stats scope
 	if !apiKey.HasScope("stats") {
-		httpx.Error(w, http.StatusForbidden, "API key does not have stats permission")
+		render.Status(r, http.StatusForbidden)
+		render.JSON(w, r, map[string]any{"error": "API key does not have stats permission"})
 		return
 	}
 
 	// Verify website matches API key's website
 	if apiKey.WebsiteID != websiteID {
-		httpx.Error(w, http.StatusForbidden, "API key not authorized for this website")
+		render.Status(r, http.StatusForbidden)
+		render.JSON(w, r, map[string]any{"error": "API key not authorized for this website"})
 		return
 	}
 
@@ -137,15 +146,17 @@ func HandleAPIStats(w http.ResponseWriter, r *http.Request) {
 	var exists bool
 	query := `SELECT EXISTS(SELECT 1 FROM website WHERE website_id = $1 AND deleted_at IS NULL)`
 	if err := database.DB.QueryRow(query, websiteID).Scan(&exists); err != nil || !exists {
-		httpx.Error(w, http.StatusNotFound, "Website not found")
+		render.Status(r, http.StatusNotFound)
+		render.JSON(w, r, map[string]any{"error": "Website not found"})
 		return
 	}
 
 	stats, err := getPublicStatsData(websiteID)
 	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "Failed to fetch stats")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Failed to fetch stats"})
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, stats)
+	render.JSON(w, r, stats)
 }

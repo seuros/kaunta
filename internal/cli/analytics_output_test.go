@@ -75,7 +75,7 @@ func TestOutputPagesCSV(t *testing.T) {
 func TestOutputBreakdownTable(t *testing.T) {
 	stats := &BreakdownStat{
 		Dimension: "country",
-		Items: []map[string]interface{}{
+		Items: []map[string]any{
 			{"name": "US", "visitors": 50.0, "pageviews": 120.0, "bounce_rate": 40.0},
 		},
 	}
@@ -112,7 +112,7 @@ func TestOutputLiveTerm(t *testing.T) {
 		PageviewsLastMinute: 16,
 		RecentEvents:        4,
 		TopPageNow:          &PageStat{Path: "/home", Pageviews: 3},
-		RecentReferrers: []map[string]interface{}{
+		RecentReferrers: []map[string]any{
 			{"referrer": "google.com", "count": 2},
 		},
 	}

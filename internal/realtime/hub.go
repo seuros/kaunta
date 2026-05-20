@@ -8,8 +8,9 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"log/slog"
+
 	"github.com/seuros/kaunta/internal/logging"
-	"go.uber.org/zap"
 )
 
 type Hub struct {
@@ -94,7 +95,7 @@ func (h *Hub) Broadcast(msg []byte) {
 	select {
 	case h.broadcast <- msg:
 	default:
-		logging.L().Warn("dropping realtime payload", zap.String("reason", "slow consumers"))
+		logging.L().Warn("dropping realtime payload", slog.String("reason", "slow consumers"))
 	}
 }
 
@@ -114,7 +115,7 @@ func (h *Hub) Handler() http.HandlerFunc {
 		}
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			logging.L().Warn("websocket upgrade failed", zap.Error(err))
+			logging.L().Warn("websocket upgrade failed", slog.Any("error", err))
 			return
 		}
 

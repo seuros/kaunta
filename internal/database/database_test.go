@@ -222,7 +222,7 @@ func BenchmarkConnect(b *testing.B) {
 	_ = os.Setenv("DATABASE_URL", "postgres://test:test@localhost:5432/test")
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = Connect()
 		_ = Close()
 	}

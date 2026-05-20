@@ -128,7 +128,7 @@ func runAPIKeyCreate(websiteDomain string) error {
 	// Parse scopes
 	var scopes []string
 	if apikeyScopes != "" {
-		for _, s := range strings.Split(apikeyScopes, ",") {
+		for s := range strings.SplitSeq(apikeyScopes, ",") {
 			scopes = append(scopes, strings.TrimSpace(s))
 		}
 	}

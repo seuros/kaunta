@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/render"
 	"github.com/google/uuid"
 
-	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/middleware"
 )
 
@@ -28,7 +28,7 @@ func HandleLoginSSE(w http.ResponseWriter, r *http.Request) {
 	if len(userAgent) > 500 {
 		userAgent = userAgent[:500]
 	}
-	ipAddress := httpx.ClientIP(r)
+	ipAddress := clientIP(r)
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -36,7 +36,8 @@ func HandleLoginSSE(w http.ResponseWriter, r *http.Request) {
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		httpx.Error(w, http.StatusInternalServerError, "Streaming not supported")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Streaming not supported"})
 		return
 	}
 
@@ -143,7 +144,8 @@ func HandleLoginSSE(w http.ResponseWriter, r *http.Request) {
 func HandleLogoutSSE(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 	if user == nil {
-		httpx.Error(w, http.StatusUnauthorized, "Not authenticated")
+		render.Status(r, http.StatusUnauthorized)
+		render.JSON(w, r, map[string]any{"error": "Not authenticated"})
 		return
 	}
 
@@ -175,7 +177,8 @@ func HandleLogoutSSE(w http.ResponseWriter, r *http.Request) {
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		httpx.Error(w, http.StatusInternalServerError, "Streaming not supported")
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Streaming not supported"})
 		return
 	}
 

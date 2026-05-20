@@ -20,8 +20,8 @@ import (
 type mockResponse struct {
 	match   string
 	columns []string
-	rows    [][]interface{}
-	args    []interface{}
+	rows    [][]any
+	args    []any
 	err     error
 }
 

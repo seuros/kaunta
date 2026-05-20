@@ -120,9 +120,9 @@ func runTestTracking(websiteDomain, originURL, payloadFile string) error {
 
 	// Step 4: Prepare test payload
 	fmt.Print("\nStep 4: Preparing test payload... ")
-	testPayload := map[string]interface{}{
+	testPayload := map[string]any{
 		"type": "event",
-		"payload": map[string]interface{}{
+		"payload": map[string]any{
 			"website":   website.WebsiteID,
 			"hostname":  originHost,
 			"url":       "/test",

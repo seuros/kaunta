@@ -312,7 +312,7 @@ func TestPayloadData_WithEnhancedTracking(t *testing.T) {
 		Website:        "test-id",
 		ScrollDepth:    &scrollDepth,
 		EngagementTime: &engagementTime,
-		Props: map[string]interface{}{
+		Props: map[string]any{
 			"button_clicked": "signup",
 			"experiment_id":  "exp_123",
 		},

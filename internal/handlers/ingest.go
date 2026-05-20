@@ -11,16 +11,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 
+	"log/slog"
+
 	"github.com/seuros/kaunta/internal/database"
 	"github.com/seuros/kaunta/internal/geoip"
-	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/logging"
 	"github.com/seuros/kaunta/internal/middleware"
 	"github.com/seuros/kaunta/internal/models"
-	"go.uber.org/zap"
 )
 
 // Global validator instance
@@ -40,23 +41,23 @@ func init() {
 
 // IngestPayload represents a single event for server-side ingestion
 type IngestPayload struct {
-	Event       string                 `json:"event" validate:"required,max=50"`
-	VisitorID   string                 `json:"visitor_id" validate:"required,max=500"`
-	URL         string                 `json:"url" validate:"omitempty,max=2000"`
-	Hostname    string                 `json:"hostname" validate:"omitempty,max=100"`
-	Referrer    string                 `json:"referrer" validate:"omitempty,max=2000"`
-	Title       string                 `json:"title" validate:"omitempty,max=500"`
-	UserID      *string                `json:"user_id" validate:"omitempty,max=500"`
-	SessionID   *string                `json:"session_id" validate:"omitempty,max=100"`
-	EventID     *string                `json:"event_id" validate:"omitempty,uuid4"`
-	Timestamp   *int64                 `json:"timestamp"`
-	Properties  map[string]interface{} `json:"properties"`
-	Context     *IngestContext         `json:"context"`
-	UTMSource   *string                `json:"utm_source" validate:"omitempty,max=100"`
-	UTMMedium   *string                `json:"utm_medium" validate:"omitempty,max=100"`
-	UTMCampaign *string                `json:"utm_campaign" validate:"omitempty,max=100"`
-	UTMTerm     *string                `json:"utm_term" validate:"omitempty,max=100"`
-	UTMContent  *string                `json:"utm_content" validate:"omitempty,max=100"`
+	Event       string         `json:"event" validate:"required,max=50"`
+	VisitorID   string         `json:"visitor_id" validate:"required,max=500"`
+	URL         string         `json:"url" validate:"omitempty,max=2000"`
+	Hostname    string         `json:"hostname" validate:"omitempty,max=100"`
+	Referrer    string         `json:"referrer" validate:"omitempty,max=2000"`
+	Title       string         `json:"title" validate:"omitempty,max=500"`
+	UserID      *string        `json:"user_id" validate:"omitempty,max=500"`
+	SessionID   *string        `json:"session_id" validate:"omitempty,max=100"`
+	EventID     *string        `json:"event_id" validate:"omitempty,uuid4"`
+	Timestamp   *int64         `json:"timestamp"`
+	Properties  map[string]any `json:"properties"`
+	Context     *IngestContext `json:"context"`
+	UTMSource   *string        `json:"utm_source" validate:"omitempty,max=100"`
+	UTMMedium   *string        `json:"utm_medium" validate:"omitempty,max=100"`
+	UTMCampaign *string        `json:"utm_campaign" validate:"omitempty,max=100"`
+	UTMTerm     *string        `json:"utm_term" validate:"omitempty,max=100"`
+	UTMContent  *string        `json:"utm_content" validate:"omitempty,max=100"`
 }
 
 // IngestContext contains optional context metadata
@@ -88,33 +89,39 @@ type BatchError struct {
 func HandleIngest(w http.ResponseWriter, r *http.Request) {
 	apiKey := middleware.GetAPIKey(r)
 	if apiKey == nil {
-		httpx.Error(w, http.StatusUnauthorized, "Not authenticated")
+		render.Status(r, http.StatusUnauthorized)
+		render.JSON(w, r, map[string]any{"error": "Not authenticated"})
 		return
 	}
 
+	defer func() { _ = r.Body.Close() }()
 	var payload IngestPayload
-	if err := httpx.ReadJSON(r, &payload); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid JSON payload")
+	if err := render.DecodeJSON(r.Body, &payload); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid JSON payload"})
 		return
 	}
 
 	if err := validateIngestPayload(&payload); err != nil {
-		httpx.Error(w, http.StatusBadRequest, err.Error())
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": err.Error()})
 		return
 	}
 
 	if payload.EventID != nil {
 		eventUUID, err := uuid.Parse(*payload.EventID)
 		if err != nil {
-			httpx.Error(w, http.StatusBadRequest, "Invalid event_id format")
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]any{"error": "Invalid event_id format"})
 			return
 		}
 
 		exists, err := models.CheckEventIDExists(eventUUID, apiKey.WebsiteID)
 		if err != nil {
-			logging.L().Warn("idempotency check failed", zap.Error(err))
+			logging.L().Warn("idempotency check failed", slog.Any("error", err))
 		} else if exists {
-			httpx.WriteJSON(w, http.StatusAccepted, map[string]any{
+			render.Status(r, http.StatusAccepted)
+			render.JSON(w, r, map[string]any{
 				"status":     "accepted",
 				"idempotent": true,
 			})
@@ -128,13 +135,15 @@ func HandleIngest(w http.ResponseWriter, r *http.Request) {
 	result, err := processIngestEvent(ctx, r, apiKey, &payload)
 	if err != nil {
 		logging.L().Error("failed to process ingest event",
-			zap.String("website_id", apiKey.WebsiteID.String()),
-			zap.Error(err))
-		httpx.Error(w, http.StatusInternalServerError, "Failed to process event")
+			slog.String("website_id", apiKey.WebsiteID.String()),
+			slog.Any("error", err))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]any{"error": "Failed to process event"})
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusAccepted, result)
+	render.Status(r, http.StatusAccepted)
+	render.JSON(w, r, result)
 }
 
 // HandleIngestBatch processes batch event ingestion
@@ -142,23 +151,28 @@ func HandleIngest(w http.ResponseWriter, r *http.Request) {
 func HandleIngestBatch(w http.ResponseWriter, r *http.Request) {
 	apiKey := middleware.GetAPIKey(r)
 	if apiKey == nil {
-		httpx.Error(w, http.StatusUnauthorized, "Not authenticated")
+		render.Status(r, http.StatusUnauthorized)
+		render.JSON(w, r, map[string]any{"error": "Not authenticated"})
 		return
 	}
 
+	defer func() { _ = r.Body.Close() }()
 	var request BatchIngestRequest
-	if err := httpx.ReadJSON(r, &request); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Invalid JSON payload")
+	if err := render.DecodeJSON(r.Body, &request); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Invalid JSON payload"})
 		return
 	}
 
 	if len(request.Events) == 0 {
-		httpx.Error(w, http.StatusBadRequest, "Events array is required")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Events array is required"})
 		return
 	}
 
 	if len(request.Events) > 100 {
-		httpx.Error(w, http.StatusBadRequest, "Maximum 100 events per batch")
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]any{"error": "Maximum 100 events per batch"})
 		return
 	}
 
@@ -172,7 +186,8 @@ func HandleIngestBatch(w http.ResponseWriter, r *http.Request) {
 	for i, payload := range request.Events {
 		select {
 		case <-ctx.Done():
-			httpx.WriteJSON(w, http.StatusAccepted, response)
+			render.Status(r, http.StatusAccepted)
+			render.JSON(w, r, response)
 			return
 		default:
 		}
@@ -209,7 +224,8 @@ func HandleIngestBatch(w http.ResponseWriter, r *http.Request) {
 		response.Accepted++
 	}
 
-	httpx.WriteJSON(w, http.StatusAccepted, response)
+	render.Status(r, http.StatusAccepted)
+	render.JSON(w, r, response)
 }
 
 // processIngestEvent handles the core event processing logic
@@ -237,7 +253,7 @@ func processIngestEvent(ctx context.Context, r *http.Request, apiKey *models.API
 	`, ip, userAgent).Scan(&isBot)
 
 	if err != nil {
-		logging.L().Warn("bot detection error", zap.String("ip", ip), zap.Error(err))
+		logging.L().Warn("bot detection error", slog.String("ip", ip), slog.Any("error", err))
 		isBotVal := false
 		isBot = &isBotVal
 	}
@@ -400,7 +416,7 @@ func formatIngestValidationError(fe validator.FieldError) error {
 }
 
 // validateIngestProperties checks property constraints
-func validateIngestProperties(props map[string]interface{}) error {
+func validateIngestProperties(props map[string]any) error {
 	// Max 100KB
 	jsonBytes, err := json.Marshal(props)
 	if err != nil {
@@ -431,18 +447,18 @@ func validateIngestProperties(props map[string]interface{}) error {
 }
 
 // getJSONDepth calculates the depth of a JSON object
-func getJSONDepth(data interface{}, currentDepth int) int {
+func getJSONDepth(data any, currentDepth int) int {
 	maxDepth := currentDepth
 
 	switch v := data.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		for _, value := range v {
 			depth := getJSONDepth(value, currentDepth+1)
 			if depth > maxDepth {
 				maxDepth = depth
 			}
 		}
-	case []interface{}:
+	case []any:
 		for _, item := range v {
 			depth := getJSONDepth(item, currentDepth+1)
 			if depth > maxDepth {
@@ -528,7 +544,7 @@ func saveIngestEvent(ctx context.Context, websiteID, sessionID, visitID uuid.UUI
 	}
 
 	// Convert properties to JSON
-	var propsJSON interface{}
+	var propsJSON any
 	if len(payload.Properties) > 0 {
 		jsonBytes, _ := json.Marshal(payload.Properties)
 		propsJSON = jsonBytes
@@ -566,8 +582,8 @@ func saveIngestEvent(ctx context.Context, websiteID, sessionID, visitID uuid.UUI
 
 	if err != nil {
 		logging.L().Error("failed to insert ingest event",
-			zap.String("event_id", eventID.String()),
-			zap.Error(err))
+			slog.String("event_id", eventID.String()),
+			slog.Any("error", err))
 		return uuid.Nil, err
 	}
 

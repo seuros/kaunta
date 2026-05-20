@@ -30,7 +30,7 @@ func TestValidateIngestPayload(t *testing.T) {
 			payload: IngestPayload{
 				Event:     "purchase",
 				VisitorID: "visitor_123",
-				Properties: map[string]interface{}{
+				Properties: map[string]any{
 					"amount": 99.99,
 				},
 			},
@@ -76,7 +76,7 @@ func TestValidateIngestPayload(t *testing.T) {
 			payload: IngestPayload{
 				Event:     "custom_event",
 				VisitorID: "visitor_123",
-				Timestamp: ptrInt64(time.Now().Add(-60 * 24 * time.Hour).Unix()),
+				Timestamp: new(time.Now().Add(-60 * 24 * time.Hour).Unix()),
 			},
 			expectError: true,
 			errorMsg:    "timestamp must be within 30 days",
@@ -86,7 +86,7 @@ func TestValidateIngestPayload(t *testing.T) {
 			payload: IngestPayload{
 				Event:     "custom_event",
 				VisitorID: "visitor_123",
-				Timestamp: ptrInt64(time.Now().Add(60 * 24 * time.Hour).Unix()),
+				Timestamp: new(time.Now().Add(60 * 24 * time.Hour).Unix()),
 			},
 			expectError: true,
 			errorMsg:    "timestamp must be within 30 days",
@@ -96,7 +96,7 @@ func TestValidateIngestPayload(t *testing.T) {
 			payload: IngestPayload{
 				Event:     "custom_event",
 				VisitorID: "visitor_123",
-				Timestamp: ptrInt64(time.Now().Unix()),
+				Timestamp: new(time.Now().Unix()),
 			},
 			expectError: false,
 		},
@@ -105,7 +105,7 @@ func TestValidateIngestPayload(t *testing.T) {
 			payload: IngestPayload{
 				Event:     "custom_event",
 				VisitorID: "visitor_123",
-				Properties: map[string]interface{}{
+				Properties: map[string]any{
 					"$reserved": "value",
 				},
 			},
@@ -117,7 +117,7 @@ func TestValidateIngestPayload(t *testing.T) {
 			payload: IngestPayload{
 				Event:     "custom_event",
 				VisitorID: "visitor_123",
-				Properties: map[string]interface{}{
+				Properties: map[string]any{
 					"_internal": "value",
 				},
 			},
@@ -139,9 +139,9 @@ func TestValidateIngestPayload(t *testing.T) {
 			payload: IngestPayload{
 				Event:       "custom_event",
 				VisitorID:   "visitor_123",
-				UTMSource:   ptrString("google"),
-				UTMMedium:   ptrString("cpc"),
-				UTMCampaign: ptrString("summer_sale"),
+				UTMSource:   new("google"),
+				UTMMedium:   new("cpc"),
+				UTMCampaign: new("summer_sale"),
 			},
 			expectError: false,
 		},
@@ -163,13 +163,13 @@ func TestValidateIngestPayload(t *testing.T) {
 func TestValidateIngestProperties(t *testing.T) {
 	tests := []struct {
 		name        string
-		props       map[string]interface{}
+		props       map[string]any
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "valid properties",
-			props: map[string]interface{}{
+			props: map[string]any{
 				"product_id": "123",
 				"price":      99.99,
 				"tags":       []string{"sale", "featured"},
@@ -183,14 +183,14 @@ func TestValidateIngestProperties(t *testing.T) {
 		},
 		{
 			name:        "empty properties",
-			props:       map[string]interface{}{},
+			props:       map[string]any{},
 			expectError: false,
 		},
 		{
 			name: "nested properties within depth",
-			props: map[string]interface{}{
-				"level1": map[string]interface{}{
-					"level2": map[string]interface{}{
+			props: map[string]any{
+				"level1": map[string]any{
+					"level2": map[string]any{
 						"level3": "value",
 					},
 				},
@@ -199,12 +199,12 @@ func TestValidateIngestProperties(t *testing.T) {
 		},
 		{
 			name: "properties exceeds depth",
-			props: map[string]interface{}{
-				"l1": map[string]interface{}{
-					"l2": map[string]interface{}{
-						"l3": map[string]interface{}{
-							"l4": map[string]interface{}{
-								"l5": map[string]interface{}{
+			props: map[string]any{
+				"l1": map[string]any{
+					"l2": map[string]any{
+						"l3": map[string]any{
+							"l4": map[string]any{
+								"l5": map[string]any{
 									"l6": "too deep",
 								},
 							},
@@ -236,18 +236,18 @@ func TestValidateIngestProperties(t *testing.T) {
 func TestGetJSONDepth(t *testing.T) {
 	tests := []struct {
 		name     string
-		data     interface{}
+		data     any
 		expected int
 	}{
 		{
 			name:     "flat object",
-			data:     map[string]interface{}{"key": "value"},
+			data:     map[string]any{"key": "value"},
 			expected: 1,
 		},
 		{
 			name: "nested two levels",
-			data: map[string]interface{}{
-				"level1": map[string]interface{}{
+			data: map[string]any{
+				"level1": map[string]any{
 					"level2": "value",
 				},
 			},
@@ -255,13 +255,13 @@ func TestGetJSONDepth(t *testing.T) {
 		},
 		{
 			name:     "array",
-			data:     []interface{}{"a", "b", "c"},
+			data:     []any{"a", "b", "c"},
 			expected: 1,
 		},
 		{
 			name: "array with objects",
-			data: []interface{}{
-				map[string]interface{}{"key": "value"},
+			data: []any{
+				map[string]any{"key": "value"},
 			},
 			expected: 2,
 		},
@@ -357,17 +357,9 @@ func TestIngestPayloadUnmarshal(t *testing.T) {
 
 // Helper functions
 
-func ptrInt64(i int64) *int64 {
-	return &i
-}
-
-func ptrString(s string) *string {
-	return &s
-}
-
-func generateManyProperties(count int) map[string]interface{} {
-	props := make(map[string]interface{})
-	for i := 0; i < count; i++ {
+func generateManyProperties(count int) map[string]any {
+	props := make(map[string]any)
+	for i := range count {
 		props["key_"+string(rune('a'+i%26))+string(rune('0'+i/26))] = i
 	}
 	return props

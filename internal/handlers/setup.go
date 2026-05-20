@@ -13,15 +13,16 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 
+	"log/slog"
+
 	"github.com/seuros/kaunta/internal/config"
 	"github.com/seuros/kaunta/internal/database"
-	"github.com/seuros/kaunta/internal/httpx"
 	"github.com/seuros/kaunta/internal/logging"
 	"github.com/seuros/kaunta/internal/models"
-	"go.uber.org/zap"
 )
 
 // SetupForm represents the setup form data
@@ -56,7 +57,7 @@ func ShowSetup(setupTemplate []byte) http.HandlerFunc {
 		// Check if setup is actually needed
 		status, err := config.CheckSetupStatus()
 		if err != nil {
-			logging.L().Error("failed to check setup status", zap.Error(err))
+			logging.L().Error("failed to check setup status", slog.Any("error", err))
 			http.Error(w, "Setup check failed", http.StatusInternalServerError)
 			return
 		}
@@ -112,10 +113,12 @@ func ShowSetup(setupTemplate []byte) http.HandlerFunc {
 // onComplete is called after successful setup to signal server restart
 func SubmitSetup(onComplete func()) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() { _ = r.Body.Close() }()
 		var reqBody DatastarRequest
-		if err := httpx.ReadJSON(r, &reqBody); err != nil {
-			logging.L().Error("Bind failed for setup", zap.Error(err))
-			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
+		if err := render.DecodeJSON(r.Body, &reqBody); err != nil {
+			logging.L().Error("Bind failed for setup", slog.Any("error", err))
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]any{
 				"submitting":  false,
 				"message":     "Invalid request: " + err.Error(),
 				"messageType": "error",
@@ -127,7 +130,8 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 
 		// Validate form fields
 		if err := validateSetupForm(&form); err != nil {
-			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]any{
 				"submitting":  false,
 				"message":     err.Error(),
 				"messageType": "error",
@@ -141,7 +145,8 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 		// Test database connection
 		db, err := sql.Open("postgres", dbURL)
 		if err != nil {
-			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]any{
 				"error": fmt.Sprintf("Invalid database configuration: %v", err),
 			})
 			return
@@ -149,7 +154,8 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 		defer func() { _ = db.Close() }()
 
 		if err := db.Ping(); err != nil {
-			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]any{
 				"error": fmt.Sprintf("Cannot connect to database: %v", err),
 			})
 			return
@@ -158,7 +164,8 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 		// Check if users already exist
 		hasUsers, err := models.HasAnyUsers(context.Background(), db)
 		if err == nil && hasUsers {
-			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]any{
 				"error": "Setup already completed. Users already exist in the database.",
 			})
 			return
@@ -167,7 +174,7 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 		// Run migrations
 		logging.L().Info("running database migrations during setup")
 		if err := database.RunMigrations(dbURL); err != nil {
-			logging.L().Warn("migration warning during setup", zap.Error(err))
+			logging.L().Warn("migration warning during setup", slog.Any("error", err))
 			// Don't fail setup if migrations have issues, they might already be applied
 		}
 
@@ -180,7 +187,8 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 			form.AdminName,
 		)
 		if err != nil {
-			httpx.WriteJSON(w, http.StatusInternalServerError, map[string]any{
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]any{
 				"error": fmt.Sprintf("Failed to create admin user: %v", err),
 			})
 			return
@@ -204,7 +212,7 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 			ON CONFLICT (website_id) DO NOTHING
 		`, config.SelfWebsiteID, string(allowedDomainsJSON), user.UserID)
 		if err != nil {
-			logging.L().Warn("failed to create self website", zap.Error(err))
+			logging.L().Warn("failed to create self website", slog.Any("error", err))
 			// Don't fail setup, self-tracking is optional
 		}
 
@@ -221,7 +229,7 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 		}
 
 		if err := config.SaveConfig(cfg); err != nil {
-			logging.L().Error("failed to save config file", zap.Error(err))
+			logging.L().Error("failed to save config file", slog.Any("error", err))
 			// Don't fail, config saving is not critical
 		}
 
@@ -232,7 +240,7 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 		// Generate session token
 		tokenBytes := make([]byte, 32)
 		if _, err := rand.Read(tokenBytes); err != nil {
-			logging.L().Warn("failed to generate session token", zap.Error(err))
+			logging.L().Warn("failed to generate session token", slog.Any("error", err))
 		} else {
 			token := hex.EncodeToString(tokenBytes)
 			hashBytes := sha256.Sum256([]byte(token))
@@ -244,7 +252,7 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 				sessionID, user.UserID, tokenHash, expiresAt,
 			)
 			if err != nil {
-				logging.L().Warn("failed to create session after setup", zap.Error(err))
+				logging.L().Warn("failed to create session after setup", slog.Any("error", err))
 				// Don't fail, user can login manually
 			} else {
 				// Set session cookie (won't survive server restart, but code is correct)
@@ -271,7 +279,7 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 			"redirect": "/dashboard",
 		}
 
-		httpx.WriteJSON(w, http.StatusOK, response)
+		render.JSON(w, r, response)
 
 		// Signal setup completion (triggers server restart) after response is flushed
 		if onComplete != nil {
@@ -285,12 +293,13 @@ func TestDatabase() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		bodyBytes, _ := io.ReadAll(r.Body)
 		raw := string(bodyBytes)
-		logging.L().Info("Raw body for test-db", zap.String("raw", raw))
+		logging.L().Info("Raw body for test-db", slog.String("raw", raw))
 
 		var reqBody DatastarRequest
 		if err := json.Unmarshal(bodyBytes, &reqBody); err != nil {
-			logging.L().Error("Bind failed for test-db", zap.Error(err))
-			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
+			logging.L().Error("Bind failed for test-db", slog.Any("error", err))
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]any{
 				"testing":     false,
 				"submitting":  false,
 				"message":     "Invalid request: " + err.Error(),
@@ -300,10 +309,11 @@ func TestDatabase() http.HandlerFunc {
 		}
 
 		form := reqBody.Form
-		logging.L().Info("Parsed form for test-db", zap.Any("form", form))
+		logging.L().Info("Parsed form for test-db", slog.Any("form", form))
 
 		if form.DBHost == "" || form.DBPort == "" || form.DBName == "" || form.DBUser == "" {
-			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]any{
 				"testing":     false,
 				"submitting":  false,
 				"message":     "Missing required database fields",
@@ -315,7 +325,8 @@ func TestDatabase() http.HandlerFunc {
 		dbURL := buildDatabaseURL(&form)
 		db, err := sql.Open("postgres", dbURL)
 		if err != nil {
-			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]any{
 				"testing":     false,
 				"submitting":  false,
 				"message":     fmt.Sprintf("Invalid config: %v", err),
@@ -326,7 +337,8 @@ func TestDatabase() http.HandlerFunc {
 		defer func() { _ = db.Close() }()
 
 		if err := db.Ping(); err != nil {
-			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]any{
 				"testing":     false,
 				"submitting":  false,
 				"message":     fmt.Sprintf("Connection failed: %v", err),
@@ -340,7 +352,7 @@ func TestDatabase() http.HandlerFunc {
 			version = "Unknown"
 		}
 
-		httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		render.JSON(w, r, map[string]any{
 			"testing":     false,
 			"submitting":  false,
 			"message":     "Database connection successful! Version: " + version,

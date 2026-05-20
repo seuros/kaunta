@@ -16,12 +16,12 @@ func TestRunPassesEmbeddedAssetsToCLI(t *testing.T) {
 	called := false
 	executeCLI = func(
 		version string,
-		gotAssetsFS interface{},
+		gotAssetsFS any,
 		gotTracker []byte,
 		gotVendorJS []byte,
 		gotVendorCSS []byte,
 		gotGeoJSON []byte,
-		gotViewsFS interface{},
+		gotViewsFS any,
 		gotSetup []byte,
 		gotSetupComplete []byte,
 	) error {
@@ -48,12 +48,12 @@ func TestRunPropagatesExecuteError(t *testing.T) {
 
 	executeCLI = func(
 		version string,
-		assetsFS interface{},
+		assetsFS any,
 		tracker []byte,
 		vendorJSBytes []byte,
 		vendorCSSBytes []byte,
 		geoJSON []byte,
-		viewsFS interface{},
+		viewsFS any,
 		setup []byte,
 		setupComplete []byte,
 	) error {

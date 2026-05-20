@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -311,13 +312,7 @@ func runWebsiteCreate(domain, name, allowedCSV string) error {
 
 	// Add each auto-allowed domain if not already in list
 	for _, autoDomain := range autoAllowedDomains {
-		found := false
-		for _, d := range allowedDomains {
-			if d == autoDomain {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(allowedDomains, autoDomain)
 		if !found {
 			allowedDomains = append(allowedDomains, autoDomain)
 		}
@@ -566,9 +561,9 @@ func runListDomains(websiteDomain, format string) error {
 // Output formatting functions
 
 func outputJSON(websites []*WebsiteDetail) error {
-	output := make([]map[string]interface{}, len(websites))
+	output := make([]map[string]any, len(websites))
 	for i, w := range websites {
-		output[i] = map[string]interface{}{
+		output[i] = map[string]any{
 			"domain":          w.Domain,
 			"name":            w.Name,
 			"website_id":      w.WebsiteID,
@@ -589,7 +584,7 @@ func outputJSON(websites []*WebsiteDetail) error {
 }
 
 func outputSingleJSON(website *WebsiteDetail) error {
-	output := map[string]interface{}{
+	output := map[string]any{
 		"website_id":      website.WebsiteID,
 		"domain":          website.Domain,
 		"name":            website.Name,

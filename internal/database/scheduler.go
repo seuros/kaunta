@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"log/slog"
+
 	"github.com/seuros/kaunta/internal/logging"
-	"go.uber.org/zap"
 )
 
 var (
@@ -80,11 +81,11 @@ func (ps *PartitionScheduler) createFuturePartitions() {
 
 		_, err := DB.Exec(query)
 		if err != nil {
-			logging.L().Warn("failed to create partition", zap.String("partition", partitionName), zap.Error(err))
+			logging.L().Warn("failed to create partition", slog.String("partition", partitionName), slog.Any("error", err))
 			continue
 		}
 
-		logging.L().Info("created partition", zap.String("partition", partitionName))
+		logging.L().Info("created partition", slog.String("partition", partitionName))
 	}
 }
 
@@ -107,7 +108,7 @@ func (ps *PartitionScheduler) schedulePartitionCleanup() {
 func (ps *PartitionScheduler) cleanupOldPartitions() {
 	cutoffDate := nowFunc().AddDate(0, 0, -retentionPeriodDays)
 
-	logging.L().Info("cleaning up old partitions", zap.String("cutoff", cutoffDate.Format("2006-01-02")))
+	logging.L().Info("cleaning up old partitions", slog.String("cutoff", cutoffDate.Format("2006-01-02")))
 
 	// Find old partitions
 	rows, err := DB.Query(`
@@ -120,12 +121,12 @@ func (ps *PartitionScheduler) cleanupOldPartitions() {
 	`, fmt.Sprintf("website_event_%s", cutoffDate.Format("2006_01_02")))
 
 	if err != nil {
-		logging.L().Warn("failed to query old partitions", zap.Error(err))
+		logging.L().Warn("failed to query old partitions", slog.Any("error", err))
 		return
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			logging.L().Warn("failed to close partition rows", zap.Error(err))
+			logging.L().Warn("failed to close partition rows", slog.Any("error", err))
 		}
 	}()
 
@@ -140,16 +141,16 @@ func (ps *PartitionScheduler) cleanupOldPartitions() {
 		query := fmt.Sprintf("DROP TABLE IF EXISTS %s", tableName)
 		_, err := DB.Exec(query)
 		if err != nil {
-			logging.L().Warn("failed to drop partition", zap.String("partition", tableName), zap.Error(err))
+			logging.L().Warn("failed to drop partition", slog.String("partition", tableName), slog.Any("error", err))
 			continue
 		}
 
-		logging.L().Info("dropped old partition", zap.String("partition", tableName))
+		logging.L().Info("dropped old partition", slog.String("partition", tableName))
 		droppedCount++
 	}
 
 	if droppedCount > 0 {
-		logging.L().Info("partition cleanup complete", zap.Int("dropped_count", droppedCount))
+		logging.L().Info("partition cleanup complete", slog.Int("dropped_count", droppedCount))
 	}
 }
 
@@ -212,16 +213,16 @@ func (mvs *MaterializedViewScheduler) refreshView(viewName string) {
 	duration := time.Since(start)
 
 	if err != nil {
-		logging.L().Warn("failed to refresh materialized view", zap.String("view", viewName), zap.Error(err))
+		logging.L().Warn("failed to refresh materialized view", slog.String("view", viewName), slog.Any("error", err))
 		return
 	}
 
-	logging.L().Info("refreshed materialized view", zap.String("view", viewName), zap.Duration("duration", duration))
+	logging.L().Info("refreshed materialized view", slog.String("view", viewName), slog.Duration("duration", duration))
 }
 
 // GetMaterializedViewStats returns refresh statistics
-func GetMaterializedViewStats() (map[string]interface{}, error) {
-	stats := make(map[string]interface{})
+func GetMaterializedViewStats() (map[string]any, error) {
+	stats := make(map[string]any)
 
 	// Query view sizes
 	rows, err := DB.Query(`
@@ -239,11 +240,11 @@ func GetMaterializedViewStats() (map[string]interface{}, error) {
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			logging.L().Warn("failed to close stats rows", zap.Error(err))
+			logging.L().Warn("failed to close stats rows", slog.Any("error", err))
 		}
 	}()
 
-	views := []map[string]interface{}{}
+	views := []map[string]any{}
 	for rows.Next() {
 		var viewName, size string
 		var lastRefresh *time.Time
@@ -252,7 +253,7 @@ func GetMaterializedViewStats() (map[string]interface{}, error) {
 			continue
 		}
 
-		viewInfo := map[string]interface{}{
+		viewInfo := map[string]any{
 			"name": viewName,
 			"size": size,
 		}

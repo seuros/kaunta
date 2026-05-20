@@ -3,9 +3,8 @@ package handlers
 import (
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
-
-	"github.com/seuros/kaunta/internal/httpx"
 )
 
 // SortDirection represents sort order
@@ -36,7 +35,7 @@ type PaginationMeta struct {
 
 // PaginatedResponse wraps any list response with pagination metadata
 type PaginatedResponse struct {
-	Data       interface{}    `json:"data"`
+	Data       any            `json:"data"`
 	Pagination PaginationMeta `json:"pagination"`
 }
 
@@ -47,15 +46,37 @@ var ValidSortColumns = map[string][]string{
 	"map":       {"visitors", "country", "percentage"},
 }
 
+// queryInt fetches an integer query parameter with a default value.
+func queryInt(r *http.Request, key string, defaultValue int) int {
+	val := r.URL.Query().Get(key)
+	if val == "" {
+		return defaultValue
+	}
+	parsed, err := strconv.Atoi(val)
+	if err != nil {
+		return defaultValue
+	}
+	return parsed
+}
+
+// queryString fetches a string query parameter with a default value.
+func queryString(r *http.Request, key, defaultValue string) string {
+	val := r.URL.Query().Get(key)
+	if val == "" {
+		return defaultValue
+	}
+	return val
+}
+
 // ParsePaginationParams extracts and validates pagination from request
 func ParsePaginationParams(r *http.Request) PaginationParams {
-	page := max(httpx.QueryInt(r, "page", 1), 1)
-	per := min(max(httpx.QueryInt(r, "per", 10), 1), 100)
+	page := max(queryInt(r, "page", 1), 1)
+	per := min(max(queryInt(r, "per", 10), 1), 100)
 	offset := (page - 1) * per
 
 	// Parse sort parameters
-	sortBy := strings.ToLower(httpx.QueryString(r, "sort_by", "count"))
-	sortOrder := SortDirection(strings.ToLower(httpx.QueryString(r, "sort_order", "desc")))
+	sortBy := strings.ToLower(queryString(r, "sort_by", "count"))
+	sortOrder := SortDirection(strings.ToLower(queryString(r, "sort_order", "desc")))
 
 	// Validate sort order
 	if sortOrder != SortAsc && sortOrder != SortDesc {
@@ -103,7 +124,7 @@ func BuildPaginationMeta(params PaginationParams, total int64) PaginationMeta {
 }
 
 // NewPaginatedResponse wraps data with pagination metadata
-func NewPaginatedResponse(data interface{}, params PaginationParams, total int64) PaginatedResponse {
+func NewPaginatedResponse(data any, params PaginationParams, total int64) PaginatedResponse {
 	return PaginatedResponse{
 		Data:       data,
 		Pagination: BuildPaginationMeta(params, total),

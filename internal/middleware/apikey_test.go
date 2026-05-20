@@ -216,7 +216,7 @@ func TestAPIKeyIsValid(t *testing.T) {
 			name: "revoked key",
 			key: &models.APIKey{
 				KeyID:     uuid.New(),
-				RevokedAt: ptrTime(time.Now()),
+				RevokedAt: new(time.Now()),
 			},
 			expected: false,
 		},
@@ -224,7 +224,7 @@ func TestAPIKeyIsValid(t *testing.T) {
 			name: "expired key",
 			key: &models.APIKey{
 				KeyID:     uuid.New(),
-				ExpiresAt: ptrTime(time.Now().Add(-1 * time.Hour)),
+				ExpiresAt: new(time.Now().Add(-1 * time.Hour)),
 			},
 			expected: false,
 		},
@@ -232,7 +232,7 @@ func TestAPIKeyIsValid(t *testing.T) {
 			name: "future expiry",
 			key: &models.APIKey{
 				KeyID:     uuid.New(),
-				ExpiresAt: ptrTime(time.Now().Add(1 * time.Hour)),
+				ExpiresAt: new(time.Now().Add(1 * time.Hour)),
 			},
 			expected: true,
 		},
@@ -254,8 +254,4 @@ func TestAPIKeyHasScope(t *testing.T) {
 	assert.True(t, key.HasScope("read"))
 	assert.False(t, key.HasScope("admin"))
 	assert.False(t, key.HasScope("write"))
-}
-
-func ptrTime(t time.Time) *time.Time {
-	return &t
 }

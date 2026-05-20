@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"database/sql"
 	"io"
 	"os"
@@ -61,11 +62,11 @@ func stubTickerFactory(t *testing.T, fn func(time.Duration) (<-chan time.Time, f
 	})
 }
 
-func stubSignalNotify(t *testing.T, fn func(chan<- os.Signal, ...os.Signal)) {
+func stubSignalContext(t *testing.T, fn func(context.Context, ...os.Signal) (context.Context, context.CancelFunc)) {
 	t.Helper()
-	original := signalNotifyFunc
-	signalNotifyFunc = fn
+	original := signalContextFactory
+	signalContextFactory = fn
 	t.Cleanup(func() {
-		signalNotifyFunc = original
+		signalContextFactory = original
 	})
 }
