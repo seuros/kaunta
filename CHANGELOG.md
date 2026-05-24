@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.53.0](https://github.com/seuros/kaunta/compare/v0.52.2...v0.53.0) (2026-05-24)
+
+
+### Features
+
+* migrate backend from Fiber to Chi ([f234fd9](https://github.com/seuros/kaunta/commit/f234fd975381fa1bda3b14ba624689e5303a923f))
+* migrate backend from Fiber to Chi ([#140](https://github.com/seuros/kaunta/issues/140)) ([c409fb7](https://github.com/seuros/kaunta/commit/c409fb7ecc9a8d2bfa396804a66cf90be4a7a58f))
+* migrate backend from Fiber to Chi ([#141](https://github.com/seuros/kaunta/issues/141)) ([f234fd9](https://github.com/seuros/kaunta/commit/f234fd975381fa1bda3b14ba624689e5303a923f))
+
 ## [0.52.2](https://github.com/seuros/kaunta/compare/v0.52.1...v0.52.2) (2026-01-30)
 
 
