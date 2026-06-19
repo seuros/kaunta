@@ -105,15 +105,13 @@ func withPixelPayload(r *http.Request, payload TrackingPayload) *http.Request {
 func HandleTracking(w http.ResponseWriter, r *http.Request) {
 	payload, err := getTrackingPayload(r)
 	if err != nil {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]any{"error": "Invalid JSON payload"})
+		respondError(w, r, http.StatusBadRequest, "Invalid JSON payload")
 		return
 	}
 
 	websiteID, err := uuid.Parse(payload.Payload.Website)
 	if err != nil {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]any{"error": "Invalid website ID"})
+		respondError(w, r, http.StatusBadRequest, "Invalid website ID")
 		return
 	}
 
@@ -122,8 +120,7 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 		"SELECT COALESCE(proxy_mode, 'none') FROM website WHERE website_id = $1",
 		websiteID,
 	).Scan(&proxyMode); err != nil {
-		render.Status(r, http.StatusNotFound)
-		render.JSON(w, r, map[string]any{"error": "Website not found"})
+		respondError(w, r, http.StatusNotFound, "Website not found")
 		return
 	}
 
@@ -133,8 +130,7 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 			sessionToken = cookie.Value
 		}
 		if sessionToken == "" {
-			render.Status(r, http.StatusForbidden)
-			render.JSON(w, r, map[string]any{"error": "Self-tracking requires authentication"})
+			respondError(w, r, http.StatusForbidden, "Self-tracking requires authentication")
 			return
 		}
 		tokenHash := middleware.HashToken(sessionToken)
@@ -143,8 +139,7 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 			"SELECT EXISTS(SELECT 1 FROM user_sessions WHERE token_hash = $1 AND expires_at > NOW())",
 			tokenHash,
 		).Scan(&sessionValid); err != nil || !sessionValid {
-			render.Status(r, http.StatusForbidden)
-			render.JSON(w, r, map[string]any{"error": "Invalid session for self-tracking"})
+			respondError(w, r, http.StatusForbidden, "Invalid session for self-tracking")
 			return
 		}
 	}
@@ -160,8 +155,7 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 		websiteID, origin,
 	).Scan(&originAllowed); err != nil {
 		logging.L().Warn("origin validation error", slog.String("website_id", websiteID.String()), slog.Any("error", err))
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]any{"error": "Origin validation failed"})
+		respondError(w, r, http.StatusInternalServerError, "Origin validation failed")
 		return
 	}
 
@@ -207,8 +201,7 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if payload.Payload.URL != nil && len(*payload.Payload.URL) > MaxURLSize {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]any{"error": "URL too long (max 2000 characters)"})
+		respondError(w, r, http.StatusBadRequest, "URL too long (max 2000 characters)")
 		return
 	}
 
@@ -247,8 +240,7 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 			slog.String("website_id", websiteID.String()),
 			slog.String("session_id", sessionID.String()),
 			slog.Any("error", err))
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]any{"error": "Failed to create session: " + err.Error()})
+		respondError(w, r, http.StatusInternalServerError, "Failed to create session: " + err.Error())
 		return
 	}
 
@@ -259,8 +251,7 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 		eventID, err := saveEvent(websiteID, sessionID, visitID, createdAt, payload.Payload,
 			browser, osName, device, country, region, city)
 		if err != nil {
-			render.Status(r, http.StatusInternalServerError)
-			render.JSON(w, r, map[string]any{"error": "Failed to save event: " + err.Error()})
+			respondError(w, r, http.StatusInternalServerError, "Failed to save event: " + err.Error())
 			return
 		}
 
@@ -335,8 +326,7 @@ func HandleTracking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render.Status(r, http.StatusBadRequest)
-	render.JSON(w, r, map[string]any{"error": "Invalid type"})
+	respondError(w, r, http.StatusBadRequest, "Invalid type")
 }
 
 // upsertSession creates or updates a session

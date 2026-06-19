@@ -12,6 +12,19 @@ import (
 	"github.com/seuros/kaunta/internal/database"
 )
 
+// parseAllowedDomains decodes the JSON-encoded allowed_domains column,
+// returning an empty slice if the data is empty or malformed.
+func parseAllowedDomains(data []byte) []string {
+	domains := []string{}
+	if len(data) > 0 {
+		if err := json.Unmarshal(data, &domains); err != nil {
+			// If parsing fails, just leave as empty array
+			return []string{}
+		}
+	}
+	return domains
+}
+
 // WebsiteDetail holds complete website information for CLI operations
 type WebsiteDetail struct {
 	WebsiteID          string    `json:"website_id"`
@@ -59,13 +72,7 @@ func GetWebsiteByDomain(ctx context.Context, domain string, websiteID *string) (
 	website.ShareID = shareID
 
 	// Parse JSONB array into []string
-	website.AllowedDomains = []string{}
-	if len(allowedDomainsJSON) > 0 {
-		if err := json.Unmarshal(allowedDomainsJSON, &website.AllowedDomains); err != nil {
-			// If parsing fails, just leave as empty array
-			website.AllowedDomains = []string{}
-		}
-	}
+	website.AllowedDomains = parseAllowedDomains(allowedDomainsJSON)
 
 	return &website, nil
 }
@@ -104,13 +111,7 @@ func GetWebsiteByID(ctx context.Context, websiteID string) (*WebsiteDetail, erro
 	website.ShareID = shareID
 
 	// Parse JSONB array into []string
-	website.AllowedDomains = []string{}
-	if len(allowedDomainsJSON) > 0 {
-		if err := json.Unmarshal(allowedDomainsJSON, &website.AllowedDomains); err != nil {
-			// If parsing fails, just leave as empty array
-			website.AllowedDomains = []string{}
-		}
-	}
+	website.AllowedDomains = parseAllowedDomains(allowedDomainsJSON)
 
 	return &website, nil
 }
@@ -153,13 +154,7 @@ func ListWebsites(ctx context.Context) ([]*WebsiteDetail, error) {
 		website.ShareID = shareID
 
 		// Parse JSONB array into []string
-		website.AllowedDomains = []string{}
-		if len(allowedDomainsJSON) > 0 {
-			if err := json.Unmarshal(allowedDomainsJSON, &website.AllowedDomains); err != nil {
-				// If parsing fails, just leave as empty array
-				website.AllowedDomains = []string{}
-			}
-		}
+		website.AllowedDomains = parseAllowedDomains(allowedDomainsJSON)
 
 		websites = append(websites, &website)
 	}
@@ -233,13 +228,7 @@ func CreateWebsite(ctx context.Context, domain, name string, allowedDomains []st
 	website.ShareID = shareID
 
 	// Parse JSONB array into []string
-	website.AllowedDomains = []string{}
-	if len(allowedDomainsResult) > 0 {
-		if err := json.Unmarshal(allowedDomainsResult, &website.AllowedDomains); err != nil {
-			// If parsing fails, just leave as empty array
-			website.AllowedDomains = []string{}
-		}
-	}
+	website.AllowedDomains = parseAllowedDomains(allowedDomainsResult)
 
 	return &website, nil
 }
@@ -304,13 +293,7 @@ func UpdateWebsite(ctx context.Context, domain string, name *string, allowedDoma
 	updatedWebsite.ShareID = shareID
 
 	// Parse JSONB array into []string
-	updatedWebsite.AllowedDomains = []string{}
-	if len(allowedDomainsResult) > 0 {
-		if err := json.Unmarshal(allowedDomainsResult, &updatedWebsite.AllowedDomains); err != nil {
-			// If parsing fails, just leave as empty array
-			updatedWebsite.AllowedDomains = []string{}
-		}
-	}
+	updatedWebsite.AllowedDomains = parseAllowedDomains(allowedDomainsResult)
 
 	return &updatedWebsite, nil
 }
@@ -450,12 +433,7 @@ func AddAllowedDomains(ctx context.Context, websiteDomain string, domains []stri
 	updatedWebsite.ShareID = shareID
 
 	// Parse JSONB array into []string
-	updatedWebsite.AllowedDomains = []string{}
-	if len(allowedDomainsResult) > 0 {
-		if err := json.Unmarshal(allowedDomainsResult, &updatedWebsite.AllowedDomains); err != nil {
-			updatedWebsite.AllowedDomains = []string{}
-		}
-	}
+	updatedWebsite.AllowedDomains = parseAllowedDomains(allowedDomainsResult)
 
 	return &updatedWebsite, nil
 }
@@ -524,12 +502,7 @@ func RemoveAllowedDomain(ctx context.Context, websiteDomain, domainToRemove stri
 	updatedWebsite.ShareID = shareID
 
 	// Parse JSONB array into []string
-	updatedWebsite.AllowedDomains = []string{}
-	if len(allowedDomainsResult) > 0 {
-		if err := json.Unmarshal(allowedDomainsResult, &updatedWebsite.AllowedDomains); err != nil {
-			updatedWebsite.AllowedDomains = []string{}
-		}
-	}
+	updatedWebsite.AllowedDomains = parseAllowedDomains(allowedDomainsResult)
 
 	return &updatedWebsite, nil
 }
@@ -584,12 +557,7 @@ func SetPublicStatsEnabled(ctx context.Context, websiteDomain string, enabled bo
 	updatedWebsite.ShareID = shareID
 
 	// Parse JSONB array into []string
-	updatedWebsite.AllowedDomains = []string{}
-	if len(allowedDomainsResult) > 0 {
-		if err := json.Unmarshal(allowedDomainsResult, &updatedWebsite.AllowedDomains); err != nil {
-			updatedWebsite.AllowedDomains = []string{}
-		}
-	}
+	updatedWebsite.AllowedDomains = parseAllowedDomains(allowedDomainsResult)
 
 	return &updatedWebsite, nil
 }

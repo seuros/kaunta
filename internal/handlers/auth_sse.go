@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/render"
 	"github.com/google/uuid"
 
 	"github.com/seuros/kaunta/internal/middleware"
@@ -36,8 +35,7 @@ func HandleLoginSSE(w http.ResponseWriter, r *http.Request) {
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]any{"error": "Streaming not supported"})
+		respondError(w, r, http.StatusInternalServerError, "Streaming not supported")
 		return
 	}
 
@@ -144,8 +142,7 @@ func HandleLoginSSE(w http.ResponseWriter, r *http.Request) {
 func HandleLogoutSSE(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 	if user == nil {
-		render.Status(r, http.StatusUnauthorized)
-		render.JSON(w, r, map[string]any{"error": "Not authenticated"})
+		respondError(w, r, http.StatusUnauthorized, "Not authenticated")
 		return
 	}
 
@@ -177,8 +174,7 @@ func HandleLogoutSSE(w http.ResponseWriter, r *http.Request) {
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]any{"error": "Streaming not supported"})
+		respondError(w, r, http.StatusInternalServerError, "Streaming not supported")
 		return
 	}
 

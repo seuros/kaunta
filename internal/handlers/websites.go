@@ -72,10 +72,7 @@ func getWebsiteByID(ctx context.Context, websiteID string) (*WebsiteDetail, erro
 	}
 
 	website.ShareID = shareID
-	website.AllowedDomains = []string{}
-	if len(allowedDomainsJSON) > 0 {
-		_ = json.Unmarshal(allowedDomainsJSON, &website.AllowedDomains)
-	}
+	website.AllowedDomains = parseAllowedDomains(allowedDomainsJSON)
 
 	return &website, nil
 }
@@ -116,10 +113,7 @@ func listWebsites(ctx context.Context) ([]*WebsiteDetail, error) {
 		}
 
 		website.ShareID = shareID
-		website.AllowedDomains = []string{}
-		if len(allowedDomainsJSON) > 0 {
-			_ = json.Unmarshal(allowedDomainsJSON, &website.AllowedDomains)
-		}
+		website.AllowedDomains = parseAllowedDomains(allowedDomainsJSON)
 
 		websites = append(websites, &website)
 	}
@@ -189,10 +183,7 @@ func createWebsite(ctx context.Context, domain, name string, allowedDomains []st
 	}
 
 	website.ShareID = shareID
-	website.AllowedDomains = []string{}
-	if len(allowedDomainsResult) > 0 {
-		_ = json.Unmarshal(allowedDomainsResult, &website.AllowedDomains)
-	}
+	website.AllowedDomains = parseAllowedDomains(allowedDomainsResult)
 
 	return &website, nil
 }
@@ -243,10 +234,7 @@ func updateWebsite(ctx context.Context, domain string, name *string) (*WebsiteDe
 	}
 
 	updatedWebsite.ShareID = shareID
-	updatedWebsite.AllowedDomains = []string{}
-	if len(allowedDomainsResult) > 0 {
-		_ = json.Unmarshal(allowedDomainsResult, &updatedWebsite.AllowedDomains)
-	}
+	updatedWebsite.AllowedDomains = parseAllowedDomains(allowedDomainsResult)
 
 	return &updatedWebsite, nil
 }
@@ -283,10 +271,7 @@ func getWebsiteByDomain(ctx context.Context, domain string) (*WebsiteDetail, err
 	}
 
 	website.ShareID = shareID
-	website.AllowedDomains = []string{}
-	if len(allowedDomainsJSON) > 0 {
-		_ = json.Unmarshal(allowedDomainsJSON, &website.AllowedDomains)
-	}
+	website.AllowedDomains = parseAllowedDomains(allowedDomainsJSON)
 
 	return &website, nil
 }
@@ -343,10 +328,7 @@ func addAllowedDomains(ctx context.Context, websiteDomain string, domains []stri
 	}
 
 	updatedWebsite.ShareID = shareID
-	updatedWebsite.AllowedDomains = []string{}
-	if len(allowedDomainsResult) > 0 {
-		_ = json.Unmarshal(allowedDomainsResult, &updatedWebsite.AllowedDomains)
-	}
+	updatedWebsite.AllowedDomains = parseAllowedDomains(allowedDomainsResult)
 
 	return &updatedWebsite, nil
 }
@@ -408,10 +390,7 @@ func removeAllowedDomain(ctx context.Context, websiteDomain, domainToRemove stri
 	}
 
 	updatedWebsite.ShareID = shareID
-	updatedWebsite.AllowedDomains = []string{}
-	if len(allowedDomainsResult) > 0 {
-		_ = json.Unmarshal(allowedDomainsResult, &updatedWebsite.AllowedDomains)
-	}
+	updatedWebsite.AllowedDomains = parseAllowedDomains(allowedDomainsResult)
 
 	return &updatedWebsite, nil
 }
@@ -433,8 +412,7 @@ func HandleWebsites(w http.ResponseWriter, r *http.Request) {
 	`, pagination.Per, pagination.Offset)
 
 	if err != nil {
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]any{"error": "Failed to query websites"})
+		respondError(w, r, http.StatusInternalServerError, "Failed to query websites")
 		return
 	}
 	defer func() { _ = rows.Close() }()
@@ -502,8 +480,7 @@ func HandleWebsiteList(w http.ResponseWriter, r *http.Request) {
 func HandleWebsiteCreate(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = r.Body.Close() }()
 	var req CreateWebsiteRequest
-	if err := render.DecodeJSON(r.Body, &req); err != nil {
-		respondError(w, r, http.StatusBadRequest, "Invalid request body")
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 
@@ -544,8 +521,7 @@ func HandleWebsiteUpdate(w http.ResponseWriter, r *http.Request) {
 
 	defer func() { _ = r.Body.Close() }()
 	var req UpdateWebsiteRequest
-	if err := render.DecodeJSON(r.Body, &req); err != nil {
-		respondError(w, r, http.StatusBadRequest, "Invalid request body")
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 
@@ -576,8 +552,7 @@ func HandleAddDomain(w http.ResponseWriter, r *http.Request) {
 
 	defer func() { _ = r.Body.Close() }()
 	var req DomainRequest
-	if err := render.DecodeJSON(r.Body, &req); err != nil {
-		respondError(w, r, http.StatusBadRequest, "Invalid request body")
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 
@@ -613,8 +588,7 @@ func HandleRemoveDomain(w http.ResponseWriter, r *http.Request) {
 
 	defer func() { _ = r.Body.Close() }()
 	var req DomainRequest
-	if err := render.DecodeJSON(r.Body, &req); err != nil {
-		respondError(w, r, http.StatusBadRequest, "Invalid request body")
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 
@@ -653,8 +627,7 @@ func HandleSetPublicStats(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Enabled bool `json:"enabled"`
 	}
-	if err := render.DecodeJSON(r.Body, &req); err != nil {
-		respondError(w, r, http.StatusBadRequest, "Invalid request body")
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 
@@ -695,10 +668,7 @@ func HandleSetPublicStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	website.ShareID = shareID
-	website.AllowedDomains = []string{}
-	if len(allowedDomainsResult) > 0 {
-		_ = json.Unmarshal(allowedDomainsResult, &website.AllowedDomains)
-	}
+	website.AllowedDomains = parseAllowedDomains(allowedDomainsResult)
 
 	render.JSON(w, r, newWebsiteDetailResponse(&website))
 }

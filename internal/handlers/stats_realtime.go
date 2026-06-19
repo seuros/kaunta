@@ -16,8 +16,7 @@ func HandleCurrentVisitors(w http.ResponseWriter, r *http.Request) {
 	websiteIDStr := chi.URLParam(r, "website_id")
 	websiteID, err := uuid.Parse(websiteIDStr)
 	if err != nil {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]any{"error": "Invalid website ID"})
+		respondError(w, r, http.StatusBadRequest, "Invalid website ID")
 		return
 	}
 
@@ -33,8 +32,7 @@ func HandleCurrentVisitors(w http.ResponseWriter, r *http.Request) {
 
 	var count int
 	if err := database.DB.QueryRow(query, websiteID).Scan(&count); err != nil {
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]any{"error": "Failed to query current visitors"})
+		respondError(w, r, http.StatusInternalServerError, "Failed to query current visitors")
 		return
 	}
 

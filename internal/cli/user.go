@@ -44,14 +44,15 @@ Example:
 		}
 
 		// Connect to database
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
+		cleanup, err := ensureDatabase()
+		if err != nil {
+			return err
 		}
-		defer func() { _ = database.Close() }()
+		defer cleanup()
 
 		// Check if user already exists
 		var exists bool
-		err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)", username).Scan(&exists)
+		err = database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)", username).Scan(&exists)
 		if err != nil {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
@@ -150,10 +151,11 @@ var userListCmd = &cobra.Command{
 	Long:  `List all users in the system.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Connect to database
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
+		cleanup, err := ensureDatabase()
+		if err != nil {
+			return err
 		}
-		defer func() { _ = database.Close() }()
+		defer cleanup()
 
 		var users []struct {
 			UserID    uuid.UUID
@@ -222,10 +224,11 @@ Example:
 		username := args[0]
 
 		// Connect to database
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
+		cleanup, err := ensureDatabase()
+		if err != nil {
+			return err
 		}
-		defer func() { _ = database.Close() }()
+		defer cleanup()
 
 		// Confirm deletion
 		force, _ := cmd.Flags().GetBool("force")
@@ -273,14 +276,15 @@ Examples:
 		username := args[0]
 
 		// Connect to database
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
+		cleanup, err := ensureDatabase()
+		if err != nil {
+			return err
 		}
-		defer func() { _ = database.Close() }()
+		defer cleanup()
 
 		// Check if user exists
 		var exists bool
-		err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)", username).Scan(&exists)
+		err = database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)", username).Scan(&exists)
 		if err != nil {
 			return fmt.Errorf("failed to check user: %w", err)
 		}

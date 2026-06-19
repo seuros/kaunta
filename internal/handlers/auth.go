@@ -64,44 +64,37 @@ func secureCookiesEnabled() bool {
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = r.Body.Close() }()
 	var req LoginRequest
-	if err := render.DecodeJSON(r.Body, &req); err != nil {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]any{"error": "Invalid request body"})
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 
 	// Validate input
 	if req.Username == "" || req.Password == "" {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]any{"error": "Username and password are required"})
+		respondError(w, r, http.StatusBadRequest, "Username and password are required")
 		return
 	}
 
 	user, err := fetchUserByUsername(req.Username)
 	if errors.Is(err, sql.ErrNoRows) {
-		render.Status(r, http.StatusUnauthorized)
-		render.JSON(w, r, map[string]any{"error": "Invalid username or password"})
+		respondError(w, r, http.StatusUnauthorized, "Invalid username or password")
 		return
 	}
 	if err != nil {
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]any{"error": "Authentication error"})
+		respondError(w, r, http.StatusInternalServerError, "Authentication error")
 		return
 	}
 
 	// Verify password using PostgreSQL function
 	passwordValid, err := verifyPasswordHashFunc(req.Password, user.PasswordHash)
 	if err != nil || !passwordValid {
-		render.Status(r, http.StatusUnauthorized)
-		render.JSON(w, r, map[string]any{"error": "Invalid username or password"})
+		respondError(w, r, http.StatusUnauthorized, "Invalid username or password")
 		return
 	}
 
 	// Generate session token
 	token, tokenHash, err := sessionTokenGenerator()
 	if err != nil {
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]any{"error": "Failed to create session"})
+		respondError(w, r, http.StatusInternalServerError, "Failed to create session")
 		return
 	}
 
@@ -117,8 +110,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	ipAddress := clientIP(r)
 
 	if err := insertSessionFunc(sessionID, user.UserID, tokenHash, expiresAt, userAgent, ipAddress); err != nil {
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]any{"error": "Failed to create session"})
+		respondError(w, r, http.StatusInternalServerError, "Failed to create session")
 		return
 	}
 
@@ -165,16 +157,14 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 func HandleMe(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r)
 	if user == nil {
-		render.Status(r, http.StatusUnauthorized)
-		render.JSON(w, r, map[string]any{"error": "Not authenticated"})
+		respondError(w, r, http.StatusUnauthorized, "Not authenticated")
 		return
 	}
 
 	// Get full user details
 	name, createdAt, err := fetchUserDetailsFunc(user.UserID)
 	if err != nil {
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]any{"error": "Failed to get user info"})
+		respondError(w, r, http.StatusInternalServerError, "Failed to get user info")
 		return
 	}
 

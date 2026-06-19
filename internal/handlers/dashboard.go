@@ -82,6 +82,34 @@ func streamDatastar(w http.ResponseWriter, fn func(*DatastarSSE)) {
 	flusher.Flush()
 }
 
+// scanWebsiteInfos consumes rows of (website_id, name, domain) into WebsiteInfo
+// values, skipping any row that fails to scan, and closes the rows when done.
+func scanWebsiteInfos(rows *sql.Rows) []WebsiteInfo {
+	defer func() { _ = rows.Close() }()
+	var websites []WebsiteInfo
+	for rows.Next() {
+		var w WebsiteInfo
+		if err := rows.Scan(&w.ID, &w.Name, &w.Domain); err != nil {
+			continue
+		}
+		websites = append(websites, w)
+	}
+	return websites
+}
+
+// parseRequiredWebsiteID validates a website ID string, returning the parsed
+// UUID and an error message ("" when valid) for SSE-rendered error responses.
+func parseRequiredWebsiteID(websiteIDStr string) (uuid.UUID, string) {
+	if websiteIDStr == "" {
+		return uuid.UUID{}, "Website ID is required"
+	}
+	websiteID, err := uuid.Parse(websiteIDStr)
+	if err != nil {
+		return uuid.UUID{}, "Invalid website ID"
+	}
+	return websiteID, ""
+}
+
 func buildWebsiteSelectorHTML(websites []WebsiteInfo, selectedWebsite, context string) string {
 	if len(websites) == 0 {
 		return ""
@@ -212,14 +240,7 @@ func HandleDashboardInit(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		queryErr = err
 	} else {
-		defer func() { _ = rows.Close() }()
-		for rows.Next() {
-			var w WebsiteInfo
-			if err := rows.Scan(&w.ID, &w.Name, &w.Domain); err != nil {
-				continue
-			}
-			websites = append(websites, w)
-		}
+		websites = scanWebsiteInfos(rows)
 	}
 
 	// Determine selected website
@@ -294,17 +315,7 @@ func HandleDashboardStats(w http.ResponseWriter, r *http.Request) {
 	page := query.Get("page")
 
 	// Parse and validate website ID before streaming
-	var parseErr string
-	var websiteID uuid.UUID
-	if websiteIDStr == "" {
-		parseErr = "Website ID is required"
-	} else {
-		var err error
-		websiteID, err = uuid.Parse(websiteIDStr)
-		if err != nil {
-			parseErr = "Invalid website ID"
-		}
-	}
+	websiteID, parseErr := parseRequiredWebsiteID(websiteIDStr)
 
 	// Convert empty strings to NULL for SQL
 	var countryParam, browserParam, deviceParam, pageParam any
@@ -390,17 +401,7 @@ func HandleTimeSeries(w http.ResponseWriter, r *http.Request) {
 	page := query.Get("page")
 
 	// Parse and validate website ID before streaming
-	var parseErr string
-	var websiteID uuid.UUID
-	if websiteIDStr == "" {
-		parseErr = "Website ID is required"
-	} else {
-		var err error
-		websiteID, err = uuid.Parse(websiteIDStr)
-		if err != nil {
-			parseErr = "Invalid website ID"
-		}
-	}
+	websiteID, parseErr := parseRequiredWebsiteID(websiteIDStr)
 
 	// Convert empty strings to NULL for SQL
 	var countryParam, browserParam, deviceParam, pageParam any
@@ -748,17 +749,7 @@ func HandleMapData(w http.ResponseWriter, r *http.Request) {
 	page := query.Get("page")
 
 	// Parse and validate website ID before streaming
-	var parseErr string
-	var websiteID uuid.UUID
-	if websiteIDStr == "" {
-		parseErr = "Website ID is required"
-	} else {
-		var err error
-		websiteID, err = uuid.Parse(websiteIDStr)
-		if err != nil {
-			parseErr = "Invalid website ID"
-		}
-	}
+	websiteID, parseErr := parseRequiredWebsiteID(websiteIDStr)
 
 	// Convert empty strings to NULL for SQL
 	var countryParam, browserParam, deviceParam, pageParam any
@@ -849,17 +840,7 @@ func HandleRealtimeVisitors(w http.ResponseWriter, r *http.Request) {
 	websiteIDStr := r.URL.Query().Get("website_id")
 
 	// Parse and validate website ID before streaming
-	var parseErr string
-	var websiteID uuid.UUID
-	if websiteIDStr == "" {
-		parseErr = "Website ID is required"
-	} else {
-		var err error
-		websiteID, err = uuid.Parse(websiteIDStr)
-		if err != nil {
-			parseErr = "Invalid website ID"
-		}
-	}
+	websiteID, parseErr := parseRequiredWebsiteID(websiteIDStr)
 
 	// Query database BEFORE streaming
 	var count int
@@ -928,14 +909,7 @@ func HandleCampaignsInit(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		queryErr = err
 	} else {
-		defer func() { _ = rows.Close() }()
-		for rows.Next() {
-			var w WebsiteInfo
-			if err := rows.Scan(&w.ID, &w.Name, &w.Domain); err != nil {
-				continue
-			}
-			websites = append(websites, w)
-		}
+		websites = scanWebsiteInfos(rows)
 	}
 
 	// Determine selected website
@@ -1574,14 +1548,7 @@ func HandleMapInit(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		queryErr = err
 	} else {
-		defer func() { _ = rows.Close() }()
-		for rows.Next() {
-			var w WebsiteInfo
-			if err := rows.Scan(&w.ID, &w.Name, &w.Domain); err != nil {
-				continue
-			}
-			websites = append(websites, w)
-		}
+		websites = scanWebsiteInfos(rows)
 	}
 
 	// Determine selected website

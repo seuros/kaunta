@@ -89,30 +89,26 @@ type BatchError struct {
 func HandleIngest(w http.ResponseWriter, r *http.Request) {
 	apiKey := middleware.GetAPIKey(r)
 	if apiKey == nil {
-		render.Status(r, http.StatusUnauthorized)
-		render.JSON(w, r, map[string]any{"error": "Not authenticated"})
+		respondError(w, r, http.StatusUnauthorized, "Not authenticated")
 		return
 	}
 
 	defer func() { _ = r.Body.Close() }()
 	var payload IngestPayload
 	if err := render.DecodeJSON(r.Body, &payload); err != nil {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]any{"error": "Invalid JSON payload"})
+		respondError(w, r, http.StatusBadRequest, "Invalid JSON payload")
 		return
 	}
 
 	if err := validateIngestPayload(&payload); err != nil {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]any{"error": err.Error()})
+		respondError(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if payload.EventID != nil {
 		eventUUID, err := uuid.Parse(*payload.EventID)
 		if err != nil {
-			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]any{"error": "Invalid event_id format"})
+			respondError(w, r, http.StatusBadRequest, "Invalid event_id format")
 			return
 		}
 
@@ -137,8 +133,7 @@ func HandleIngest(w http.ResponseWriter, r *http.Request) {
 		logging.L().Error("failed to process ingest event",
 			slog.String("website_id", apiKey.WebsiteID.String()),
 			slog.Any("error", err))
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]any{"error": "Failed to process event"})
+		respondError(w, r, http.StatusInternalServerError, "Failed to process event")
 		return
 	}
 
@@ -151,28 +146,24 @@ func HandleIngest(w http.ResponseWriter, r *http.Request) {
 func HandleIngestBatch(w http.ResponseWriter, r *http.Request) {
 	apiKey := middleware.GetAPIKey(r)
 	if apiKey == nil {
-		render.Status(r, http.StatusUnauthorized)
-		render.JSON(w, r, map[string]any{"error": "Not authenticated"})
+		respondError(w, r, http.StatusUnauthorized, "Not authenticated")
 		return
 	}
 
 	defer func() { _ = r.Body.Close() }()
 	var request BatchIngestRequest
 	if err := render.DecodeJSON(r.Body, &request); err != nil {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]any{"error": "Invalid JSON payload"})
+		respondError(w, r, http.StatusBadRequest, "Invalid JSON payload")
 		return
 	}
 
 	if len(request.Events) == 0 {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]any{"error": "Events array is required"})
+		respondError(w, r, http.StatusBadRequest, "Events array is required")
 		return
 	}
 
 	if len(request.Events) > 100 {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]any{"error": "Maximum 100 events per batch"})
+		respondError(w, r, http.StatusBadRequest, "Maximum 100 events per batch")
 		return
 	}
 

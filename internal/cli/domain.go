@@ -41,10 +41,11 @@ Examples:
 		}
 
 		// Connect to database
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
+		cleanup, err := ensureDatabase()
+		if err != nil {
+			return err
 		}
-		defer func() { _ = database.Close() }()
+		defer cleanup()
 
 		// Check if domain already exists
 		var exists bool
@@ -110,10 +111,11 @@ var domainListCmd = &cobra.Command{
 Shows both active and inactive domains. Use --active flag to show only active domains.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Connect to database
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
+		cleanup, err := ensureDatabase()
+		if err != nil {
+			return err
 		}
-		defer func() { _ = database.Close() }()
+		defer cleanup()
 
 		// Build query
 		query := `SELECT id, domain, description, is_active, created_at, updated_at
@@ -224,14 +226,15 @@ Examples:
 		identifier := strings.ToLower(strings.TrimSpace(args[0]))
 
 		// Connect to database
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
+		cleanup, err := ensureDatabase()
+		if err != nil {
+			return err
 		}
-		defer func() { _ = database.Close() }()
+		defer cleanup()
 
 		// Build query to match either ID or domain
 		var domainName string
-		err := database.DB.QueryRow(
+		err = database.DB.QueryRow(
 			"SELECT domain FROM trusted_origin WHERE id::text = $1 OR lower(domain) = $1",
 			identifier,
 		).Scan(&domainName)
@@ -290,15 +293,16 @@ Examples:
 		identifier := strings.ToLower(strings.TrimSpace(args[0]))
 
 		// Connect to database
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
+		cleanup, err := ensureDatabase()
+		if err != nil {
+			return err
 		}
-		defer func() { _ = database.Close() }()
+		defer cleanup()
 
 		// Toggle active status
 		var domain string
 		var newStatus bool
-		err := database.DB.QueryRow(`
+		err = database.DB.QueryRow(`
 			UPDATE trusted_origin
 			SET is_active = NOT is_active,
 			    updated_at = CURRENT_TIMESTAMP
@@ -337,14 +341,15 @@ Examples:
 		origin := args[0]
 
 		// Connect to database
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
+		cleanup, err := ensureDatabase()
+		if err != nil {
+			return err
 		}
-		defer func() { _ = database.Close() }()
+		defer cleanup()
 
 		// Use the PostgreSQL function to validate
 		var isTrusted bool
-		err := database.DB.QueryRow("SELECT is_trusted_origin($1)", origin).Scan(&isTrusted)
+		err = database.DB.QueryRow("SELECT is_trusted_origin($1)", origin).Scan(&isTrusted)
 		if err != nil {
 			return fmt.Errorf("failed to verify origin: %w", err)
 		}
