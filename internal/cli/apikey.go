@@ -98,12 +98,11 @@ var (
 )
 
 func runAPIKeyCreate(websiteDomain string) error {
-	if database.DB == nil {
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = database.Close() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -174,12 +173,11 @@ func runAPIKeyCreate(websiteDomain string) error {
 }
 
 func runAPIKeyList(websiteDomain string) error {
-	if database.DB == nil {
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = database.Close() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -248,12 +246,11 @@ func runAPIKeyList(websiteDomain string) error {
 }
 
 func runAPIKeyRevoke(keyIDOrPrefix string) error {
-	if database.DB == nil {
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = database.Close() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	// Try parsing as UUID first
 	if keyID, err := uuid.Parse(keyIDOrPrefix); err == nil {
@@ -274,15 +271,13 @@ func runAPIKeyRevoke(keyIDOrPrefix string) error {
 }
 
 func runAPIKeyShow(keyIDOrPrefix string) error {
-	if database.DB == nil {
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = database.Close() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	var key *models.APIKey
-	var err error
 
 	// Try parsing as UUID first
 	if keyID, parseErr := uuid.Parse(keyIDOrPrefix); parseErr == nil {

@@ -55,12 +55,11 @@ Examples:
 }
 
 func runTestTracking(websiteDomain, originURL, payloadFile string) error {
-	if database.DB == nil {
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = database.Close() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -248,12 +247,11 @@ Displays:
 }
 
 func runDiagnostics(full bool) error {
-	if database.DB == nil {
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = database.Close() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -443,12 +441,11 @@ Examples:
 }
 
 func runWebsiteSync(filePath string, dryRun, replace bool) error {
-	if database.DB == nil {
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = database.Close() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -625,12 +622,11 @@ type WebsiteCheckResult struct {
 }
 
 func runCheckWebsite(websiteDomain string) error {
-	if database.DB == nil {
-		if err := database.Connect(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = database.Close() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

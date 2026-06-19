@@ -160,6 +160,19 @@ var (
 	closeDatabase         = database.Close
 )
 
+// ensureDatabase opens a database connection if one isn't already open. It
+// returns a cleanup func that closes the connection only when this call opened
+// it (a no-op otherwise), so callers can always `defer cleanup()`.
+func ensureDatabase() (func(), error) {
+	if database.DB != nil {
+		return func() {}, nil
+	}
+	if err := connectDatabase(); err != nil {
+		return nil, fmt.Errorf("database connection failed: %w", err)
+	}
+	return func() { _ = closeDatabase() }, nil
+}
+
 var websiteAddDomainCmd = &cobra.Command{
 	Use:   "add-domain <website-domain> <allowed-domain> [--allowed <more-domains-csv>]",
 	Short: "Add allowed CORS domains to a website",
@@ -230,12 +243,11 @@ func runWebsiteList(format string) error {
 	}
 
 	// Ensure database is connected
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -262,12 +274,11 @@ func runWebsiteShow(domain, format string) error {
 		format = "table"
 	}
 
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -288,12 +299,11 @@ func runWebsiteShow(domain, format string) error {
 }
 
 func runWebsiteCreate(domain, name, allowedCSV string) error {
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -335,12 +345,11 @@ func runWebsiteCreate(domain, name, allowedCSV string) error {
 }
 
 func runWebsiteUpdate(domain, name, allowedCSV string) error {
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	if name == "" && allowedCSV == "" {
 		return fmt.Errorf("must specify at least one option: --name or --allowed")
@@ -372,12 +381,11 @@ func runWebsiteUpdate(domain, name, allowedCSV string) error {
 }
 
 func runWebsiteDelete(domain string, force bool) error {
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	// Confirm deletion unless --force is used
 	if !force {
@@ -406,12 +414,11 @@ func runWebsiteDelete(domain string, force bool) error {
 }
 
 func runWebsiteTrackingCode(domain string) error {
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -430,12 +437,11 @@ func runWebsiteTrackingCode(domain string) error {
 }
 
 func runAddDomain(websiteDomain, allowedDomain, additionalDomainsCSV string) error {
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	// Validate domains
 	if err := validateDomain(allowedDomain); err != nil {
@@ -475,12 +481,11 @@ func runAddDomain(websiteDomain, allowedDomain, additionalDomainsCSV string) err
 }
 
 func runRemoveDomain(websiteDomain, allowedDomain string) error {
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -512,12 +517,11 @@ func runListDomains(websiteDomain, format string) error {
 		format = "text"
 	}
 
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

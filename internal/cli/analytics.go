@@ -215,12 +215,11 @@ func runStatsOverview(domain string, days int, format string) error {
 		format = "table"
 	}
 
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -261,12 +260,11 @@ func runStatsPages(domain string, days int, top int, format string) error {
 		format = "table"
 	}
 
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -322,12 +320,11 @@ func runStatsBreakdown(domain string, dimension string, days int, top int, forma
 		format = "table"
 	}
 
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -363,12 +360,11 @@ func runStatsLive(domain string, interval int, format string) error {
 		format = "text"
 	}
 
-	if database.DB == nil {
-		if err := connectDatabase(); err != nil {
-			return fmt.Errorf("database connection failed: %w", err)
-		}
-		defer func() { _ = closeDatabase() }()
+	cleanup, err := ensureDatabase()
+	if err != nil {
+		return err
 	}
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 24*time.Hour)
 	defer cancel()

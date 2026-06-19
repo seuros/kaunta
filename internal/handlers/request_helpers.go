@@ -4,7 +4,26 @@ import (
 	"net"
 	"net/http"
 	"strings"
+
+	"github.com/go-chi/render"
+	"github.com/google/uuid"
 )
+
+// respondError writes a JSON error response with the given status code.
+func respondError(w http.ResponseWriter, r *http.Request, status int, msg string) {
+	render.Status(r, status)
+	render.JSON(w, r, map[string]any{"error": msg})
+}
+
+// parseWebsiteID validates the website_id URL param, returning it on success.
+// On failure it writes a 400 error response and returns ok=false.
+func parseWebsiteID(w http.ResponseWriter, r *http.Request, websiteIDStr string) (string, bool) {
+	if _, err := uuid.Parse(websiteIDStr); err != nil {
+		respondError(w, r, http.StatusBadRequest, "Invalid website ID")
+		return "", false
+	}
+	return websiteIDStr, true
+}
 
 // clientIP returns the client IP for display/logging purposes, respecting common proxy headers.
 // Only use this for display/logging — not for security decisions like rate limiting,
