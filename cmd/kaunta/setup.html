@@ -440,7 +440,10 @@
             const target = $redirect || '/dashboard';
             const poll = async () => {
               try {
-                const res = await fetch('/up', { cache: 'no-store' });
+                // Poll /health, which only the main server mounts. The setup
+                // server serves /up too, so polling /up would redirect to
+                // /dashboard before the main server has restarted (404).
+                const res = await fetch('/health', { cache: 'no-store' });
                 if (res.ok) {
                   window.location.href = target;
                   return;
