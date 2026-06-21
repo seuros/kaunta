@@ -117,12 +117,7 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 		var reqBody DatastarRequest
 		if err := render.DecodeJSON(r.Body, &reqBody); err != nil {
 			logging.L().Error("Bind failed for setup", slog.Any("error", err))
-			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]any{
-				"submitting":  false,
-				"message":     "Invalid request: " + err.Error(),
-				"messageType": "error",
-			})
+			setupSignalError(w, r, "Invalid request: "+err.Error())
 			return
 		}
 		form := reqBody.Form
@@ -130,12 +125,7 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 
 		// Validate form fields
 		if err := validateSetupForm(&form); err != nil {
-			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]any{
-				"submitting":  false,
-				"message":     err.Error(),
-				"messageType": "error",
-			})
+			setupSignalError(w, r, err.Error())
 			return
 		}
 
@@ -145,29 +135,20 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 		// Test database connection
 		db, err := sql.Open("postgres", dbURL)
 		if err != nil {
-			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]any{
-				"error": fmt.Sprintf("Invalid database configuration: %v", err),
-			})
+			setupSignalError(w, r, fmt.Sprintf("Invalid database configuration: %v", err))
 			return
 		}
 		defer func() { _ = db.Close() }()
 
 		if err := db.Ping(); err != nil {
-			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]any{
-				"error": fmt.Sprintf("Cannot connect to database: %v", err),
-			})
+			setupSignalError(w, r, fmt.Sprintf("Cannot connect to database: %v", err))
 			return
 		}
 
 		// Check if users already exist
 		hasUsers, err := models.HasAnyUsers(context.Background(), db)
 		if err == nil && hasUsers {
-			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]any{
-				"error": "Setup already completed. Users already exist in the database.",
-			})
+			setupSignalError(w, r, "Setup already completed. Users already exist in the database.")
 			return
 		}
 
@@ -187,10 +168,7 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 			form.AdminName,
 		)
 		if err != nil {
-			render.Status(r, http.StatusInternalServerError)
-			render.JSON(w, r, map[string]any{
-				"error": fmt.Sprintf("Failed to create admin user: %v", err),
-			})
+			setupSignalError(w, r, fmt.Sprintf("Failed to create admin user: %v", err))
 			return
 		}
 
@@ -288,6 +266,21 @@ func SubmitSetup(onComplete func()) http.HandlerFunc {
 	}
 }
 
+// setupSignalError writes a Datastar signal-patch error response for the setup
+// wizard. It intentionally returns HTTP 200: Datastar only merges signal
+// patches from 2xx responses, so a 4xx status would leave the triggering
+// button's spinner ($testing / $submitting) stuck forever. The failure is
+// surfaced through the message/messageType signals (which the wizard binds to)
+// and both loading flags are cleared.
+func setupSignalError(w http.ResponseWriter, r *http.Request, message string) {
+	render.JSON(w, r, map[string]any{
+		"testing":     false,
+		"submitting":  false,
+		"message":     message,
+		"messageType": "error",
+	})
+}
+
 // TestDatabase tests the database connection with provided credentials
 func TestDatabase() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -298,13 +291,7 @@ func TestDatabase() http.HandlerFunc {
 		var reqBody DatastarRequest
 		if err := json.Unmarshal(bodyBytes, &reqBody); err != nil {
 			logging.L().Error("Bind failed for test-db", slog.Any("error", err))
-			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]any{
-				"testing":     false,
-				"submitting":  false,
-				"message":     "Invalid request: " + err.Error(),
-				"messageType": "error",
-			})
+			setupSignalError(w, r, "Invalid request: "+err.Error())
 			return
 		}
 
@@ -312,38 +299,20 @@ func TestDatabase() http.HandlerFunc {
 		logging.L().Info("Parsed form for test-db", slog.Any("form", form))
 
 		if form.DBHost == "" || form.DBPort == "" || form.DBName == "" || form.DBUser == "" {
-			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]any{
-				"testing":     false,
-				"submitting":  false,
-				"message":     "Missing required database fields",
-				"messageType": "error",
-			})
+			setupSignalError(w, r, "Missing required database fields")
 			return
 		}
 
 		dbURL := buildDatabaseURL(&form)
 		db, err := sql.Open("postgres", dbURL)
 		if err != nil {
-			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]any{
-				"testing":     false,
-				"submitting":  false,
-				"message":     fmt.Sprintf("Invalid config: %v", err),
-				"messageType": "error",
-			})
+			setupSignalError(w, r, fmt.Sprintf("Invalid config: %v", err))
 			return
 		}
 		defer func() { _ = db.Close() }()
 
 		if err := db.Ping(); err != nil {
-			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]any{
-				"testing":     false,
-				"submitting":  false,
-				"message":     fmt.Sprintf("Connection failed: %v", err),
-				"messageType": "error",
-			})
+			setupSignalError(w, r, fmt.Sprintf("Connection failed: %v", err))
 			return
 		}
 

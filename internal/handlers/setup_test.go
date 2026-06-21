@@ -211,7 +211,10 @@ func TestTestDatabase(t *testing.T) {
 			form: SetupForm{
 				DBHost: "",
 			},
-			expectedCode: 400,
+			// Datastar only applies signal patches from 2xx responses, so the
+			// failure must return 200 (with messageType:error) or the spinner
+			// would never reset.
+			expectedCode: 200,
 			checkError:   true,
 		},
 		{
@@ -222,7 +225,7 @@ func TestTestDatabase(t *testing.T) {
 				DBName: "test",
 				DBUser: "test",
 			},
-			expectedCode: 400, // Connection will fail in test
+			expectedCode: 200, // Connection fails, but Datastar needs 2xx to reset the spinner
 			checkError:   true,
 		},
 	}
