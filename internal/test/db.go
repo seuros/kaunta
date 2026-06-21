@@ -4,6 +4,7 @@ package test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -15,9 +16,18 @@ import (
 	"github.com/peterldowns/pgtestdb/migrators/golangmigrator"
 )
 
-// TestDB holds database connection for tests
+// TestDB holds the connection (and its parameters) for an isolated test
+// database. The individual fields are exposed so tests that need to build a
+// connection themselves — e.g. driving the setup wizard through a SetupForm —
+// can target the same isolated database.
 type TestDB struct {
-	DB *sql.DB
+	DB       *sql.DB
+	URL      string
+	Host     string
+	Port     string
+	Name     string
+	User     string
+	Password string
 }
 
 // NewTestDB creates a fresh test database with migrations applied
@@ -96,8 +106,21 @@ func NewTestDB(t *testing.T) *TestDB {
 		TestRole:   testRole,
 	}, golangmigrator.New(migrationsPath))
 
+	// pgtestdb clones a fresh, randomly-named database per test; recover its
+	// name so callers can build a connection URL pointing at this same DB.
+	var testDBName string
+	if err := db.QueryRow("SELECT current_database()").Scan(&testDBName); err != nil {
+		t.Fatalf("failed to resolve test database name: %v", err)
+	}
+
 	return &TestDB{
-		DB: db,
+		DB:       db,
+		URL:      fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, testDBName),
+		Host:     host,
+		Port:     port,
+		Name:     testDBName,
+		User:     user,
+		Password: password,
 	}
 }
 
