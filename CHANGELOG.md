@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.53.0](https://github.com/seuros/kaunta/compare/v0.52.2...v0.53.0) (2026-06-21)
+
+
+### Features
+
+* migrate backend from Fiber to Chi ([f234fd9](https://github.com/seuros/kaunta/commit/f234fd975381fa1bda3b14ba624689e5303a923f))
+* migrate backend from Fiber to Chi ([#140](https://github.com/seuros/kaunta/issues/140)) ([c409fb7](https://github.com/seuros/kaunta/commit/c409fb7ecc9a8d2bfa396804a66cf90be4a7a58f))
+* migrate backend from Fiber to Chi ([#141](https://github.com/seuros/kaunta/issues/141)) ([f234fd9](https://github.com/seuros/kaunta/commit/f234fd975381fa1bda3b14ba624689e5303a923f))
+
+
+### Bug Fixes
+
+* correct over-escaped regex in trusted_origin migration ([#144](https://github.com/seuros/kaunta/issues/144)) ([04a72cb](https://github.com/seuros/kaunta/commit/04a72cbb85d5e9de5033ed36553639ad4a071c4d))
+* mount postgres volume at /var/lib/postgresql for pg 18+ ([382d9f4](https://github.com/seuros/kaunta/commit/382d9f43104823faec93b10c5b34595f8d1e6de1))
+* poll /health after setup so dashboard redirect waits for restart ([1a662c9](https://github.com/seuros/kaunta/commit/1a662c9e7d233e9b0ae1fc39dfb8a2096cb6b440))
+* return 200 on setup wizard failures so Datastar resets spinners ([db29e3b](https://github.com/seuros/kaunta/commit/db29e3b703c6a0dcd15a653c7949c19d0c99daeb))
+
 ## [0.52.2](https://github.com/seuros/kaunta/compare/v0.52.1...v0.52.2) (2026-01-30)
 
 
