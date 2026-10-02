@@ -5,7 +5,16 @@ on:
     types: [published]
   # release-please publishes with GITHUB_TOKEN, and GitHub refuses to raise
   # workflow events from its own token, so that release never reaches the
-  # trigger above. Re-run this by hand with the tag it skipped.
+  # trigger above; release-please.yml calls this directly instead.
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+      push_image:
+        type: boolean
+        default: false
+  # Rescue: re-run by hand with a tag a failed run left without assets.
   workflow_dispatch:
     inputs:
       tag:
