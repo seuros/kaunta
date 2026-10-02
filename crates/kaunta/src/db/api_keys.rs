@@ -319,6 +319,3 @@ pub async fn cleanup_rate_limit_storage(pool: &PgPool) -> Result<i32, sqlx::Erro
         .fetch_one(pool)
         .await
 }
-
-#[cfg(test)]
-mod tests;

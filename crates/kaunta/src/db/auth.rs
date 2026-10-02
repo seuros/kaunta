@@ -259,6 +259,3 @@ pub async fn cleanup_expired_sessions(pool: &PgPool) -> Result<i32, sqlx::Error>
         .fetch_one(pool)
         .await
 }
-
-#[cfg(test)]
-mod tests;

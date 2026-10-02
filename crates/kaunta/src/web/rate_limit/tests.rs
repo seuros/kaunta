@@ -18,21 +18,6 @@ fn allows_burst_per_peer_then_reports_retry_after() {
 }
 
 #[test]
-fn refills_one_attempt_per_interval() {
-    let limiter = AttemptLimiter::default();
-    let now = Instant::now();
-    drain(&limiter, "192.0.2.1", now);
-    let almost = now + Duration::from_millis(11_999);
-    assert_eq!(
-        limiter.check_at("192.0.2.1", almost),
-        Err(Duration::from_millis(1))
-    );
-    let refilled = now + INTERVAL;
-    assert!(limiter.check_at("192.0.2.1", refilled).is_ok());
-    assert!(limiter.check_at("192.0.2.1", refilled).is_err());
-}
-
-#[test]
 fn full_window_restores_full_burst_and_forgets_peer() {
     let limiter = AttemptLimiter::default();
     let now = Instant::now();

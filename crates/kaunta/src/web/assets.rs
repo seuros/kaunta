@@ -1,7 +1,10 @@
 use include_dir::{Dir, include_dir};
 use rama::http::{
     Request, Response, StatusCode, header,
-    service::web::{extract::Path, response::IntoResponse},
+    service::web::{
+        extract::Path,
+        response::{DatastarScript, DatastarSourceMap, IntoResponse},
+    },
 };
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -77,6 +80,23 @@ pub async fn asset(Path(path): Path<AssetPath>) -> Response {
         _ => "application/octet-stream",
     };
     let mut response = bytes_response(StatusCode::OK, content_type, file.contents().to_vec());
+    set_header(
+        &mut response,
+        header::CACHE_CONTROL,
+        "public, max-age=31536000, immutable",
+    );
+    response
+}
+
+pub async fn datastar() -> Response {
+    immutable(DatastarScript::new().into_response())
+}
+
+pub async fn datastar_source_map() -> Response {
+    immutable(DatastarSourceMap::new().into_response())
+}
+
+fn immutable(mut response: Response) -> Response {
     set_header(
         &mut response,
         header::CACHE_CONTROL,

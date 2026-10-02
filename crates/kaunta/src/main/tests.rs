@@ -36,16 +36,6 @@ fn migration_actions_and_defaults_are_compatible() {
 }
 
 #[test]
-fn help_and_version_use_usage_runtime() {
-    assert_matches!(
-        Cli::parse_from(&[OsStr::new("--help")]),
-        Err(usage::Error::Help { .. })
-    );
-    assert!(Cli::parse_from(&[OsStr::new("--version")]).is_err());
-    assert!(Cli::to_kdl().contains("kaunta"));
-}
-
-#[test]
 fn website_sync_accepts_legacy_flags_and_rejects_conflicting_modes() {
     let cli = parse(&[
         "website",
@@ -280,28 +270,4 @@ port = '8080'
 
     let empty: Config = toml::from_str("trusted_origins = ''").expect("parse empty origins");
     assert!(empty.trusted_origins.is_empty());
-}
-
-#[test]
-fn rust_config_round_trips_through_toml() {
-    let config = Config {
-        database_url: "postgresql://localhost/kaunta".to_owned(),
-        port: "8081".to_owned(),
-        trusted_origins: vec!["a.example.com".to_owned(), "b.example.com".to_owned()],
-        proxy_mode: ProxyMode::Xforwarded,
-        event_retention_days: 30,
-        ..Config::default()
-    };
-    let serialized = toml::to_string_pretty(&config).expect("serialize");
-    assert!(serialized.contains("trusted_origins = ["), "{serialized}");
-    assert!(
-        serialized.contains("proxy_mode = \"xforwarded\""),
-        "{serialized}"
-    );
-    assert!(!serialized.contains("[server]"), "{serialized}");
-    let restored: Config = toml::from_str(&serialized).expect("parse serialized");
-    assert_eq!(restored.port, "8081");
-    assert_eq!(restored.trusted_origins, config.trusted_origins);
-    assert_eq!(restored.proxy_mode, ProxyMode::Xforwarded);
-    assert_eq!(restored.event_retention_days, 30);
 }

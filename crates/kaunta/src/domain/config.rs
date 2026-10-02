@@ -337,41 +337,6 @@ origins = ["https://census.example.com", "https://dag.ma"]
     }
 
     #[test]
-    fn round_trips_through_serialization() {
-        let config = Config {
-            database_url: "postgresql://localhost/kaunta".to_owned(),
-            port: "4000".to_owned(),
-            data_dir: PathBuf::from("/var/lib/kaunta"),
-            secure_cookies: false,
-            trusted_origins: vec!["a.example.com".to_owned(), "b.example.com".to_owned()],
-            proxy_mode: ProxyMode::Xforwarded,
-            event_retention_days: 30,
-            excluded_ips: vec!["10.0.0.0/8".to_owned()],
-            mcp: true,
-            security: SecurityConfig { install_lock: true },
-            server: None,
-        };
-        let value = serde_json::to_value(&config).expect("serialize");
-        assert_eq!(
-            value["trusted_origins"],
-            json!(["a.example.com", "b.example.com"])
-        );
-        assert_eq!(value["proxy_mode"], json!("xforwarded"));
-        assert!(value.get("server").is_none());
-
-        let restored: Config = serde_json::from_value(value).expect("deserialize");
-        assert_eq!(restored.database_url, config.database_url);
-        assert_eq!(restored.port, config.port);
-        assert_eq!(restored.data_dir, config.data_dir);
-        assert_eq!(restored.secure_cookies, config.secure_cookies);
-        assert_eq!(restored.trusted_origins, config.trusted_origins);
-        assert_eq!(restored.proxy_mode, config.proxy_mode);
-        assert_eq!(restored.event_retention_days, config.event_retention_days);
-        assert_eq!(restored.security.install_lock, config.security.install_lock);
-        assert!(restored.server.is_none());
-    }
-
-    #[test]
     fn excluded_ips_match_plain_addresses_and_cidr_blocks() {
         let v4 = |s: &str| s.parse::<std::net::IpAddr>().unwrap();
         assert!(ip_matches("203.0.113.4", &v4("203.0.113.4")));

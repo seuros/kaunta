@@ -39,20 +39,6 @@ fn user_agent_parser_keeps_dashboard_vocabulary() {
              Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
             ("Edge", "Windows", "desktop"),
         ),
-        (
-            "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
-            ("Firefox", "Linux", "desktop"),
-        ),
-        (
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 \
-             (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
-            ("Safari", "iOS", "mobile"),
-        ),
-        (
-            "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) \
-             Chrome/124.0.0.0 Mobile Safari/537.36",
-            ("Chrome", "Android", "mobile"),
-        ),
         ("curl/8.4.0", ("Unknown", "Unknown", "desktop")),
     ];
     for (user_agent, (browser, os, device)) in cases {

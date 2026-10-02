@@ -1,12 +1,14 @@
 use crate::db::analytics::AnalyticsFilters;
 use crate::domain::goal::{GoalKind, GoalRequest};
+use rama::error::BoxError;
 use rama::http::{
     Request, Response, StatusCode,
     body::util::BodyExt as _,
     header,
-    service::web::{
-        extract::{Path, State},
-        response::IntoResponse,
+    service::web::extract::{Path, State},
+    sse::{
+        JsonEventData,
+        datastar::{PatchElements, PatchSignals},
     },
 };
 use serde::{Deserialize, Serialize};
@@ -18,8 +20,8 @@ use crate::web::{
     AppState,
     auth::authenticate_session,
     http::{
-        bytes_response, csrf_valid, error_response, json_response, query_pairs, server_error,
-        set_content_type, set_header,
+        DatastarEvent, bytes_response, csrf_valid, datastar, error_response, json_response,
+        query_pairs, server_error, set_header,
     },
 };
 
@@ -70,26 +72,8 @@ impl WebsiteIdError {
     }
 }
 
-fn sse_response(body: String) -> Response {
-    let mut response = body.into_response();
-    set_content_type(&mut response, "text/event-stream");
-    response.headers_mut().insert(
-        header::CACHE_CONTROL,
-        rama::http::HeaderValue::from_static("no-cache"),
-    );
-    response
-}
-
-fn signal_event(signals: &Value) -> String {
-    format!("event: datastar-patch-signals\ndata: signals {signals}\n\n")
-}
-
-fn element_event(selector: &str, html: &str) -> String {
-    format!("event: datastar-patch-elements\ndata: selector {selector}\ndata: elements {html}\n\n")
-}
-
 fn sse(signals: Value) -> Response {
-    sse_response(signal_event(&signals))
+    datastar([PatchSignals::new(JsonEventData(signals)).try_into_datastar_event()])
 }
 
 async fn user_and_query(
@@ -812,7 +796,7 @@ pub async fn campaigns(State(state): State<AppState>, request: Request) -> Respo
         _ => "desc",
     };
 
-    let mut body = String::new();
+    let mut events: Vec<Result<DatastarEvent, BoxError>> = Vec::new();
     let mut campaign_signals = serde_json::Map::new();
     let mut loading = serde_json::Map::new();
     for dimension in dimensions {
@@ -835,18 +819,32 @@ pub async fn campaigns(State(state): State<AppState>, request: Request) -> Respo
                 Vec::new()
             }
         };
-        body.push_str(&element_event(
-            &format!("#utm-{dimension}-content"),
-            &build_utm_table(dimension, &items, sort_by, sort_order),
-        ));
+        events.push(utm_table_patch(dimension, &items, sort_by, sort_order));
         campaign_signals.insert(dimension.to_owned(), json!(items));
         loading.insert(dimension.to_owned(), Value::Bool(false));
     }
-    body.push_str(&signal_event(&json!({
-        "_campaigns": Value::Object(campaign_signals),
-        "loading": Value::Object(loading)
-    })));
-    sse_response(body)
+    events.push(
+        PatchSignals::new(JsonEventData(json!({
+            "_campaigns": Value::Object(campaign_signals),
+            "loading": Value::Object(loading)
+        })))
+        .try_into_datastar_event()
+        .map_err(Into::into),
+    );
+    datastar(events)
+}
+
+fn utm_table_patch(
+    dimension: &str,
+    items: &[crate::domain::analytics::BreakdownItem],
+    sort_by: &str,
+    sort_order: &str,
+) -> Result<DatastarEvent, BoxError> {
+    Ok(
+        PatchElements::new(build_utm_table(dimension, items, sort_by, sort_order).try_into()?)
+            .with_selector(format!("#utm-{dimension}-content").try_into()?)
+            .try_into_datastar_event()?,
+    )
 }
 
 pub async fn websites_init(State(state): State<AppState>, request: Request) -> Response {

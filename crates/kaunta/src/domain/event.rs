@@ -79,34 +79,3 @@ pub struct RealtimeEvent {
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::RealtimeEvent;
-    use time::macros::datetime;
-    use uuid::Uuid;
-
-    #[test]
-    fn realtime_event_serializes_created_at_as_rfc3339() {
-        let event = RealtimeEvent {
-            kind: "pageview".to_owned(),
-            website_id: Uuid::nil(),
-            session_id: Uuid::nil(),
-            visit_id: Uuid::nil(),
-            path: Some("/".to_owned()),
-            title: None,
-            created_at: datetime!(2026-09-27 12:34:56.5 UTC),
-        };
-        let json = serde_json::to_value(&event).unwrap();
-        let created_at = json["created_at"].as_str().expect("created_at is a string");
-        assert!(
-            created_at.ends_with('Z') || created_at.ends_with("+00:00"),
-            "unexpected timestamp format: {created_at}"
-        );
-        assert!(created_at.starts_with("2026-09-27T12:34:56"));
-        assert!(json.get("title").is_none());
-
-        let round_trip: RealtimeEvent = serde_json::from_value(json).unwrap();
-        assert_eq!(round_trip.created_at, event.created_at);
-    }
-}

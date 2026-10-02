@@ -16,7 +16,7 @@ fn head(title: &str) -> Markup {
             link rel="stylesheet" href=(asset("/assets/global.css"));
             link rel="stylesheet" href=(asset("/assets/portal.css"));
             script src=(asset("/assets/js/portal.js")) defer {}
-            script type="module" src=(asset("/assets/vendor/vendor.js")) {}
+            script type="module" src=(asset("/assets/datastar.js")) {}
         }
     }
 }

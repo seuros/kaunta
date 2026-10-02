@@ -187,6 +187,8 @@ pub async fn serve(config_path: PathBuf, port: u16) -> anyhow::Result<bool> {
             .with_post("/setup", submit)
             .with_post("/setup/test-db", test_database)
             .with_get("/setup/complete", complete)
+            .with_get("/assets/datastar.js", assets::datastar)
+            .with_get("/assets/datastar.js.map", assets::datastar_source_map)
             .with_get("/assets/{*path}", assets::asset)
             .with_get("/favicon.ico", assets::favicon);
         let router = Arc::new(ErrorHandler::new(router));

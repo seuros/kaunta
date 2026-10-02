@@ -5,7 +5,7 @@ fn login_posts_credentials_and_loads_runtime() {
     let page = login("test").into_string();
     assert!(page.contains("method=\"post\""));
     assert!(page.contains("/assets/js/portal.js"));
-    assert!(page.contains("/assets/vendor/vendor.js"));
+    assert!(page.contains("/assets/datastar.js"));
     assert!(!page.contains("@get('/api/auth/login')"));
 }
 

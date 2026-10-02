@@ -7,10 +7,15 @@ use rama::http::{
     body::util::BodyExt as _,
     header,
     service::web::{
-        extract::State,
+        extract::{FromRequestBody as _, State, datastar::ReadSignals},
         response::{Html, IntoResponse},
     },
+    sse::{
+        JsonEventData,
+        datastar::{ExecuteScript, PatchSignals},
+    },
 };
+use rama::utils::str::non_empty_str;
 use serde::Serialize;
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
@@ -19,8 +24,9 @@ use uuid::Uuid;
 use crate::web::{
     AppState,
     http::{
-        SESSION_SECONDS, api_key, append_header, csrf_valid, ensure_csrf_cookie, error_response,
-        json_response, query_pairs, server_client_ip, server_error, session_cookie, session_token,
+        SESSION_SECONDS, api_key, append_header, csrf_valid, datastar, ensure_csrf_cookie,
+        error_response, json_response, server_client_ip, server_error, session_cookie,
+        session_token,
     },
     pages,
 };
@@ -194,23 +200,15 @@ pub async fn login_sse(State(state): State<AppState>, request: Request) -> Respo
         return response;
     }
     let ip_address = server_client_ip(&state, &request);
-    let query = query_pairs(&request);
-    let result = query
-        .get("datastar")
-        .ok_or_else(|| "Invalid request".to_owned())
-        .and_then(|signals| {
-            serde_json::from_str::<LoginRequest>(signals)
-                .map_err(|_| "Invalid request format".to_owned())
-        });
+    let (parts, body) = request.into_parts();
+    let result = ReadSignals::<LoginRequest>::from_request_body(&parts, body).await;
 
-    let (signals, cookie, script) = match result {
-        Ok(login) if !login.username.is_empty() && !login.password.is_empty() => {
-            match create_login_session(&state, request.headers(), ip_address, login).await {
-                Ok((_payload, cookie)) => (
-                    json!({"error": "", "loading": false}),
-                    Some(cookie),
-                    Some("window.location.href = '/dashboard'"),
-                ),
+    let (signals, cookie, redirect) = match result {
+        Ok(ReadSignals(login)) if !login.username.is_empty() && !login.password.is_empty() => {
+            match create_login_session(&state, &parts.headers, ip_address, login).await {
+                Ok((_payload, cookie)) => {
+                    (json!({"error": "", "loading": false}), Some(cookie), true)
+                }
                 Err(response) => {
                     let status = response.status();
                     let message = if status == StatusCode::UNAUTHORIZED {
@@ -218,33 +216,30 @@ pub async fn login_sse(State(state): State<AppState>, request: Request) -> Respo
                     } else {
                         "Authentication error"
                     };
-                    (json!({"error": message, "loading": false}), None, None)
+                    (json!({"error": message, "loading": false}), None, false)
                 }
             }
         }
         Ok(_) => (
             json!({"error": "Username and password are required", "loading": false}),
             None,
-            None,
+            false,
         ),
-        Err(message) => (json!({"error": message, "loading": false}), None, None),
+        Err(_) => (
+            json!({"error": "Invalid request format", "loading": false}),
+            None,
+            false,
+        ),
     };
 
-    let mut body = format!("event: datastar-patch-signals\ndata: signals {signals}\n\n");
-    if let Some(script) = script {
-        body.push_str(&format!(
-            "event: datastar-patch-elements\ndata: selector body\ndata: mode append\ndata: elements <script>{script};document.currentScript.remove()</script>\n\n"
-        ));
+    let mut events = vec![PatchSignals::new(JsonEventData(signals)).try_into_datastar_event()];
+    if redirect {
+        events.push(
+            ExecuteScript::new(non_empty_str!("window.location.href = '/dashboard'"))
+                .try_into_datastar_event(),
+        );
     }
-    let mut response = body.into_response();
-    response.headers_mut().insert(
-        header::CONTENT_TYPE,
-        rama::http::HeaderValue::from_static("text/event-stream"),
-    );
-    response.headers_mut().insert(
-        header::CACHE_CONTROL,
-        rama::http::HeaderValue::from_static("no-cache"),
-    );
+    let mut response = datastar(events);
     if let Some(cookie) = cookie {
         append_header(&mut response, header::SET_COOKIE, &cookie);
     }
@@ -265,19 +260,12 @@ pub async fn logout(State(state): State<AppState>, request: Request) -> Response
         append_header(&mut response, header::SET_COOKIE, &expired_cookie);
         return response;
     }
-    let body = concat!(
-        "event: datastar-patch-elements\n",
-        "data: selector body\n",
-        "data: mode append\n",
-        "data: elements <script>localStorage.removeItem('kaunta_website');",
+    let mut response = datastar([ExecuteScript::new(non_empty_str!(concat!(
+        "localStorage.removeItem('kaunta_website');",
         "localStorage.removeItem('kaunta_dateRange');",
-        "window.location.href = '/login';document.currentScript.remove()</script>\n\n"
-    );
-    let mut response = body.into_response();
-    response.headers_mut().insert(
-        header::CONTENT_TYPE,
-        rama::http::HeaderValue::from_static("text/event-stream"),
-    );
+        "window.location.href = '/login'"
+    )))
+    .try_into_datastar_event()]);
     append_header(&mut response, header::SET_COOKIE, &expired_cookie);
     response
 }

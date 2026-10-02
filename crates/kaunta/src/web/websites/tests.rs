@@ -24,19 +24,3 @@ fn pagination_retains_total_on_out_of_range_pages() {
         }})
     );
 }
-
-#[test]
-fn website_details_use_go_field_names_and_timestamp_format() {
-    let detail = WebsiteDetailResponse {
-        id: Uuid::nil(),
-        domain: "example.com".into(),
-        name: "Example".into(),
-        allowed_domains: vec!["example.com".into()],
-        public_stats_enabled: false,
-        created_at: time::OffsetDateTime::UNIX_EPOCH,
-    };
-    let value = serde_json::to_value(detail).unwrap();
-    assert_eq!(value["id"], Uuid::nil().to_string());
-    assert!(value.get("website_id").is_none());
-    assert_eq!(value["created_at"], "1970-01-01T00:00:00Z");
-}

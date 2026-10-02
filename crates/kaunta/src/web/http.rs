@@ -1,4 +1,4 @@
-use std::{borrow::Cow, net::IpAddr};
+use std::{borrow::Cow, convert::Infallible, net::IpAddr};
 
 use crate::domain::{
     auth::{CSRF_COOKIE, SESSION_COOKIE},
@@ -12,7 +12,8 @@ use rama::{
         body::util::BodyExt as _,
         header,
         headers::{self, HeaderMapExt as _},
-        service::web::response::{IntoResponse, Json},
+        service::web::response::{IntoResponse, Json, Sse},
+        sse::{self, JsonEventData},
     },
     net::stream::SocketInfo,
 };
@@ -22,6 +23,8 @@ use serde_json::json;
 use crate::web::AppState;
 
 pub const SESSION_SECONDS: i64 = 7 * 24 * 60 * 60;
+
+pub type DatastarEvent = sse::datastar::DatastarEvent<JsonEventData<serde_json::Value>>;
 
 /// A full error response boxed to keep the success path's stack small.
 #[derive(Debug)]
@@ -60,6 +63,18 @@ pub fn error_response(status: StatusCode, message: impl Into<String>) -> Respons
 pub fn server_error(error: impl std::fmt::Debug, message: &'static str) -> Response {
     tracing::error!(?error, "{message}");
     error_response(StatusCode::INTERNAL_SERVER_ERROR, message)
+}
+
+pub fn datastar<E: std::fmt::Debug>(
+    events: impl IntoIterator<Item = Result<DatastarEvent, E>>,
+) -> Response {
+    match events.into_iter().collect::<Result<Vec<_>, _>>() {
+        Ok(events) => Sse::new(futures_util::stream::iter(
+            events.into_iter().map(Ok::<_, Infallible>),
+        ))
+        .into_response(),
+        Err(error) => server_error(error, "Failed to build Datastar event"),
+    }
 }
 
 pub async fn decode_json<T: DeserializeOwned>(request: Request) -> HttpResult<T> {

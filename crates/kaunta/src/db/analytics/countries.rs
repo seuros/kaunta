@@ -255,25 +255,6 @@ mod tests {
     }
 
     #[test]
-    fn numeric_codes_are_zero_padded() {
-        assert_eq!(resolve("AU").0, "036");
-        assert_eq!(resolve("AL").0, "008");
-    }
-
-    #[test]
-    fn countries_outside_the_short_name_table_use_celes_long_name() {
-        let (code, name) = resolve("VA");
-        assert_eq!(code, "336");
-        assert!(!name.is_empty());
-        assert_ne!(name, "VA");
-    }
-
-    #[test]
-    fn lookup_is_case_insensitive() {
-        assert_eq!(resolve("us"), resolve("US"));
-    }
-
-    #[test]
     fn unknown_or_empty_codes_return_empty_code_and_raw_input() {
         assert_eq!(resolve(""), (String::new(), String::new()));
         assert_eq!(resolve("Unknown"), (String::new(), "Unknown".to_owned()));

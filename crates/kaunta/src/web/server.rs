@@ -70,6 +70,8 @@ pub async fn serve(state: AppState, port: u16) -> anyhow::Result<()> {
             .with_get("/script.js", assets::tracker)
             .with_get("/p/{id}.gif", tracking::pixel)
             .with_get("/favicon.ico", assets::favicon)
+            .with_get("/assets/datastar.js", assets::datastar)
+            .with_get("/assets/datastar.js.map", assets::datastar_source_map)
             .with_get("/assets/{*path}", assets::asset)
             .with_get("/ws/realtime", realtime::websocket)
             .with_get("/api/auth/login", auth::login_sse)
