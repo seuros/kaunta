@@ -3,6 +3,14 @@ name: Release
 on:
   release:
     types: [published]
+  # release-please publishes with GITHUB_TOKEN, and GitHub refuses to raise
+  # workflow events from its own token, so that release never reaches the
+  # trigger above. Re-run this by hand with the tag it skipped.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build, e.g. v0.121.0
+        required: true
 
 permissions:
   contents: write
@@ -11,6 +19,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
 
 jobs:
   build-binaries:
@@ -48,16 +57,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ env.RELEASE_TAG }}
       - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: 1.99.0
       - name: Validate release version
         shell: bash
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          manifest_version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
+          # The trailing .* drops release-please's x-release-please-version marker.
+          manifest_version=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' Cargo.toml | head -n 1)
           test "v${manifest_version}" = "${RELEASE_TAG}"
       - name: Install cross
         if: matrix.command == 'cross'
@@ -113,7 +121,6 @@ jobs:
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: gh release upload "${RELEASE_TAG}" dist/* --repo "${{ github.repository }}" --clobber
 
   build-and-push-image:
@@ -121,7 +128,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ env.RELEASE_TAG }}
       - uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
@@ -132,8 +139,6 @@ jobs:
       - name: Resolve image version
         id: version
         shell: bash
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           # Image tags follow the Go releases (:1.4.0), not the git tag (v1.4.0).
           echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
