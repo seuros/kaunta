@@ -29,12 +29,12 @@ jobs:
     env:
       DATABASE_URL: postgresql://kaunta:test@127.0.0.1:5432/kaunta_test?sslmode=disable
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: 1.99.0
           components: rustfmt, clippy
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry

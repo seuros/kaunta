@@ -31,7 +31,7 @@ PLATFORMS = {
 CLOBBER.include("pkg", "libexec")
 
 def cargo_version
-  @cargo_version ||= File.read(File.join(ROOT, "Cargo.toml"))[/^version = "([^"]+)"/, 1] ||
+  @cargo_version ||= File.read(File.join(ROOT, "crates/kaunta/Cargo.toml"))[/^version = "([^"]+)"/, 1] ||
                      abort("could not read version from Cargo.toml")
 end
 
