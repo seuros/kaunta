@@ -1,7 +1,6 @@
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: kaunta-postgres
     environment:
       POSTGRES_DB: kaunta
       POSTGRES_USER: kaunta
@@ -9,7 +8,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kaunta"]
+      test: ["CMD-SHELL", "pg_isready -U kaunta -d kaunta"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -19,16 +18,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: kaunta-app
     environment:
       DATABASE_URL: postgresql://kaunta:kaunta@postgres:5432/kaunta?sslmode=disable
       PORT: 3100
-      # Disable secure cookies for local HTTP development
+      DATA_DIR: /var/lib/kaunta
       SECURE_COOKIES: "false"
-      # Comma-separated list of trusted origins for CSRF protection
-      # Add your domain(s) here if accessing from external IPs
-      # Example: TRUSTED_ORIGINS=localhost,192.168.1.100,analytics.example.com
       TRUSTED_ORIGINS: localhost
+    volumes:
+      - kaunta_data:/var/lib/kaunta
     ports:
       - "3010:3100"
     depends_on:
@@ -43,3 +40,4 @@ services:
 
 volumes:
   postgres_data:
+  kaunta_data:

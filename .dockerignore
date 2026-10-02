@@ -1,40 +1,9 @@
-# Git
 .git
-.gitignore
 .github
-
-# Build artifacts
-kaunta
-*.o
-*.a
-*.so
-*.dylib
-
-# Development
-.idea
-.vscode
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Documentation
-*.md
-docs/
-tmp/
-
-# Node
-node_modules/
-
-# Test coverage
-*.out
-coverage.html
-
-# GeoIP database (will be downloaded at runtime)
-data/
-
-# Cache
-.gocache/
+target
+data
+.env
+.sqlx
+kaunta.toml
+Dockerfile*
+docker-compose*.yml

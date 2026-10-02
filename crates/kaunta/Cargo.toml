@@ -1,0 +1,58 @@
+[package]
+name = "kaunta"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "kaunta"
+path = "src/lib.rs"
+
+[[bin]]
+name = "kaunta"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+base64.workspace = true
+bcrypt.workspace = true
+celes.workspace = true
+crc32fast.workspace = true
+flate2.workspace = true
+futures-util.workspace = true
+hex.workspace = true
+include_dir.workspace = true
+maud.workspace = true
+mcp-host.workspace = true
+md5.workspace = true
+percent-encoding = "2.3"
+rama.workspace = true
+rand.workspace = true
+reqwest.workspace = true
+rpassword.workspace = true
+schemars.workspace = true
+semver.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml_ng.workspace = true
+sha2.workspace = true
+sqlx.workspace = true
+state-machines.workspace = true
+tar.workspace = true
+thiserror.workspace = true
+time.workspace = true
+tokio.workspace = true
+toml.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+url.workspace = true
+usage.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
+time = { workspace = true, features = ["macros"] }
+
+[lints]
+workspace = true

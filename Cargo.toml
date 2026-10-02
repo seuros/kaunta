@@ -1,0 +1,88 @@
+[workspace]
+members = [
+    "crates/kaunta",
+    "crates/kaunta-e2e",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.121.0"
+edition = "2024"
+rust-version = "1.99.0"
+license = "MIT"
+repository = "https://github.com/seuros/kaunta"
+authors = ["Abdelkader Boudih <oss@seuros.com>"]
+
+[workspace.dependencies]
+anyhow = "1.0.102"
+base64 = "0.22.1"
+bcrypt = "0.17.1"
+breaker-machines = { version = "0.16.0", features = ["async"] }
+chrono-machines = { version = "0.4.0", features = ["async"] }
+usage = { package = "usage-rs", version = "6.10.0" }
+hex = "0.4.3"
+include_dir = "0.7.4"
+flate2 = "1"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+maud = "0.27.0"
+mcp-host = { version = "0.6.0", features = ["http", "macros"] }
+md5 = "0.8.0"
+rand = "0.10.0"
+rama = { version = "0.4.0", features = ["http-full"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "stream", "json"] }
+rpassword = "7"
+schemars = "1.0.0-alpha.20"
+semver = "1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+serde_yaml_ng = "0.10.0"
+sha2 = "0.11.0"
+sqlx = { version = "0.9.0", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls-ring",
+    "postgres",
+    "uuid",
+    "time",
+    "json",
+    "macros",
+] }
+state-machines = { version = "0.21.1", features = ["async", "dynamic"] }
+tar = "0.4"
+thiserror = "2.0.18"
+throttle-machines = "0.2.0"
+time = { version = "=0.3.47", features = ["serde", "serde-well-known", "formatting", "parsing"] }
+tokio = { version = "1.52.0", features = [
+    "macros",
+    "rt-multi-thread",
+    "signal",
+    "sync",
+    "time",
+    "fs",
+    "process",
+] }
+toml = "1.1.4"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt", "json"] }
+url = "2.5.8"
+uuid = { version = "1.23.0", features = ["serde", "v4", "v7"] }
+crc32fast = "1.5"
+celes = { version = "3.0.0", default-features = false }
+chromiumoxide = "0.9"
+tempfile = "3"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

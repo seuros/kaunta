@@ -1,66 +1,11 @@
-# Binaries
+/target
+/target-lto
+/.env
+/.sqlx
+/data
 /kaunta
-kaunta-test*
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-
-# Test binary, built with `go test -c`
-*.test
-
-# Output of the go coverage tool
-*.out
-
-# Go workspace file
-go.work
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# Environment
-.env
-.env.local
-kaunta.toml
-
-# OS
-.DS_Store
-Thumbs.db
-kaunta-linux-amd64*
-
-# Build cache
-.gocache/
-
-# Temporary and research files
-tmp/
-docs/
-kaunta-linux
-data/
-
-# Frontend tooling
-node_modules/
-bun.lockb
-cmd/kaunta/assets/dist/
-!cmd/kaunta/assets/dist/.gitkeep
-cmd/kaunta/assets/kaunta.min.js
-
-# Test artifacts
-test-results/
-playwright-report/
-playwright/.cache/
-log/
+/node_modules
+/test-results
+/playwright-report
+/.dictator/
 /.local/
-.playwright-mcp/
-.dictator/
-
-# Decree build artifacts
-decrees/**/target/
-decrees/**/dist/
-decrees/**/wasi_snapshot_preview1.reactor.wasm
-!decrees/dictator-datastar/dist/
-!decrees/dictator-datastar/dist/dictator-datastar.component.wasm

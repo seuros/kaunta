@@ -1,0 +1,127 @@
+# frozen_string_literal: true
+
+# Packaging for the two gems built from this directory:
+#
+#   kaunta        the server and CLI, shipped as a native binary
+#   kaunta-rails  the Ruby client, no binary
+#
+#   rake -T                 list every task
+#   rake build:kaunta       stub gem only (no binary)
+#   rake build:kaunta:all   stub plus one gem per platform
+#   rake build:rails        the client gem
+#   rake release:kaunta     build everything, then push
+#   rake release:rails      build the client, then push
+#
+# Limit the platforms with PLATFORMS: `PLATFORMS=arm64-darwin rake release:kaunta`.
+
+require "rake/clean"
+
+ROOT = File.expand_path("..", __dir__)
+PKG = File.expand_path("pkg", __dir__)
+
+# RubyGems platform => Rust target. The glibc suffix keeps the Linux
+# binaries runnable on older distributions than the build host.
+PLATFORMS = {
+  "arm64-darwin" => "aarch64-apple-darwin",
+  "x86_64-darwin" => "x86_64-apple-darwin",
+  "x86_64-linux" => "x86_64-unknown-linux-gnu.2.35",
+  "aarch64-linux" => "aarch64-unknown-linux-gnu.2.35"
+}.freeze
+
+CLOBBER.include("pkg", "libexec")
+
+def cargo_version
+  @cargo_version ||= File.read(File.join(ROOT, "Cargo.toml"))[/^version = "([^"]+)"/, 1] ||
+                     abort("could not read version from Cargo.toml")
+end
+
+def rails_version
+  @rails_version ||= File.read(File.join(__dir__, "lib/kaunta/rails/version.rb"))[/VERSION = "([^"]+)"/, 1] ||
+                     abort("could not read Kaunta::Rails::VERSION")
+end
+
+def selected_platforms
+  requested = ENV["PLATFORMS"].to_s.split(",").map(&:strip).reject(&:empty?)
+  return PLATFORMS if requested.empty?
+
+  unknown = requested - PLATFORMS.keys
+  abort("unknown platform(s): #{unknown.join(", ")}") unless unknown.empty?
+  PLATFORMS.slice(*requested)
+end
+
+def sh!(*command)
+  puts "+ #{command.join(" ")}"
+  system(*command) || abort("failed: #{command.join(" ")}")
+end
+
+def build_gem(gemspec, file_name, env = {})
+  mkdir_p PKG
+  output = File.join(PKG, file_name)
+  sh!(env, "gem", "build", gemspec, "--output", output)
+  output
+end
+
+def push(gem_file)
+  # rubygems_mfa_required is set, so this prompts for a security key or an
+  # OTP; it has to run where you can answer it.
+  sh!("gem", "push", gem_file)
+end
+
+desc "Show what would be released"
+task :version do
+  puts "kaunta        #{cargo_version} (from Cargo.toml)"
+  puts "kaunta-rails  #{rails_version} (from lib/kaunta/rails/version.rb)"
+  puts "platforms     #{selected_platforms.keys.join(", ")}"
+end
+
+namespace :build do
+  desc "Build the kaunta stub gem (no native binary)"
+  task :kaunta do
+    rm_rf File.join(__dir__, "libexec")
+    puts "built #{build_gem("kaunta.gemspec", "kaunta-#{cargo_version}.gem",
+                            "KAUNTA_VERSION" => cargo_version)}"
+  end
+
+  namespace :kaunta do
+    desc "Build the stub plus one gem per platform"
+    task all: :kaunta do
+      selected_platforms.each do |platform, target|
+        puts "\n== #{platform} (#{target})"
+        Dir.chdir(ROOT) do
+          builder = target.include?("linux") ? "zigbuild" : "build"
+          sh!("cargo", builder, "--release", "--target", target, "-p", "kaunta")
+        end
+        binary = File.join(ROOT, "target", target.sub(/\.\d+\.\d+\z/, ""), "release/kaunta")
+        mkdir_p File.join(__dir__, "libexec")
+        cp binary, File.join(__dir__, "libexec/kaunta")
+        chmod 0o755, File.join(__dir__, "libexec/kaunta")
+        built = build_gem("kaunta.gemspec", "kaunta-#{cargo_version}-#{platform}.gem",
+                          "KAUNTA_VERSION" => cargo_version, "KAUNTA_PLATFORM" => platform)
+        rm_rf File.join(__dir__, "libexec")
+        puts "built #{built}"
+      end
+    end
+  end
+
+  desc "Build the kaunta-rails client gem"
+  task :rails do
+    puts "built #{build_gem("kaunta-rails.gemspec", "kaunta-rails-#{rails_version}.gem")}"
+  end
+end
+
+desc "Build both stubs and the client gem"
+task build: ["build:kaunta", "build:rails"]
+
+namespace :release do
+  desc "Build and push kaunta (stub and every platform)"
+  task kaunta: "build:kaunta:all" do
+    Dir[File.join(PKG, "kaunta-#{cargo_version}*.gem")].sort.each { |gem_file| push(gem_file) }
+  end
+
+  desc "Build and push kaunta-rails"
+  task rails: "build:rails" do
+    push(File.join(PKG, "kaunta-rails-#{rails_version}.gem"))
+  end
+end
+
+task default: :version

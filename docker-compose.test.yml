@@ -1,7 +1,6 @@
 services:
   postgres-test:
-    image: postgres:18-alpine
-    container_name: kaunta-postgres-test
+    image: ghcr.io/seuros/postgis-with-extensions:18
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -9,7 +8,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kaunta_test"]
       interval: 5s
       timeout: 5s
       retries: 5

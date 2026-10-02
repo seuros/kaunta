@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kaunta map</title>
+<style>
+__SHARED_CSS__
+
+  svg { display: block; width: 100%; height: auto; }
+  path { stroke: var(--surface); stroke-width: 0.4; }
+  path[data-visitors] { cursor: default; }
+  path[data-visitors]:hover { stroke: var(--ink-2); stroke-width: 0.8; }
+  .legend { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11px; color: var(--ink-2); }
+  .legend .steps { display: flex; }
+  .legend .steps span { width: 22px; height: 8px; }
+  th { text-align: left; padding-bottom: 6px; font-size: 11px; font-weight: 600; color: var(--ink-2); }
+  td.num { width: 70px; color: var(--ink-2); }
+  .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 7px; vertical-align: -1px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Visitors by country</h1>
+    <span class="site" id="site"></span>
+    <div class="periods" id="periods" role="group" aria-label="Period"></div>
+  </header>
+
+  <section class="panel">
+    <figure>
+      <svg id="map" viewBox="0 0 720 360" role="img" aria-label="World map shaded by visitor count; the same figures are listed in the table below"></svg>
+      <div id="tip" role="status"></div>
+    </figure>
+    <div class="legend">
+      <span>Fewer</span><div class="steps" id="legend"></div><span>More</span>
+      <span id="total" style="margin-left:auto"></span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <table>
+      <thead><tr><th>Country</th><th class="num">Visitors</th><th class="num">Share</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p class="empty" id="empty" hidden>No visitors with a known country in this period.</p>
+  </section>
+
+<script type="module">
+__BRIDGE_JS__
+
+  const PATHS = __WORLD_PATHS__;
+  const RAMP = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#2a78d6", "#1c5cab", "#184f95"];
+  let panel = null;
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  onToolResult(apply);
+
+  function apply(result) {
+    const data = payloadOf(result);
+    if (!data || !Array.isArray(data.countries)) return;
+    panel = data;
+    render();
+  }
+
+  function stepFor(visitors, max) {
+    if (!visitors) return null;
+    const position = Math.sqrt(visitors / max);
+    return Math.min(RAMP.length - 1, Math.max(0, Math.ceil(position * RAMP.length) - 1));
+  }
+
+  function render() {
+    el("site").textContent = `· ${panel.website} · last ${panel.period_days} days`;
+    el("total").textContent = `${panel.total_visitors} visitors`;
+    renderPeriods(panel, "map_panel_refresh", (data) => { panel = data; render(); });
+    renderLegend();
+
+    const byCode = new Map(panel.countries.map((country) => [String(country.code), country]));
+    const max = Math.max(1, ...panel.countries.map((country) => country.visitors));
+    const map = el("map");
+    map.replaceChildren();
+    for (const [code, shape] of Object.entries(PATHS)) {
+      const path = document.createElementNS(SVG_NS, "path");
+      path.setAttribute("d", shape.d);
+      const country = byCode.get(code);
+      const step = country ? stepFor(country.visitors, max) : null;
+      path.setAttribute("fill", step === null ? "var(--empty)" : RAMP[step]);
+      if (country) {
+        path.dataset.visitors = country.visitors;
+        const title = document.createElementNS(SVG_NS, "title");
+        title.textContent = `${country.name}: ${country.visitors}`;
+        path.append(title);
+        path.addEventListener("pointermove", (event) => {
+          const box = map.getBoundingClientRect();
+          const tip = el("tip");
+          tip.style.opacity = "1";
+          tip.style.left = `${event.clientX - box.left}px`;
+          tip.style.top = `${event.clientY - box.top}px`;
+          tip.textContent = `${country.name} · ${country.visitors} (${country.percentage.toFixed(1)}%)`;
+        });
+        path.addEventListener("pointerleave", () => { el("tip").style.opacity = "0"; });
+      }
+      map.append(path);
+    }
+
+    const rows = panel.countries.slice(0, 10).map((country) => {
+      const tr = document.createElement("tr");
+      const name = document.createElement("td");
+      const swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = RAMP[stepFor(country.visitors, max) ?? 0];
+      name.append(swatch, document.createTextNode(country.name));
+      const visitors = document.createElement("td");
+      visitors.className = "num";
+      visitors.textContent = country.visitors;
+      const share = document.createElement("td");
+      share.className = "num";
+      share.textContent = `${country.percentage.toFixed(1)}%`;
+      tr.append(name, visitors, share);
+      return tr;
+    });
+    el("rows").replaceChildren(...rows);
+    el("empty").hidden = rows.length > 0;
+  }
+
+  function renderLegend() {
+    el("legend").replaceChildren(...RAMP.map((color) => {
+      const step = document.createElement("span");
+      step.style.background = color;
+      return step;
+    }));
+  }
+
+</script>
+</body>
+</html>

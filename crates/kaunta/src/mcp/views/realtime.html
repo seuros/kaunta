@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kaunta live</title>
+<style>
+__SHARED_CSS__
+
+  .controls { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .pulse {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--live); margin-right: 5px; vertical-align: middle;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .pulse.on { animation: blink 2s ease-in-out infinite; }
+  }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+  .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .tile { padding: 10px 12px; border: 1px solid var(--grid); border-radius: var(--radius); background: var(--surface); }
+  .tile .label { font-size: 11px; color: var(--ink-2); }
+  .tile .value { margin-top: 2px; font-size: 28px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; }
+  th {
+    position: sticky; top: 0; background: var(--surface); text-align: left;
+    padding: 8px 0 6px; font-size: 11px; font-weight: 600; color: var(--ink-2);
+    border-bottom: 1px solid var(--grid);
+  }
+  tr:last-child td { border-bottom: 0; }
+  td.when { width: 74px; color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: 12px; }
+  td.what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 0; }
+  td.where { width: 150px; color: var(--ink-2); font-size: 12px; text-align: right; }
+  .kind { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); font-size: 11px; }
+  tr.fresh td { background: var(--accent-soft); transition: background 1.2s ease-out; }
+  .scroll { max-height: 280px; overflow: auto; }
+  .note { margin-top: 8px; font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span class="pulse" id="pulse" aria-hidden="true"></span>Live</h1>
+    <span class="site" id="site"></span>
+    <div class="controls">
+      <button type="button" id="toggle" aria-pressed="true">Auto-refresh on</button>
+    </div>
+  </header>
+
+  <div class="tiles">
+    <div class="tile"><div class="label">Online now</div><div class="value" id="online">—</div></div>
+    <div class="tile"><div class="label">Pageviews today</div><div class="value" id="today">—</div></div>
+  </div>
+
+  <section class="panel">
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Time</th><th>Activity</th><th style="text-align:right">Visitor</th></tr></thead>
+        <tbody id="feed"></tbody>
+      </table>
+    </div>
+    <p class="empty" id="empty" hidden>No activity in the last day.</p>
+    <p class="note" id="note"></p>
+  </section>
+
+<script type="module">
+__BRIDGE_JS__
+
+  const POLL_MS = 10000;
+  let panel = null;
+  let timer = null;
+  let polling = true;
+  let seen = new Set();
+
+  onToolResult((result) => apply(result, true));
+
+  function apply(result, initial = false) {
+    const data = payloadOf(result);
+    if (!data || !Array.isArray(data.events)) return;
+    panel = data;
+    render(initial);
+    if (initial) start();
+  }
+
+  function key(event) {
+    return `${event.at}|${event.what}|${event.country ?? ""}`;
+  }
+
+  function render(initial) {
+    el("site").textContent = `· ${panel.website}`;
+    el("online").textContent = panel.current_visitors;
+    el("today").textContent = panel.today_pageviews;
+    const rows = panel.events.map((event) => {
+      const tr = document.createElement("tr");
+      const fresh = !initial && !seen.has(key(event));
+      if (fresh) tr.className = "fresh";
+      const when = document.createElement("td");
+      when.className = "when";
+      const at = new Date(event.at);
+      when.textContent = Number.isNaN(at.getTime()) ? "" : at.toLocaleTimeString();
+      const what = document.createElement("td");
+      what.className = "what";
+      what.title = event.what;
+      if (event.kind === "event") {
+        const badge = document.createElement("span");
+        badge.className = "kind";
+        badge.textContent = "event";
+        what.append(badge);
+      }
+      what.append(document.createTextNode(event.what));
+      const where = document.createElement("td");
+      where.className = "where";
+      where.textContent = [event.country, event.browser].filter(Boolean).join(" · ");
+      tr.append(when, what, where);
+      return tr;
+    });
+    el("feed").replaceChildren(...rows);
+    el("empty").hidden = rows.length > 0;
+    seen = new Set(panel.events.map(key));
+    requestAnimationFrame(() => {
+      for (const row of el("feed").querySelectorAll("tr.fresh")) row.classList.remove("fresh");
+    });
+  }
+
+  async function poll() {
+    if (!polling || !panel || document.hidden) return;
+    try {
+      const result = await call("realtime_panel_poll", { website: panel.website, limit: panel.events.length || 15 });
+      apply(result);
+      el("note").textContent = "";
+    } catch (error) {
+      el("note").textContent = `Paused: ${error.message}`;
+      stop();
+      el("toggle").setAttribute("aria-pressed", "false");
+      el("toggle").textContent = "Auto-refresh off";
+      el("pulse").classList.remove("on");
+      polling = false;
+    }
+  }
+
+  function start() {
+    stop();
+    if (!polling) return;
+    el("pulse").classList.add("on");
+    timer = setInterval(poll, POLL_MS);
+  }
+
+  function stop() {
+    if (timer) clearInterval(timer);
+    timer = null;
+    el("pulse").classList.remove("on");
+  }
+
+  el("toggle").addEventListener("click", () => {
+    polling = !polling;
+    el("toggle").setAttribute("aria-pressed", String(polling));
+    el("toggle").textContent = polling ? "Auto-refresh on" : "Auto-refresh off";
+    el("note").textContent = "";
+    polling ? start() : stop();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stop();
+    else if (polling) { poll(); start(); }
+  });
+</script>
+</body>
+</html>

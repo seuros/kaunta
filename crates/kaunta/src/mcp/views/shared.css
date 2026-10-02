@@ -1,0 +1,45 @@
+/* Tokens and chrome shared by every ui:// view. Spliced in at serve time
+   so each view is still delivered as one self-contained document. */
+:root {
+  --surface: #fcfcfb; --plane: #f9f9f7; --ink: #0b0b0b; --ink-2: #52514e;
+  --muted: #898781; --grid: #e1e0d9; --axis: #c3c2b7; --accent: #2a78d6;
+  --accent-soft: #cde2fb; --empty: #e9eef3; --up: #006300; --live: #0ca30c;
+  --danger: #d03b3b; --radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1a1a19; --plane: #0d0d0d; --ink: #ffffff; --ink-2: #c3c2b7;
+    --grid: #2c2c2a; --axis: #383835; --accent: #3987e5;
+    --accent-soft: #184f95; --empty: #2c2c2a; --up: #0ca30c;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 16px; background: var(--plane); color: var(--ink);
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+h1 { margin: 0; font-size: 15px; font-weight: 600; }
+h2 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.site { color: var(--ink-2); font-size: 13px; }
+.periods { margin-left: auto; display: flex; gap: 4px; }
+button {
+  padding: 3px 10px; border: 1px solid var(--axis); border-radius: 999px;
+  background: var(--surface); color: var(--ink-2); font: inherit; font-size: 12px; cursor: pointer;
+}
+button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:disabled { opacity: .55; cursor: default; }
+.panel {
+  padding: 12px; border: 1px solid var(--grid); border-radius: var(--radius);
+  background: var(--surface); margin-bottom: 12px;
+}
+figure { margin: 0; position: relative; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+td { padding: 3px 0; vertical-align: middle; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+#tip {
+  position: absolute; pointer-events: none; opacity: 0; transition: opacity .1s;
+  padding: 3px 7px; border-radius: 4px; background: var(--ink); color: var(--surface);
+  font-size: 11px; white-space: nowrap; transform: translate(-50%, -150%);
+}
+.empty { color: var(--muted); font-size: 13px; }

@@ -1,40 +1,18 @@
-FROM oven/bun:alpine AS frontend-builder
+FROM rust:1.99.0-alpine AS builder
+
+# musl-dev links the static binary; the rest is what the crypto crates
+# need to compile their C shims.
+RUN apk add --no-cache musl-dev build-base
+
 WORKDIR /app
 
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY crates ./crates
+COPY assets ./assets
+COPY migrations ./migrations
+COPY tracker ./tracker
 
-COPY tracker/ ./tracker/
-COPY frontend/ ./frontend/
-RUN bun run build
-
-FROM golang:1.26-alpine AS backend-builder
-WORKDIR /app
-
-ARG VERSION=dev
-ARG TARGETOS
-ARG TARGETARCH
-ARG TARGETVARIANT
-
-RUN apk add --no-cache git ca-certificates tzdata
-
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY . .
-COPY --from=frontend-builder /app/cmd/kaunta/assets ./cmd/kaunta/assets
-
-# Respect the target platform passed by buildx so the binary matches the image architecture.
-ENV GOOS=${TARGETOS} GOARCH=${TARGETARCH}
-
-RUN \
-  if [ "${TARGETARCH}" = "arm" ] && [ -n "${TARGETVARIANT}" ]; then export GOARM=${TARGETVARIANT#v}; fi; \
-  CGO_ENABLED=0 GOOS=${GOOS:-linux} GOARCH=${GOARCH:-amd64} \
-  go build \
-    -tags=docker \
-    -ldflags="-w -s -X github.com/seuros/kaunta/internal/cli.Version=${VERSION}" \
-    -o kaunta \
-    ./cmd/kaunta
+RUN cargo build --locked --release -p kaunta
 
 FROM alpine:latest
 
@@ -49,9 +27,19 @@ LABEL org.opencontainers.image.title="Kaunta" \
       org.opencontainers.image.vendor="Seuros" \
       org.opencontainers.image.licenses="MIT"
 
-RUN apk add --no-cache ca-certificates tzdata
+# postgresql-client supplies the pg_dump and pg_restore that
+# `kaunta backup` shells out to; without them backups fail in the image.
+RUN apk add --no-cache ca-certificates tzdata postgresql-client \
+    && addgroup -S kaunta \
+    && adduser -S -G kaunta -h /var/lib/kaunta kaunta \
+    && install -d -o kaunta -g kaunta /var/lib/kaunta
 
-COPY --from=backend-builder /app/kaunta /usr/local/bin/kaunta
+COPY --from=builder /app/target/release/kaunta /usr/local/bin/kaunta
+
+ENV DATA_DIR=/var/lib/kaunta \
+    PORT=3000
+
+USER kaunta
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD ["kaunta", "healthcheck"]

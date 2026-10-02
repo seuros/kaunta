@@ -1,24 +1,20 @@
 /**
- * Kaunta Analytics Tracker
- * Privacy-first, lightweight analytics tracker combining best features from Umami & Plausible
+ * Kaunta analytics tracker.
  *
- * Features:
- * - Auto-track pageviews (including SPAs)
- * - Outbound link tracking
- * - Custom event tracking
- * - Scroll depth tracking
- * - Engagement time tracking
- * - Respects Do Not Track
- * - No cookies, no localStorage (privacy-first)
- * - <3KB minified
+ * Records pageviews (including SPA navigation), outbound clicks, file
+ * downloads, custom events, scroll depth, and engagement time, and carries
+ * UTM parameters for the session.
  *
- * @version 1.0.0
+ * It sets no cookies and sends no identifiers it did not receive. The only
+ * thing it stores is the visitor's own choices: UTM parameters in
+ * sessionStorage for the length of the visit, and the `kaunta_ignore`
+ * opt-out flag in localStorage. Do Not Track is honored unless the site
+ * turns that off.
  */
 
 (function(window) {
   'use strict';
 
-  // Early exit checks - use window.document directly to avoid minification issues
   if (!window || !window.document) return;
 
   var {
@@ -32,13 +28,11 @@
 
   var { currentScript, referrer } = document;
 
-  // Fallback: if currentScript is null (defer/async loading), find the script tag
   if (!currentScript) {
     var scripts = document.querySelectorAll('script[data-website-id]');
     if (scripts.length > 0) {
-      currentScript = scripts[scripts.length - 1]; // Use the last one
+      currentScript = scripts[scripts.length - 1];
     } else {
-      // Try to find script with k.js, kaunta.js, or script.js
       var allScripts = document.querySelectorAll('script[src]');
       for (var i = 0; i < allScripts.length; i++) {
         var src = allScripts[i].src || '';
@@ -52,16 +46,15 @@
 
   if (!currentScript) return;
 
-  // ============================================================================
-  // CONFIGURATION (from data attributes)
-  // ============================================================================
-
   var dataset = currentScript.dataset;
 
   var websiteId = dataset.websiteId;
   var apiUrl = dataset.apiUrl || currentScript.src.split('/').slice(0, -1).join('/');
   var autoTrack = dataset.autoTrack !== 'false';
   var trackOutbound = dataset.trackOutbound !== 'false';
+  var trackDownloads = dataset.trackDownloads !== 'false';
+  var downloadExtensions = (dataset.downloadExtensions || 'pdf,xlsx,docx,txt,rtf,csv,exe,key,pps,ppt,pptx,7z,pkg,rar,gz,zip,avi,mov,mp4,mpeg,wmv,midi,mp3,wav,ogg,dmg')
+    .split(',').map(function(ext) { return ext.trim().toLowerCase(); });
   var respectDnt = dataset.respectDnt !== 'false';
   var excludeHash = dataset.excludeHash === 'true';
   var domain = dataset.domains || '';
@@ -73,27 +66,18 @@
   var screen = width + 'x' + height;
   var { hostname, origin } = location;
 
-  // ============================================================================
-  // UTM PARAMETER TRACKING
-  // Extract UTM params from URL and persist in sessionStorage for the session
-  // ============================================================================
-
   var UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
   var UTM_STORAGE_KEY = 'kaunta_utm';
 
   function getUtmParams() {
-    // Try to get from sessionStorage first (persists across page navigation)
     var stored = null;
     try {
       var storedStr = sessionStorage.getItem(UTM_STORAGE_KEY);
       if (storedStr) {
         stored = JSON.parse(storedStr);
       }
-    } catch (e) {
-      // sessionStorage not available or parse error
-    }
+    } catch (e) {}
 
-    // Check current URL for UTM params
     var searchParams = new URLSearchParams(location.search);
     var currentUtm = {};
     var hasNewUtm = false;
@@ -106,34 +90,24 @@
       }
     });
 
-    // If we have new UTM params in URL, use those and store them
     if (hasNewUtm) {
       try {
         sessionStorage.setItem(UTM_STORAGE_KEY, JSON.stringify(currentUtm));
-      } catch (e) {
-        // sessionStorage not available
-      }
+      } catch (e) {}
       return currentUtm;
     }
 
-    // Otherwise return stored UTM params (from landing page)
     return stored || {};
   }
 
-  // Get UTM params once at init (will be refreshed on navigation if URL changes)
   var utmParams = getUtmParams();
 
-  // Static payload fields that don't change per event
   var staticPayload = Object.freeze({
     website: websiteId,
     hostname: hostname,
     screen: screen,
     language: language
   });
-
-  // ============================================================================
-  // ENGAGEMENT & SCROLL TRACKING (from Plausible)
-  // ============================================================================
 
   var debug = dataset.debug === 'true';
 
@@ -146,9 +120,7 @@
     } catch (err) {
       try {
         console.log.apply(console, args);
-      } catch (_) {
-        // ignore
-      }
+      } catch (_) {}
     }
   }
 
@@ -205,13 +177,28 @@
     }
   }
 
+  var lastFlushedEngagementMs = 0;
+
+  function flushEngagement() {
+    var engagementMs = Math.round(getEngagementTime());
+    var scrollPercent = currentDocHeight > 0
+      ? Math.round((maxScrollDepthPx / currentDocHeight) * 100)
+      : 0;
+    if (engagementMs < 1000 && scrollPercent < 10) return;
+    if (engagementMs <= lastFlushedEngagementMs) return;
+    lastFlushedEngagementMs = engagementMs;
+    send(getBasePayload(true), 'engagement');
+  }
+
   function onVisibilityChange() {
     if (document.visibilityState === 'visible' && document.hasFocus() && engagementStartTime === 0) {
       engagementStartTime = Date.now();
     } else if (document.visibilityState === 'hidden' || !document.hasFocus()) {
-      // Save engagement time
       totalEngagementTime = getEngagementTime();
       engagementStartTime = 0;
+      if (document.visibilityState === 'hidden') {
+        flushEngagement();
+      }
     }
   }
 
@@ -220,11 +207,9 @@
       currentDocHeight = getDocHeight();
       maxScrollDepthPx = getCurrentScrollDepthPx();
 
-      // Create AbortController for cleanup
       engagementAbort = window.AbortController ? new AbortController() : null;
       var signal = engagementAbort ? { signal: engagementAbort.signal } : {};
 
-      // rAF-batched scroll tracking to prevent layout thrashing
       document.addEventListener('scroll', function() {
         if (scrollScheduled) return;
         scrollScheduled = true;
@@ -237,8 +222,8 @@
       document.addEventListener('visibilitychange', onVisibilityChange, Object.assign({ passive: true }, signal));
       window.addEventListener('blur', onVisibilityChange, Object.assign({ passive: true }, signal));
       window.addEventListener('focus', onVisibilityChange, Object.assign({ passive: true }, signal));
+      window.addEventListener('pagehide', flushEngagement, Object.assign({ passive: true }, signal));
 
-      // Use ResizeObserver to track document height changes efficiently
       if (window.ResizeObserver) {
         heightObserver = new ResizeObserver(function() {
           currentDocHeight = getDocHeight();
@@ -248,8 +233,7 @@
           heightObserver.observe(document.body);
         }
       } else {
-        // Fallback for older browsers
-        window.addEventListener('load', function() {
+          window.addEventListener('load', function() {
           currentDocHeight = getDocHeight();
           var count = 0;
           var interval = setInterval(function() {
@@ -263,17 +247,35 @@
     }
   }
 
-  // ============================================================================
-  // HELPER FUNCTIONS (from Umami)
-  // ============================================================================
-
   function hasDoNotTrack() {
     var dnt = doNotTrack || ndnt || msdnt;
     return dnt === 1 || dnt === '1' || dnt === 'yes';
   }
 
+  var IGNORE_KEY = 'kaunta_ignore';
+
+  function readIgnoreFlag() {
+    var requested = new URLSearchParams(location.search).get('kaunta_ignore');
+    try {
+      if (requested === 'true') {
+        localStorage.setItem(IGNORE_KEY, 'true');
+        return true;
+      }
+      if (requested === 'false') {
+        localStorage.removeItem(IGNORE_KEY);
+        return false;
+      }
+      return localStorage.getItem(IGNORE_KEY) === 'true';
+    } catch (e) {
+      return requested === 'true';
+    }
+  }
+
+  var ignored = readIgnoreFlag();
+
   function isTrackingDisabled() {
     return !websiteId ||
+      ignored ||
       (domain && !domains.includes(hostname)) ||
       (respectDnt && hasDoNotTrack());
   }
@@ -296,7 +298,6 @@
       referrer: currentRef
     });
 
-    // Only include engagement metrics for pageviews to reduce payload size
     if (includeEngagement) {
       var scrollDepthPercent = currentDocHeight > 0
         ? Math.round((maxScrollDepthPx / currentDocHeight) * 100)
@@ -307,7 +308,6 @@
       payload.engagement_time = engagementTimeMs;
     }
 
-    // Include UTM parameters if present
     if (utmParams.utm_source) payload.utm_source = utmParams.utm_source;
     if (utmParams.utm_medium) payload.utm_medium = utmParams.utm_medium;
     if (utmParams.utm_campaign) payload.utm_campaign = utmParams.utm_campaign;
@@ -316,10 +316,6 @@
 
     return payload;
   }
-
-  // ============================================================================
-  // NETWORK REQUEST (from Plausible - minimal, modern)
-  // ============================================================================
 
   function send(payload, type) {
     if (isTrackingDisabled()) {
@@ -333,15 +329,10 @@
 
     var body = JSON.stringify({ type: type, payload: payload });
 
-    // Silent fail - no console spam unless debug
     try {
-      // Determine credentials mode:
-      // - 'same-origin' for same-origin requests (enables self-tracking with auth)
-      // - 'omit' for cross-origin requests (privacy-first, no cookies)
       var isSameOrigin = endpoint.indexOf(origin) === 0;
       var credentialsMode = isSameOrigin ? 'same-origin' : 'omit';
 
-      // Use sendBeacon for better reliability when page is hidden/unloading
       if (navigator.sendBeacon && document.visibilityState === 'hidden') {
         navigator.sendBeacon(endpoint, body);
       } else if (window.fetch) {
@@ -360,19 +351,14 @@
     }
   }
 
-  // ============================================================================
-  // TRACKING FUNCTIONS
-  // ============================================================================
-
   function trackPageview() {
-    // Include engagement metrics for pageviews
     var payload = getBasePayload(true);
 
-    // Reset engagement tracking for new page
     maxScrollDepthPx = getCurrentScrollDepthPx();
     totalEngagementTime = 0;
     engagementStartTime = Date.now();
     engagementIgnored = false;
+    lastFlushedEngagementMs = 0;
 
     send(payload, 'event');
   }
@@ -380,7 +366,6 @@
   function track(eventName, properties) {
     if (typeof eventName !== 'string') return;
 
-    // Don't include engagement metrics for custom events
     var payload = getBasePayload(false);
     payload.name = eventName;
 
@@ -390,10 +375,6 @@
 
     send(payload, 'event');
   }
-
-  // ============================================================================
-  // AUTO-TRACKING: SPA NAVIGATION (from both Umami & Plausible)
-  // ============================================================================
 
   var lastPath = location.pathname;
   var pendingPageview = null;
@@ -408,11 +389,9 @@
     currentRef = currentPageUrl;
     currentPageUrl = newUrl;
 
-    // Refresh UTM params in case new URL has different UTM values
     utmParams = getUtmParams();
 
     if (currentPageUrl !== currentRef) {
-      // Debounce to prevent duplicate pageviews on rapid navigation
       clearTimeout(pendingPageview);
       pendingPageview = setTimeout(trackPageview, 150);
     }
@@ -434,15 +413,18 @@
     window.addEventListener('popstate', onNavigation);
   }
 
-  // ============================================================================
-  // AUTO-TRACKING: OUTBOUND LINKS (from Plausible)
-  // ============================================================================
-
   function isOutboundLink(link) {
     return link &&
       typeof link.href === 'string' &&
       link.host &&
       link.host !== location.host;
+  }
+
+  function isDownloadLink(link) {
+    if (!link || !link.pathname) return false;
+    var path = link.pathname.toLowerCase();
+    var dot = path.lastIndexOf('.');
+    return dot !== -1 && downloadExtensions.indexOf(path.slice(dot + 1)) !== -1;
   }
 
   function getLinkElement(el) {
@@ -469,8 +451,9 @@
 
   function onLinkClick(event) {
     var link = getLinkElement(event.target);
+    var download = trackDownloads && isDownloadLink(link);
 
-    if (trackOutbound && isOutboundLink(link)) {
+    if (download || (trackOutbound && isOutboundLink(link))) {
       var followed = false;
 
       var followLink = function() {
@@ -480,19 +463,15 @@
         }
       };
 
-      // Track the outbound click
-      track('Outbound Link: Click', { url: normalize(link.href) });
+      track(download ? 'File Download' : 'Outbound Link: Click',
+        { url: normalize(link.href) });
 
       if (shouldInterceptNav(event, link)) {
         event.preventDefault();
-        setTimeout(followLink, 500); // Give analytics 500ms to send
+        setTimeout(followLink, 500);
       }
     }
   }
-
-  // ============================================================================
-  // INITIALIZATION
-  // ============================================================================
 
   currentPageUrl = normalize(location.href);
   var currentRef = normalize((referrer || '').startsWith(origin) ? '' : referrer);
@@ -503,55 +482,40 @@
 
     initialized = true;
 
-    // Initialize tracking systems
     initEngagementTracking();
     hookHistory();
 
-    // Track initial pageview
     trackPageview();
 
-    // Setup click handlers for outbound links
-    if (trackOutbound) {
+    if (trackOutbound || trackDownloads) {
       document.addEventListener('click', onLinkClick, true);
     }
   }
 
-  // ============================================================================
-  // PUBLIC API
-  // ============================================================================
-
   function destroy() {
-    // Abort all event listeners
     if (engagementAbort) {
       engagementAbort.abort();
     }
 
-    // Disconnect ResizeObserver
     if (heightObserver) {
       heightObserver.disconnect();
     }
 
-    // Clear pending pageview
     clearTimeout(pendingPageview);
 
-    // Reset state
     initialized = false;
     engagementListening = false;
 
     logDebug('Tracker destroyed');
   }
 
-  if (!window.kaunta) {
-    window.kaunta = {
+  if (!window.kaunta || typeof window.kaunta.track !== 'function') {
+    window.kaunta = Object.assign(window.kaunta || {}, {
       track: track,
       trackPageview: trackPageview,
       destroy: destroy
-    };
+    });
   }
-
-  // ============================================================================
-  // AUTO-START
-  // ============================================================================
 
   if (autoTrack && !isTrackingDisabled()) {
     if (document.readyState === 'complete') {

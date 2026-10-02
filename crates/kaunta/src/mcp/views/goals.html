@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kaunta goals</title>
+<style>
+__SHARED_CSS__
+
+  .goal { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 10px 0; border-bottom: 1px solid var(--grid); }
+  .goal:last-child { border-bottom: 0; }
+  .goal .name { font-weight: 600; }
+  .goal .target { color: var(--ink-2); font-size: 12px; overflow-wrap: anywhere; }
+  .kind { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 500; }
+  .stats { display: flex; gap: 16px; grid-column: 1 / -1; margin-top: 4px; }
+  .stat .value { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat .label { font-size: 11px; color: var(--ink-2); }
+  .meter { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--accent-soft); overflow: hidden; }
+  .meter > div { height: 100%; background: var(--accent); }
+  .remove { color: var(--danger); border-color: transparent; align-self: start; }
+  .remove:hover:not(:disabled) { border-color: var(--danger); }
+  form { display: grid; grid-template-columns: 1fr 130px 1fr auto; gap: 8px; align-items: end; }
+  label { display: block; font-size: 11px; color: var(--ink-2); }
+  input, select {
+    width: 100%; padding: 4px 8px; border: 1px solid var(--axis); border-radius: var(--radius);
+    background: var(--surface); color: var(--ink); font: inherit; font-size: 13px;
+  }
+  form button { padding: 5px 14px; border-color: var(--accent); background: var(--accent); color: #fff; }
+  .note { margin: 8px 0 0; font-size: 11px; color: var(--muted); }
+  .note.error { color: var(--danger); }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Goals</h1>
+    <span class="site" id="site"></span>
+    <div class="periods" id="periods" role="group" aria-label="Period"></div>
+  </header>
+
+  <section class="panel">
+    <div id="goals"></div>
+    <p class="empty" id="empty" hidden>No goals yet. Add one below.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Add a goal</h2>
+    <form id="add">
+      <div><label for="name">Name</label><input id="name" required placeholder="Newsletter signup"></div>
+      <div><label for="kind">Type</label>
+        <select id="kind"><option value="page_view">Page view</option><option value="custom_event">Custom event</option></select>
+      </div>
+      <div><label for="target">Path or event name</label><input id="target" required placeholder="/thank-you"></div>
+      <button type="submit">Add goal</button>
+    </form>
+    <p class="note" id="note">Adding or removing a goal asks you to confirm first.</p>
+  </section>
+
+<script type="module">
+  window.KAUNTA_TIMEOUT_MS = 310000;
+__BRIDGE_JS__
+
+  let panel = null;
+
+  onToolResult(apply);
+
+  function apply(result) {
+    const data = payloadOf(result);
+    if (!data || !Array.isArray(data.goals)) return;
+    panel = data;
+    render();
+  }
+
+  function note(message, isError = false) {
+    const target = el("note");
+    target.textContent = message || "Adding or removing a goal asks you to confirm first.";
+    target.classList.toggle("error", Boolean(isError));
+  }
+
+  async function act(name, args, busy) {
+    busy.forEach((node) => (node.disabled = true));
+    note("Waiting for your confirmation…");
+    try {
+      apply(await call(name, { ...args, website: panel.website, days: panel.period_days }));
+      note("");
+    } catch (error) {
+      note(error.message, true);
+    } finally {
+      busy.forEach((node) => (node.disabled = false));
+    }
+  }
+
+  function render() {
+    el("site").textContent = `· ${panel.website} · last ${panel.period_days} days`;
+    renderPeriods(panel, "goals_panel_refresh", (data) => { panel = data; render(); });
+    const rows = panel.goals.map((goal) => {
+      const card = document.createElement("div");
+      card.className = "goal";
+
+      const heading = document.createElement("div");
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = goal.name;
+      const kind = document.createElement("span");
+      kind.className = "kind";
+      kind.textContent = goal.kind === "custom_event" ? "event" : "page view";
+      heading.append(name, kind);
+      const target = document.createElement("div");
+      target.className = "target";
+      target.textContent = goal.target;
+      heading.append(target);
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "remove";
+      remove.textContent = "Remove";
+      remove.addEventListener("click", () =>
+        act("goals_panel_remove", { goal: goal.id }, [remove]));
+
+      const stats = document.createElement("div");
+      stats.className = "stats";
+      for (const [value, label] of [
+        [goal.completions, "Completions"],
+        [goal.unique_sessions, "Sessions"],
+        [`${goal.conversion_rate.toFixed(1)}%`, "Conversion"],
+      ]) {
+        const stat = document.createElement("div");
+        stat.className = "stat";
+        const v = document.createElement("div");
+        v.className = "value";
+        v.textContent = value;
+        const l = document.createElement("div");
+        l.className = "label";
+        l.textContent = label;
+        stat.append(v, l);
+        stats.append(stat);
+      }
+
+      const meter = document.createElement("div");
+      meter.className = "meter";
+      const fill = document.createElement("div");
+      fill.style.width = `${Math.min(100, Math.max(0, goal.conversion_rate))}%`;
+      meter.append(fill);
+
+      card.append(heading, remove, stats, meter);
+      return card;
+    });
+    el("goals").replaceChildren(...rows);
+    el("empty").hidden = rows.length > 0;
+  }
+
+  el("add").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submit = event.currentTarget.querySelector("button");
+    await act("goals_panel_add", {
+      name: el("name").value.trim(),
+      kind: el("kind").value,
+      target: el("target").value.trim(),
+    }, [submit]);
+    el("name").value = "";
+    el("target").value = "";
+  });
+</script>
+</body>
+</html>

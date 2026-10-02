@@ -1,8 +1,7 @@
 {
-  "release-type": "simple",
+  "release-type": "rust",
   "packages": {
     ".": {
-      "version-file": "cmd/kaunta/VERSION",
       "package-name": "kaunta",
       "include-component-in-tag": false,
       "tag-separator": ""
