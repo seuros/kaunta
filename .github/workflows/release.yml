@@ -81,7 +81,8 @@ jobs:
         uses: vmactions/freebsd-vm@v1
         with:
           # The newest 15.x: packages are built on it once the older minor
-          # is EOL. A 15 binary needs symbols 14 lacks, hence the gem's -15.
+          # is EOL, and the binary then needs that minor's libc (15.1 adds
+          # FBSD_1.9). It never runs on 14, hence the gem's -15.
           release: "15"
           mem: 12288
           prepare: pkg install -y curl llvm

@@ -5,7 +5,7 @@ This guide covers installing, exposing, backing up, and upgrading a Kaunta insta
 ## Requirements and installation
 
 Kaunta requires PostgreSQL 18 or newer. The release installer supports Linux
-(glibc 2.35 or newer) and macOS on amd64/arm64, plus FreeBSD 15 on amd64. It
+(glibc 2.35 or newer) and macOS on amd64/arm64, plus FreeBSD 15.1+ on amd64. It
 installs to `~/.local/bin` by default:
 
 ```sh

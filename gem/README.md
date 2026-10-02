@@ -14,7 +14,7 @@ Then open `http://localhost:3000/setup`.
 
 The gem is a thin launcher: `exe/kaunta` executes the bundled binary in
 `libexec/`. Platform gems are published for Linux (glibc 2.35+) and macOS
-on x86_64 and arm64, and for FreeBSD 15 on amd64; the plain-Ruby gem is a
+on x86_64 and arm64, and for FreeBSD 15.1+ on amd64; the plain-Ruby gem is a
 stub that tells you which platform release to install.
 
 Everything else (configuration, the tracker, MCP, self-hosting) is
