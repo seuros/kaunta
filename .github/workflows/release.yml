@@ -117,6 +117,9 @@ jobs:
   upload-release-assets:
     runs-on: ubuntu-24.04
     needs: build-binaries
+    # fail-fast is off because the targets are independent; honour that here
+    # too, so one broken platform cannot withhold the others' binaries.
+    if: ${{ !cancelled() }}
     steps:
       - uses: actions/download-artifact@v8
         with:
