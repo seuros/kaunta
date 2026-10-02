@@ -1880,7 +1880,7 @@ dependencies = [
 
 [[package]]
 name = "kaunta"
-version = "0.122.0"
+version = "0.122.1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -1924,7 +1924,7 @@ dependencies = [
 
 [[package]]
 name = "kaunta-e2e"
-version = "0.122.0"
+version = "0.122.1"
 dependencies = [
  "anyhow",
  "chromiumoxide",

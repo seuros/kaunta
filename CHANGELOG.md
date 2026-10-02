@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.122.1](https://github.com/seuros/kaunta/compare/v0.122.0...v0.122.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* **ci:** keep Cargo.lock in the release PR, build binaries --locked ([5e33bbb](https://github.com/seuros/kaunta/commit/5e33bbb2c6f1281f06bb77e0847b4afbf520a74f))
+* **gem:** skip already-published gems on release ([a8b7613](https://github.com/seuros/kaunta/commit/a8b761372bd76f5b6d6f8b99ec0d547098702db4))
+
 ## [0.122.0](https://github.com/seuros/kaunta/compare/v0.121.0...v0.122.0) (2026-10-02)
 
 
