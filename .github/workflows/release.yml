@@ -83,7 +83,7 @@ jobs:
         if: matrix.os != 'freebsd'
         shell: bash
         run: |
-          cargo build --release -p kaunta
+          cargo build --locked --release -p kaunta
           cp target/release/kaunta kaunta
       - name: Build binary on FreeBSD 15
         if: matrix.os == 'freebsd'
@@ -104,7 +104,7 @@ jobs:
               | sh -s -- -y --profile minimal --default-toolchain 1.99.0
             . "$HOME/.cargo/env"
             # Outside the synced tree, or copyback hauls target/ to the host.
-            CARGO_TARGET_DIR=/var/tmp/kaunta-target cargo build --release -p kaunta
+            CARGO_TARGET_DIR=/var/tmp/kaunta-target cargo build --locked --release -p kaunta
             cp /var/tmp/kaunta-target/release/kaunta kaunta
       - name: Check the glibc floor
         if: matrix.os == 'linux'
@@ -152,6 +152,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
+          # Not the image job's .dockerbuild record, which shares this run.
+          pattern: kaunta-*
           path: dist
           merge-multiple: true
       - name: Upload release assets
@@ -173,6 +175,8 @@ jobs:
           ruby-version: "4.0"
       - uses: actions/download-artifact@v8
         with:
+          # Not the image job's .dockerbuild record, which shares this run.
+          pattern: kaunta-*
           path: dist
           merge-multiple: true
       - name: Build gems

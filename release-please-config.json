@@ -5,7 +5,14 @@
       "package-name": "kaunta",
       "include-component-in-tag": false,
       "tag-separator": "",
-      "extra-files": ["Cargo.toml"]
+      "extra-files": [
+        "Cargo.toml",
+        {
+          "type": "toml",
+          "path": "Cargo.lock",
+          "jsonpath": "$.package[?(@.name.value=='kaunta' || @.name.value=='kaunta-e2e')].version"
+        }
+      ]
     }
   }
 }
