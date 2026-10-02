@@ -314,9 +314,7 @@ pub async fn protected_page(state: AppState, request: Request, title: &'static s
 
 fn login_rate_limit(state: &AppState, request: &Request) -> Option<Response> {
     let peer = server_client_ip(state, request);
-    if state.login_attempts.allow(&peer) {
-        return None;
-    }
+    let retry_after = state.login_attempts.check(&peer).err()?;
     let mut response = json_response(
         StatusCode::TOO_MANY_REQUESTS,
         json!({
@@ -324,6 +322,10 @@ fn login_rate_limit(state: &AppState, request: &Request) -> Option<Response> {
             "error": "Too many login attempts. Please try again later."
         }),
     );
-    crate::web::http::set_header(&mut response, header::RETRY_AFTER, "60");
+    crate::web::http::set_header(
+        &mut response,
+        header::RETRY_AFTER,
+        &crate::web::rate_limit::retry_after_secs(retry_after).to_string(),
+    );
     Some(response)
 }

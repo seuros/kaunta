@@ -1,12 +1,11 @@
 use std::{
-    collections::{HashMap, VecDeque},
     fs,
     path::{Path, PathBuf},
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use crate::domain::{
@@ -37,11 +36,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{PgPool, types::Json};
 use time::OffsetDateTime;
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::mpsc;
 use url::Url;
 use uuid::Uuid;
 
-use crate::web::{assets, http};
+use crate::web::{
+    assets, http,
+    rate_limit::{self, AttemptLimiter},
+};
 
 const SETUP_HTML: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -51,8 +53,6 @@ const SETUP_COMPLETE_HTML: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../assets/setup_complete.html"
 ));
-const SETUP_RATE_LIMIT: usize = 5;
-const SETUP_RATE_WINDOW: Duration = Duration::from_mins(1);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SetupStatus {
@@ -87,7 +87,7 @@ struct SetupState {
     config_path: PathBuf,
     completion: mpsc::Sender<()>,
     completed: Arc<AtomicBool>,
-    attempts: Arc<Mutex<HashMap<String, VecDeque<Instant>>>>,
+    attempts: AttemptLimiter,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
@@ -171,7 +171,7 @@ pub async fn serve(config_path: PathBuf, port: u16) -> anyhow::Result<bool> {
         config_path,
         completion,
         completed: completed.clone(),
-        attempts: Arc::new(Mutex::new(HashMap::new())),
+        attempts: AttemptLimiter::default(),
     };
 
     tracing::info!(
@@ -224,11 +224,8 @@ async fn complete() -> impl IntoResponse {
 }
 
 async fn test_database(State(state): State<SetupState>, request: Request) -> Response {
-    if !allow_request(&state, &request).await {
-        return http::json_response(
-            StatusCode::TOO_MANY_REQUESTS,
-            json!({"error": "Too many requests, slow down."}),
-        );
+    if let Some(response) = rate_limited(&state, &request) {
+        return response;
     }
     let form = match decode_setup_payload(request).await {
         Ok(form) => form,
@@ -272,11 +269,8 @@ async fn test_database(State(state): State<SetupState>, request: Request) -> Res
 }
 
 async fn submit(State(state): State<SetupState>, request: Request) -> Response {
-    if !allow_request(&state, &request).await {
-        return http::json_response(
-            StatusCode::TOO_MANY_REQUESTS,
-            json!({"error": "Too many requests, slow down."}),
-        );
+    if let Some(response) = rate_limited(&state, &request) {
+        return response;
     }
     if config_is_locked(&state.config_path) {
         return setup_error("Setup already completed.");
@@ -608,23 +602,20 @@ fn setup_error(message: impl Into<String>) -> Response {
     )
 }
 
-async fn allow_request(state: &SetupState, request: &Request) -> bool {
+fn rate_limited(state: &SetupState, request: &Request) -> Option<Response> {
     let key =
         http::direct_peer_ip(request).map_or_else(|| "unknown".to_owned(), |ip| ip.to_string());
-    let now = Instant::now();
-    let mut attempts = state.attempts.lock().await;
-    let entries = attempts.entry(key).or_default();
-    while entries
-        .front()
-        .is_some_and(|attempt| now.duration_since(*attempt) >= SETUP_RATE_WINDOW)
-    {
-        entries.pop_front();
-    }
-    if entries.len() >= SETUP_RATE_LIMIT {
-        return false;
-    }
-    entries.push_back(now);
-    true
+    let retry_after = state.attempts.check(&key).err()?;
+    let mut response = http::json_response(
+        StatusCode::TOO_MANY_REQUESTS,
+        json!({"error": "Too many requests, slow down."}),
+    );
+    http::set_header(
+        &mut response,
+        header::RETRY_AFTER,
+        &rate_limit::retry_after_secs(retry_after).to_string(),
+    );
+    Some(response)
 }
 
 fn config_is_locked(path: &Path) -> bool {

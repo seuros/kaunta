@@ -4,14 +4,28 @@ use std::{
     net::IpAddr,
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 
 use anyhow::Context as _;
+use chrono_machines::{AsyncRetryable as _, ExponentialBackoff};
 use flate2::read::GzDecoder;
-use rama::net::address::ip::geo::{IpGeoDb, MmdbReader, RAMA_IP_GEO_DB_ENV};
+use rama::{
+    bytes::Bytes,
+    net::address::ip::geo::{IpGeoDb, MmdbReader, RAMA_IP_GEO_DB_ENV},
+};
 
 pub const DATABASE_FILE: &str = "GeoLite2-City.mmdb";
 const DATABASE_URL: &str = "https://cdn.jsdelivr.net/npm/geolite2-city/GeoLite2-City.mmdb.gz";
+/// Three attempts, ~1s then ~2s apart, so a CDN blip on first boot does not
+/// disable location enrichment until the next restart.
+const DOWNLOAD_BACKOFF: ExponentialBackoff = ExponentialBackoff {
+    max_attempts: 3,
+    base_delay_ms: 1_000,
+    multiplier: 2.0,
+    max_delay_ms: 5_000,
+    jitter_factor: 0.5,
+};
 
 #[derive(Clone, Default)]
 pub struct GeoIp {
@@ -135,20 +149,48 @@ async fn download_database(path: &Path) -> anyhow::Result<()> {
         .with_context(|| format!("create GeoIP data directory {}", parent.display()))?;
 
     tracing::info!(url = DATABASE_URL, "downloading GeoIP database");
-    let compressed = reqwest::get(DATABASE_URL)
+    let compressed = fetch_database
+        .retry_async(DOWNLOAD_BACKOFF)
+        .when(|error: &reqwest::Error| {
+            !error
+                .status()
+                .is_some_and(|status| status.is_client_error())
+        })
+        .notify(|retry| {
+            tracing::warn!(
+                attempt = retry.attempt,
+                next_delay_ms = retry.next_delay_ms,
+                error = ?retry.error,
+                "GeoIP download failed; retrying"
+            );
+        })
+        .call_async(|ms| tokio::time::sleep(Duration::from_millis(ms)))
         .await
-        .context("download GeoIP database")?
-        .error_for_status()
-        .context("GeoIP download returned an error status")?
-        .bytes()
-        .await
-        .context("read GeoIP download")?;
+        .map_err(|error| {
+            let attempts = error.attempts();
+            error
+                .into_cause()
+                .map_or_else(
+                    || anyhow::anyhow!("GeoIP download retry halted"),
+                    anyhow::Error::new,
+                )
+                .context(format!("download GeoIP database ({attempts} attempts)"))
+        })?
+        .into_inner();
 
     let target = path.to_owned();
     tokio::task::spawn_blocking(move || decompress_database(&compressed, &target))
         .await
         .context("join GeoIP decompression task")??;
     Ok(())
+}
+
+async fn fetch_database() -> reqwest::Result<Bytes> {
+    reqwest::get(DATABASE_URL)
+        .await?
+        .error_for_status()?
+        .bytes()
+        .await
 }
 
 fn decompress_database(compressed: &[u8], target: &Path) -> anyhow::Result<()> {

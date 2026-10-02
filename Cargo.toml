@@ -17,8 +17,7 @@ authors = ["Abdelkader Boudih <oss@seuros.com>"]
 anyhow = "1.0.102"
 base64 = "0.22.1"
 bcrypt = "0.17.1"
-breaker-machines = { version = "0.16.0", features = ["async"] }
-chrono-machines = { version = "0.4.0", features = ["async"] }
+chrono-machines = { version = "0.8.0", features = ["async"] }
 usage = { package = "usage-rs", version = "6.10.0" }
 hex = "0.4.3"
 include_dir = "0.7.4"

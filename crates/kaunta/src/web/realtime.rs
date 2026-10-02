@@ -1,5 +1,6 @@
 use std::{convert::Infallible, time::Duration};
 
+use chrono_machines::{BackoffStrategy as _, ExponentialBackoff};
 use rama::{
     Service,
     bytes::Bytes,
@@ -21,7 +22,15 @@ use crate::web::{
 };
 
 const BROADCAST_CAPACITY: usize = 512;
-const RECONNECT_DELAY: Duration = Duration::from_secs(5);
+/// LISTEN reconnect pacing: ~1s doubling to 30s, reset once connected.
+/// `max_attempts` is never reached; the failure count saturates below it.
+const RECONNECT_BACKOFF: ExponentialBackoff = ExponentialBackoff {
+    max_attempts: u8::MAX,
+    base_delay_ms: 1_000,
+    multiplier: 2.0,
+    max_delay_ms: 30_000,
+    jitter_factor: 0.5,
+};
 const PING_INTERVAL: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone)]
@@ -55,6 +64,7 @@ impl Default for RealtimeHub {
 }
 
 pub async fn listen(pool: sqlx::PgPool, hub: RealtimeHub) {
+    let mut failures = 0u8;
     loop {
         let mut listener = match crate::db::realtime::connect_listener(&pool).await {
             Ok(listener) => {
@@ -62,11 +72,12 @@ pub async fn listen(pool: sqlx::PgPool, hub: RealtimeHub) {
                     channel = crate::db::realtime::CHANNEL_NAME,
                     "realtime PostgreSQL listener connected"
                 );
+                failures = 0;
                 listener
             }
             Err(error) => {
                 tracing::warn!(?error, "failed to connect realtime PostgreSQL listener");
-                tokio::time::sleep(RECONNECT_DELAY).await;
+                tokio::time::sleep(reconnect_delay(&mut failures)).await;
                 continue;
             }
         };
@@ -81,8 +92,18 @@ pub async fn listen(pool: sqlx::PgPool, hub: RealtimeHub) {
             }
         }
 
-        tokio::time::sleep(RECONNECT_DELAY).await;
+        tokio::time::sleep(reconnect_delay(&mut failures)).await;
     }
+}
+
+fn reconnect_delay(failures: &mut u8) -> Duration {
+    *failures = failures
+        .saturating_add(1)
+        .min(RECONNECT_BACKOFF.max_attempts - 1);
+    let ms = RECONNECT_BACKOFF
+        .delay(*failures, &mut chrono_machines::rand::rng())
+        .unwrap_or(RECONNECT_BACKOFF.max_delay_ms);
+    Duration::from_millis(ms)
 }
 
 pub async fn websocket(State(state): State<AppState>, request: Request) -> Response {
