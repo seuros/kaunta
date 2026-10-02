@@ -26,8 +26,6 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-    env:
-      DATABASE_URL: postgresql://kaunta:test@127.0.0.1:5432/kaunta_test?sslmode=disable
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@v1
@@ -50,7 +48,9 @@ jobs:
       - name: Run tests
         run: cargo test --workspace -- --test-threads=1
       - name: Run PostgreSQL regressions
-        run: KAUNTA_TEST_DATABASE_URL="$DATABASE_URL" cargo test --workspace database_ -- --ignored --test-threads=1
+        env:
+          KAUNTA_TEST_DATABASE_URL: postgresql://kaunta:test@127.0.0.1:5432/kaunta_test?sslmode=disable
+        run: cargo test --workspace database_ -- --ignored --test-threads=1
       - name: Build release binary
         run: cargo build --release -p kaunta
       - name: Run browser e2e suite
