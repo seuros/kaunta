@@ -23,6 +23,8 @@
 # Limit the platforms with PLATFORMS: `PLATFORMS=arm64-darwin rake build:kaunta:all`.
 
 require "digest"
+require "json"
+require "net/http"
 require "rake/clean"
 
 ROOT = File.expand_path("..", __dir__)
@@ -98,6 +100,20 @@ def kaunta_gem_files
     [File.join(PKG, "kaunta-#{cargo_version}.gem")]
 end
 
+def published_kaunta_files
+  # Every push needs its own MFA approval, so a release can stop partway;
+  # a rerun must skip what RubyGems already has, which it refuses to repush.
+  uri = URI("https://rubygems.org/api/v1/versions/kaunta.json")
+  response = Net::HTTP.get_response(uri)
+  return [] if response.is_a?(Net::HTTPNotFound)
+  abort("could not list published kaunta versions: HTTP #{response.code}") unless response.is_a?(Net::HTTPSuccess)
+
+  JSON.parse(response.body).map do |version|
+    suffix = version["platform"] == "ruby" ? "" : "-#{version["platform"]}"
+    File.join(PKG, "kaunta-#{version["number"]}#{suffix}.gem")
+  end
+end
+
 def push(gem_file)
   # rubygems_mfa_required is set, so this prompts for a security key or an
   # OTP; it has to run where you can answer it.
@@ -163,7 +179,12 @@ namespace :release do
       abort("missing from pkg/ (run rake fetch:kaunta first):\n  #{missing.join("\n  ")}")
     end
 
-    gems.each { |gem_file| push(gem_file) }
+    published = published_kaunta_files
+    gems.each do |gem_file|
+      next puts("skip #{File.basename(gem_file)} (already on RubyGems)") if published.include?(gem_file)
+
+      push(gem_file)
+    end
   end
 
   desc "Build and push kaunta-rails"
