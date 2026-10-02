@@ -7,25 +7,38 @@
 #
 #   rake -T                 list every task
 #   rake build:kaunta       stub gem only (no binary)
-#   rake build:kaunta:all   stub plus one gem per platform
+#   rake build:kaunta:all   stub plus one gem per platform, from release archives
 #   rake build:rails        the client gem
-#   rake release:kaunta     build everything, then push
+#   rake fetch:kaunta       pull the gems the release workflow pushed to GHCR
+#   rake release:kaunta     push the kaunta gems in pkg/
 #   rake release:rails      build the client, then push
 #
-# Limit the platforms with PLATFORMS: `PLATFORMS=arm64-darwin rake release:kaunta`.
+# The platform gems never compile anything: they wrap the binaries the release
+# workflow built, read from DIST (default ../dist) as the kaunta_<os>_<arch>
+# archives attached to the GitHub release. CI builds them and pushes them to
+# GHCR; publishing to RubyGems stays here, where the MFA prompt can be answered:
+#
+#   rake fetch:kaunta release:kaunta
+#
+# Limit the platforms with PLATFORMS: `PLATFORMS=arm64-darwin rake build:kaunta:all`.
 
+require "digest"
 require "rake/clean"
 
 ROOT = File.expand_path("..", __dir__)
 PKG = File.expand_path("pkg", __dir__)
+LIBEXEC = File.expand_path("libexec", __dir__)
+GEMS_REPOSITORY = "ghcr.io/seuros/kaunta/gems"
 
-# RubyGems platform => Rust target. The glibc suffix keeps the Linux
-# binaries runnable on older distributions than the build host.
+# RubyGems platform => release archive suffix. Linux binaries are built on
+# glibc 2.35. FreeBSD keeps its major version: Ruby there reports amd64, and a
+# binary built on 15 does not run on 14.
 PLATFORMS = {
-  "arm64-darwin" => "aarch64-apple-darwin",
-  "x86_64-darwin" => "x86_64-apple-darwin",
-  "x86_64-linux" => "x86_64-unknown-linux-gnu.2.35",
-  "aarch64-linux" => "aarch64-unknown-linux-gnu.2.35"
+  "arm64-darwin" => "darwin_arm64",
+  "x86_64-darwin" => "darwin_amd64",
+  "x86_64-linux" => "linux_amd64",
+  "aarch64-linux" => "linux_arm64",
+  "amd64-freebsd-15" => "freebsd_amd64"
 }.freeze
 
 CLOBBER.include("pkg", "libexec")
@@ -49,6 +62,10 @@ def selected_platforms
   PLATFORMS.slice(*requested)
 end
 
+def dist
+  File.expand_path(ENV.fetch("DIST", File.join(ROOT, "dist")))
+end
+
 def sh!(*command)
   puts "+ #{command.join(" ")}"
   system(*command) || abort("failed: #{command.join(" ")}")
@@ -59,6 +76,26 @@ def build_gem(gemspec, file_name, env = {})
   output = File.join(PKG, file_name)
   sh!(env, "gem", "build", gemspec, "--output", output)
   output
+end
+
+def verified_archive(suffix)
+  archive = File.join(dist, "kaunta_#{suffix}.tar.gz")
+  [archive, "#{archive}.sha256"].each do |file|
+    next if File.file?(file)
+
+    abort("missing #{file}\nfetch them with: gh release download v#{cargo_version} " \
+          "--repo seuros/kaunta --pattern 'kaunta_*' --dir #{dist}")
+  end
+  expected = File.read("#{archive}.sha256").split.first
+  abort("checksum mismatch: #{archive}") unless Digest::SHA256.file(archive).hexdigest == expected
+  archive
+end
+
+def kaunta_gem_files
+  # Platform gems first, stub last, so an install that lands mid-push never
+  # resolves to the stub on a platform that has a binary.
+  selected_platforms.keys.map { |platform| File.join(PKG, "kaunta-#{cargo_version}-#{platform}.gem") } +
+    [File.join(PKG, "kaunta-#{cargo_version}.gem")]
 end
 
 def push(gem_file)
@@ -77,28 +114,24 @@ end
 namespace :build do
   desc "Build the kaunta stub gem (no native binary)"
   task :kaunta do
-    rm_rf File.join(__dir__, "libexec")
-    puts "built #{build_gem("kaunta.gemspec", "kaunta-#{cargo_version}.gem",
-                            "KAUNTA_VERSION" => cargo_version)}"
+    rm_rf LIBEXEC
+    puts "built #{build_gem("kaunta.gemspec", "kaunta-#{cargo_version}.gem")}"
   end
 
   namespace :kaunta do
-    desc "Build the stub plus one gem per platform"
+    desc "Build the stub plus one gem per platform from the release archives in DIST"
     task all: :kaunta do
-      selected_platforms.each do |platform, target|
-        puts "\n== #{platform} (#{target})"
-        Dir.chdir(ROOT) do
-          builder = target.include?("linux") ? "zigbuild" : "build"
-          sh!("cargo", builder, "--release", "--target", target, "-p", "kaunta")
-        end
-        binary = File.join(ROOT, "target", target.sub(/\.\d+\.\d+\z/, ""), "release/kaunta")
-        mkdir_p File.join(__dir__, "libexec")
-        cp binary, File.join(__dir__, "libexec/kaunta")
-        chmod 0o755, File.join(__dir__, "libexec/kaunta")
-        built = build_gem("kaunta.gemspec", "kaunta-#{cargo_version}-#{platform}.gem",
-                          "KAUNTA_VERSION" => cargo_version, "KAUNTA_PLATFORM" => platform)
-        rm_rf File.join(__dir__, "libexec")
-        puts "built #{built}"
+      selected_platforms.each do |platform, suffix|
+        puts "\n== #{platform} (kaunta_#{suffix})"
+        archive = verified_archive(suffix)
+        rm_rf LIBEXEC
+        mkdir_p LIBEXEC
+        sh!("tar", "-xzf", archive, "-C", LIBEXEC, "kaunta")
+        chmod 0o755, File.join(LIBEXEC, "kaunta")
+        puts "built #{build_gem("kaunta.gemspec", "kaunta-#{cargo_version}-#{platform}.gem",
+                                "KAUNTA_PLATFORM" => platform)}"
+      ensure
+        rm_rf LIBEXEC
       end
     end
   end
@@ -112,10 +145,25 @@ end
 desc "Build both stubs and the client gem"
 task build: ["build:kaunta", "build:rails"]
 
+namespace :fetch do
+  desc "Pull the kaunta gems the release workflow pushed to GHCR into pkg/"
+  task :kaunta do
+    # Needs `oras login ghcr.io` while the package is private.
+    mkdir_p PKG
+    sh!("oras", "pull", "#{GEMS_REPOSITORY}:#{cargo_version}", "--output", PKG)
+  end
+end
+
 namespace :release do
-  desc "Build and push kaunta (stub and every platform)"
-  task kaunta: "build:kaunta:all" do
-    Dir[File.join(PKG, "kaunta-#{cargo_version}*.gem")].sort.each { |gem_file| push(gem_file) }
+  desc "Push the kaunta gems in pkg/ (stub and every platform)"
+  task :kaunta do
+    gems = kaunta_gem_files
+    missing = gems.reject { |gem_file| File.file?(gem_file) }
+    unless missing.empty?
+      abort("missing from pkg/ (run rake fetch:kaunta first):\n  #{missing.join("\n  ")}")
+    end
+
+    gems.each { |gem_file| push(gem_file) }
   end
 
   desc "Build and push kaunta-rails"

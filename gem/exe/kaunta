@@ -5,9 +5,10 @@ binary = File.expand_path("../libexec/kaunta", __dir__)
 
 unless File.file?(binary)
   # Platform gems are published without the OS version (arm64-darwin, not
-  # arm64-darwin-23), so name the one that actually exists.
+  # arm64-darwin-23), so name the one that actually exists. FreeBSD is the
+  # exception: its binary is tied to the major it was built on.
   local = Gem::Platform.local
-  platform = [local.cpu, local.os].compact.join("-")
+  platform = local.os == "freebsd" ? local.to_s : [local.cpu, local.os].compact.join("-")
 
   warn <<~MESSAGE
     This is the kaunta stub gem: no native binary is bundled for #{platform}.

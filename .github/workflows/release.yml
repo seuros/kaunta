@@ -38,36 +38,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-24.04
+          # 22.04 rather than 24.04: the binaries then need glibc 2.35, not
+          # 2.39, and the platform gems ship these same files.
+          - runner: ubuntu-22.04
             os: linux
             arch: amd64
-            command: cargo
-            target: ""
-          - runner: ubuntu-24.04-arm
+          - runner: ubuntu-22.04-arm
             os: linux
             arch: arm64
-            command: cargo
-            target: ""
           - runner: macos-15-intel
             os: darwin
             arch: amd64
-            command: cargo
-            target: ""
           - runner: macos-15
             os: darwin
             arch: arm64
-            command: cargo
-            target: ""
+          # Built in a FreeBSD VM, so bindgen reads the real resolv.h.
           - runner: ubuntu-24.04
             os: freebsd
             arch: amd64
-            command: cross
-            target: x86_64-unknown-freebsd
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ env.RELEASE_REF }}
       - uses: dtolnay/rust-toolchain@v1
+        if: matrix.os != 'freebsd'
         with:
           toolchain: 1.99.0
       - name: Validate release version
@@ -76,25 +70,42 @@ jobs:
           # The trailing .* drops release-please's x-release-please-version marker.
           manifest_version=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' Cargo.toml | head -n 1)
           test "v${manifest_version}" = "${RELEASE_TAG}"
-      - name: Install cross
-        if: matrix.command == 'cross'
-        run: cargo install cross --version 0.2.5 --locked
       - name: Build binary
+        if: matrix.os != 'freebsd'
         shell: bash
-        env:
-          BUILD_COMMAND: ${{ matrix.command }}
-          BUILD_TARGET: ${{ matrix.target }}
-          # Inert for every other target; Cross.toml passes it into the
-          # FreeBSD container, where that sysroot path exists.
-          BINDGEN_EXTRA_CLANG_ARGS_x86_64_unknown_freebsd: -I/usr/local/x86_64-unknown-freebsd13/include
         run: |
-          if [ -n "${BUILD_TARGET}" ]; then
-            "${BUILD_COMMAND}" build --release -p kaunta --target "${BUILD_TARGET}"
-            cp "target/${BUILD_TARGET}/release/kaunta" kaunta
-          else
-            "${BUILD_COMMAND}" build --release -p kaunta
-            cp target/release/kaunta kaunta
-          fi
+          cargo build --release -p kaunta
+          cp target/release/kaunta kaunta
+      - name: Build binary on FreeBSD 15
+        if: matrix.os == 'freebsd'
+        uses: vmactions/freebsd-vm@v1
+        with:
+          # The newest 15.x: packages are built on it once the older minor
+          # is EOL. A 15 binary needs symbols 14 lacks, hence the gem's -15.
+          release: "15"
+          mem: 12288
+          prepare: pkg install -y curl llvm
+          run: |
+            set -eu
+            # rama-dns runs bindgen on the BSDs; point it at the llvm package.
+            LIBCLANG_PATH=$(dirname "$(ls /usr/local/llvm*/lib/libclang.so | sort -V | tail -n 1)")
+            export LIBCLANG_PATH
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --profile minimal --default-toolchain 1.99.0
+            . "$HOME/.cargo/env"
+            # Outside the synced tree, or copyback hauls target/ to the host.
+            CARGO_TARGET_DIR=/var/tmp/kaunta-target cargo build --release -p kaunta
+            cp /var/tmp/kaunta-target/release/kaunta kaunta
+      - name: Check the glibc floor
+        if: matrix.os == 'linux'
+        shell: bash
+        run: |
+          # Guards the runner choice above: a newer image would raise this
+          # without anything else failing.
+          floor=2.35
+          needed=$(objdump -T kaunta | grep -oE 'GLIBC_[0-9]+(\.[0-9]+)+' | sed 's/^GLIBC_//' | sort -uV | tail -n 1)
+          echo "kaunta needs glibc ${needed}"
+          test "$(printf '%s\n' "${needed}" "${floor}" | sort -V | tail -n 1)" = "${floor}"
       - name: Package binary
         shell: bash
         env:
@@ -138,9 +149,40 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${RELEASE_TAG}" dist/* --repo "${{ github.repository }}" --clobber
 
+  package-gems:
+    runs-on: ubuntu-24.04
+    # No !cancelled() here, unlike the asset upload: a gem version cannot be
+    # amended once pushed, and the stub would stand in for a missing platform.
+    needs: build-binaries
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_REF }}
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Build gems
+        working-directory: gem
+        run: rake build:kaunta:all
+      - uses: oras-project/setup-oras@v2
+      - name: Push gems to GHCR
+        working-directory: gem/pkg
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Publishing to RubyGems stays manual (MFA): `rake fetch:kaunta release:kaunta`.
+        run: |
+          echo "${GH_TOKEN}" | oras login "${REGISTRY}" -u "${{ github.actor }}" --password-stdin
+          oras push "${REGISTRY}/${IMAGE_NAME}/gems:${RELEASE_TAG#v}" \
+            --annotation "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+            kaunta-*.gem
+
   build-and-push-image:
     runs-on: ubuntu-24.04
-    # A rescue dispatch rebuilds binaries only, so it cannot race the image
+    # A rescue dispatch rebuilds binaries and gems only, so it cannot race the image
     # tags with a release run that is still pushing them.
     if: github.event_name == 'release' || inputs.push_image
     steps:

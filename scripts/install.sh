@@ -147,6 +147,10 @@ detect_platform() {
   if [ "$OS" = "freebsd" ] && [ "$ARCH" != "amd64" ]; then
     fail "FreeBSD releases are currently available only for amd64"
   fi
+
+  if [ "$OS" = "freebsd" ] && [ "$(uname -r | cut -d. -f1)" -lt 15 ]; then
+    fail "FreeBSD releases are built on FreeBSD 15 and do not run on $(uname -r)"
+  fi
 }
 
 resolve_tag() {

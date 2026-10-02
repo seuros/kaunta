@@ -6,7 +6,8 @@ Gem::Specification.new do |spec|
   platform_release = ENV["KAUNTA_PLATFORM"]
 
   spec.name = "kaunta"
-  spec.version = ENV["KAUNTA_VERSION"] || "0.121.0"
+  # Cargo.toml is the version release-please bumps; read it rather than keep a copy.
+  spec.version = File.read(File.expand_path("../Cargo.toml", __dir__))[/^version = "([^"]+)"/, 1]
   spec.authors = ["Abdelkader Boudih"]
   spec.email = ["oss@seuros.com"]
 
