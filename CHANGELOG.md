@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.122.0](https://github.com/seuros/kaunta/compare/v0.121.0...v0.122.0) (2026-10-02)
+
+
+### Features
+
+* throttle-machines GCRA limiter, chrono-machines retries ([1cba6a1](https://github.com/seuros/kaunta/commit/1cba6a1cff716ff7a933a7be0195efc556ce00af))
+
+
+### Bug Fixes
+
+* **ci:** build the freebsd binary again ([fa6183b](https://github.com/seuros/kaunta/commit/fa6183b844c188a621e810b5e9a5834619cc102d))
+* **ci:** strip the release-please marker before the tag check ([1979971](https://github.com/seuros/kaunta/commit/1979971136f8a114df25b8f24a15265937fce2c5))
+
 ## [0.121.0](https://github.com/seuros/kaunta/compare/v0.53.0...v0.121.0) (2026-10-02)
 
 
