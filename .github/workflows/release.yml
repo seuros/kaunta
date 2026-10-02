@@ -11,6 +11,10 @@ on:
       tag:
         description: Release tag to build, e.g. v0.121.0
         required: true
+      push_image:
+        description: Also rebuild and push the container image
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -125,6 +129,9 @@ jobs:
 
   build-and-push-image:
     runs-on: ubuntu-24.04
+    # A rescue dispatch rebuilds binaries only, so it cannot race the image
+    # tags with a release run that is still pushing them.
+    if: github.event_name == 'release' || inputs.push_image
     steps:
       - uses: actions/checkout@v7
         with:
