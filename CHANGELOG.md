@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.121.0](https://github.com/seuros/kaunta/compare/v0.53.0...v0.121.0) (2026-10-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* the service is a Rust binary. Builds need the Rust toolchain rather than Go, Bun, and Deno, and `kaunta mcp` over stdio is removed in favor of the authenticated HTTP endpoint.
+
+### Features
+
+* migrate to Rust ([136572d](https://github.com/seuros/kaunta/commit/136572ddf8cb223efa1b2acc185d9c1bb8a360eb))
+
 ## [0.53.0](https://github.com/seuros/kaunta/compare/v0.52.2...v0.53.0) (2026-06-21)
 
 
