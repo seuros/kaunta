@@ -9,8 +9,11 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to build, e.g. v0.121.0
+        description: Release tag to attach the assets to, e.g. v0.121.0
         required: true
+      ref:
+        description: Ref to build, when the tag's tree predates a CI fix
+        required: false
       push_image:
         description: Also rebuild and push the container image
         type: boolean
@@ -24,6 +27,8 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  # What gets built; RELEASE_TAG is only what the assets land on.
+  RELEASE_REF: ${{ inputs.ref || github.event.release.tag_name || inputs.tag }}
 
 jobs:
   build-binaries:
@@ -61,7 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          ref: ${{ env.RELEASE_REF }}
       - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: 1.99.0
@@ -79,6 +84,9 @@ jobs:
         env:
           BUILD_COMMAND: ${{ matrix.command }}
           BUILD_TARGET: ${{ matrix.target }}
+          # Inert for every other target; Cross.toml passes it into the
+          # FreeBSD container, where that sysroot path exists.
+          BINDGEN_EXTRA_CLANG_ARGS_x86_64_unknown_freebsd: -I/usr/local/x86_64-unknown-freebsd13/include
         run: |
           if [ -n "${BUILD_TARGET}" ]; then
             "${BUILD_COMMAND}" build --release -p kaunta --target "${BUILD_TARGET}"
@@ -138,7 +146,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          ref: ${{ env.RELEASE_REF }}
       - uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}

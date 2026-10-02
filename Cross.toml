@@ -1,0 +1,15 @@
+# cross 0.2.5 is its newest release (Feb 2023), and the FreeBSD image it pins is
+# Ubuntu 16.04 whose only libclang is 3.8. rama-dns runs bindgen for the BSDs
+# (res_nsearch) and clang-sys aborts on that version, which is what removed the
+# target. cross's main branch is years ahead of the release, so take its image:
+# Ubuntu 20.04, libclang 10, FreeBSD 13 sysroot. Pinned by digest because main
+# is a moving tag.
+[target.x86_64-unknown-freebsd]
+image = "ghcr.io/cross-rs/x86_64-unknown-freebsd:main@sha256:d1ecbeb055803f5316607acce26c8af2b8609a04e38a06ba7aed84f9df80042e"
+
+# bindgen resolves BINDGEN_EXTRA_CLANG_ARGS_<target> ahead of the unsuffixed
+# variable, and inside a build script only the suffixed name takes effect.
+# Without the sysroot include path clang either fails to find resolv.h or, worse,
+# silently binds glibc's __res_state instead of FreeBSD's.
+[target.x86_64-unknown-freebsd.env]
+passthrough = ["BINDGEN_EXTRA_CLANG_ARGS_x86_64_unknown_freebsd"]
