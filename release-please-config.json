@@ -1,10 +1,11 @@
 {
-  "release-type": "rust",
+  "release-type": "simple",
   "packages": {
     ".": {
       "package-name": "kaunta",
       "include-component-in-tag": false,
-      "tag-separator": ""
+      "tag-separator": "",
+      "extra-files": ["Cargo.toml"]
     }
   }
 }

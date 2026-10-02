@@ -69,10 +69,10 @@ jobs:
           BUILD_TARGET: ${{ matrix.target }}
         run: |
           if [ -n "${BUILD_TARGET}" ]; then
-            "${BUILD_COMMAND}" build --locked --release -p kaunta --target "${BUILD_TARGET}"
+            "${BUILD_COMMAND}" build --release -p kaunta --target "${BUILD_TARGET}"
             cp "target/${BUILD_TARGET}/release/kaunta" kaunta
           else
-            "${BUILD_COMMAND}" build --locked --release -p kaunta
+            "${BUILD_COMMAND}" build --release -p kaunta
             cp target/release/kaunta kaunta
           fi
       - name: Package binary
